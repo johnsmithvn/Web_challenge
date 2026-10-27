@@ -3,6 +3,8 @@
 ## v6.34.0 — 2026-10-26
 
 ### Added
+- **Hiệu ứng lan tròn khi đổi theme (Circular Reveal Transition):** Sử dụng View Transitions API (`document.startViewTransition`) kết hợp CSS `clip-path` và Web Animations API animate hình tròn lan tỏa từ tâm nút bấm ra toàn màn hình (`ThemeContext.jsx`, `global.css`). Tự động bỏ qua hiệu ứng khi bật cài đặt "Giảm chuyển động".
+- **Nút chuyển đổi Dark/Light mode Trời Đêm ⇄ Hoàng Hôn trên desktop (`Navbar.jsx`, `navbar.css`):** Thay nút tròn đơn sắc ở thanh bên desktop bằng nút switch Day/Night sky thuần CSS sống động; nền chuyển giữa bầu trời sao đêm và mây hoàng hôn, núm trượt biến hình giữa Mặt Trăng miệng núi lửa và Mặt Trời hoàng hôn rực rỡ với hiệu ứng nảy đàn hồi. Tự động co tỉ lệ khi thu gọn sidebar thành rail 64px.
 - **Cài đặt Giảm chuyển động (`SettingsPage.jsx` → Chung, `ThemeContext.jsx`):** một công tắc cho toàn app, mặc định tắt, lưu `vl_reduce_motion`; bật thì `<html data-reduce-motion>`.
 
 ### Changed
@@ -12,6 +14,7 @@
 - **Vault — mọi ô chọn dùng chung `SearchSelect`:** loại item, kiểu field, Brand (thay `<datalist>`), phương thức đăng nhập mới, kiểu field mới, lọc loại ở đầu danh sách và hai ô thời gian nhớ mở khoá (gom thành `TTL_OPTIONS`). Bỏ CSS `.acc-select*`, `.acc-gate__ttl-select`; kích thước theo `.acc-pick--type / --kind / --tpl / --filter`. `.acc-dialog` mở `overflow` khi menu đang mở như `.acc-panel`.
 - **Knowledge — viên chủ đề (`KBTopicSelect` trong `KBTopicPicker.jsx`):** ô Đổi chủ đề ở trang đọc và viên chủ đề hàng trên điện thoại bỏ `<select>` native (menu do trình duyệt vẽ, lệch hẳn giao diện "Cực quang") sang SearchSelect: viên tròn theo màu chủ đề, menu nền đặc có chấm màu từng chủ đề, gõ để lọc. SearchSelect trong `.kb-page` map token sang `--kb-*` (`collect.css`).
 - **Knowledge — trang đọc rộng hơn mà chữ vẫn dễ đọc (`collect.css`):** cột chữ giữ 760px; code / sơ đồ ASCII, bảng và ảnh ở cấp đầu bài tràn đều hai bên tới 960px (không quá vùng đọc — `.kb-reader__main` là container, đo bằng `cqw`); cột phải 320 → 360px cho mục lục và sơ đồ Lân cận khỏi chật.
+- **Knowledge — bớt khung trên trời (`KBOverview.jsx`, `KBListView.jsx`, `KBCanvasView.jsx`, `collect.css`):** bỏ bầu trời nhỏ đóng khung ở Tổng quan (đã có "Mở bầu trời ↗"); đầu danh sách bỏ vạch dưới và nhãn "Thẻ"; Canvas bỏ thanh header (chữ "Canvas" + nền mờ), ba nút nổi góc phải trong suốt.
 
 ### Fixed
 - **Vault — dòng phụ của item rỗng khi email đăng nhập là link (`vaultLogic.itemSubtitle`):** "Email address" link tới hộp thư Gmail thì value rỗng nên danh sách, gợi ý Linked item và chip link không hiện email nào (hai item cùng tên không phân biệt được). Nay field nhận diện là link thì lấy dòng phụ (hoặc tiêu đề) của item được link, một cấp. Có test.

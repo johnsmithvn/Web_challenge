@@ -110,7 +110,7 @@ useUserTasks
 CollectPage (view, lọc chủ đề / loại / có liên kết / thẻ / tìm, nhóm theo, bài đang đọc giữ bằng id)
   ├─ SkyBackground calm (nền trời dùng chung với Nhiệm vụ)
   ├─ KBSidebar (tìm, viết bài, kiểu xem, chủ đề)
-  ├─ KBOverview (lời chào + bầu trời nhỏ, Xếp nhanh, Các chủ đề, Gặp lại hôm nay, Gần đây)
+  ├─ KBOverview (lời chào, Xếp nhanh, Các chủ đề, Gặp lại hôm nay, Gần đây)
   ├─ KBListView / KBGalleryView / KBGraphView / KBCanvasView
   ├─ KBReaderView (Xung quanh, backlink, mục lục, ghi chú cá nhân)
   ├─ KBEditorView (Markdown / Tiptap, chọn chủ đề + kiểu)

@@ -242,7 +242,7 @@ Giao diện "Cực quang" trên nền trời đêm dùng chung với Nhiệm v�
 - **Chủ đề** (tối đa 8, mỗi bài một chủ đề hoặc Chưa xếp; bộ khởi đầu 7 chủ đề): chọn trong trình soạn thảo
   (có gợi ý), đổi ở trang đọc, gán hàng loạt ở Danh sách, quản lý (kéo đổi thứ tự, đổi tên / màu, gộp / xoá) từ "Quản lý" ở cột trái.
 - **Loại** tự nhận từ link (Repo, Video, Bài FB, Âm thanh, Bài viết, Ghi chú, Trích dẫn); tiêu đề tự điền từ link khi trống.
-- **Tổng quan** (màn mở đầu): lời chào + bầu trời nhỏ (bài có liên kết thành chòm sao), Xếp nhanh bài mới chưa có chủ đề
+- **Tổng quan** (màn mở đầu): lời chào + "Mở bầu trời ↗", Xếp nhanh bài mới chưa có chủ đề
   (phím `1`–`8`), thẻ các chủ đề, Ghi chú của tôi, Gặp lại hôm nay, Gần đây.
 - **Danh sách / Gallery / Sơ đồ / Canvas**, lọc theo chủ đề ở cột trái. Danh sách: lọc Loại, Có liên kết, thẻ (chỉ thẻ của
   Knowledge); nhóm theo Tháng / Chủ đề / Loại; sắp xếp; chọn nhiều (gán chủ đề, xoá). Sơ đồ là "bầu trời": mỗi bài một ngôi sao.

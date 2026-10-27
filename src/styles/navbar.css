@@ -248,26 +248,148 @@
   padding: 0 0.25rem;
 }
 
-.sidebar__theme-toggle {
-  width: 34px;
-  height: 34px;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  color: var(--text-secondary);
+/* ── Day/Night Sky Theme Toggle Switch (Desktop) ── */
+.theme-toggle {
+  --w: 60px;
+  --h: 30px;
+  --knob: 22px;
+  --pad: 3px;
+  --travel: calc(var(--w) - var(--knob) - var(--pad) * 2 - 2px);
+
+  position: relative;
+  width: var(--w);
+  height: var(--h);
+  padding: 0;
+  border: 1px solid rgba(148, 163, 184, 0.28);
+  border-radius: 999px;
+  background: #090e24;
   cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 0.95rem;
-  transition: all 0.15s ease;
+  overflow: hidden;
+  isolation: isolate;
+  box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.5), 0 1px 3px rgba(0, 0, 0, 0.2);
+  transition: border-color 0.4s ease, box-shadow 0.3s ease, transform 0.2s ease;
+  -webkit-tap-highlight-color: transparent;
+  flex-shrink: 0;
 }
 
-.sidebar__theme-toggle:hover {
-  background: rgba(139, 92, 246, 0.12);
-  border-color: var(--purple);
-  transform: rotate(15deg) scale(1.05);
+.theme-toggle:hover {
+  transform: scale(1.04);
 }
+
+.theme-toggle:focus-visible {
+  outline: 2px solid var(--purple-light, #a78bfa);
+  outline-offset: 2px;
+}
+
+.theme-toggle__sky {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  transition: opacity 0.5s ease, transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Bầu trời đêm & các vì sao */
+.theme-toggle__sky--night {
+  opacity: 1;
+  transform: translateY(0);
+  background:
+    radial-gradient(1.2px 1.2px at 8px 8px, #fff, transparent),
+    radial-gradient(1.5px 1.5px at 16px 19px, #fff, transparent),
+    radial-gradient(1.2px 1.2px at 24px 7px, rgba(200, 230, 255, 0.9), transparent),
+    radial-gradient(1px 1px at 30px 16px, #fff, transparent),
+    linear-gradient(135deg, #070b1f 0%, #151d45 60%, #26346e 100%);
+}
+
+/* Bầu trời hoàng hôn & mây */
+.theme-toggle__sky--day {
+  opacity: 0;
+  transform: translateY(6px);
+  background:
+    radial-gradient(9px 7px at calc(100% - 13px) 21px, #fff6f2 60%, transparent 66%),
+    radial-gradient(8px 7px at calc(100% - 6px) 18px, #fde4dc 60%, transparent 66%),
+    radial-gradient(6px 5px at calc(100% - 21px) 23px, #fff0ea 60%, transparent 66%),
+    linear-gradient(160deg, #a5b4fc 0%, #f0abcf 50%, #fdba74 100%);
+}
+
+/* Núm tròn (Mặt Trăng / Mặt Trời) */
+.theme-toggle__knob {
+  position: absolute;
+  z-index: 1;
+  top: 50%;
+  left: var(--pad);
+  width: var(--knob);
+  height: var(--knob);
+  margin-top: calc(var(--knob) / -2);
+  border-radius: 50%;
+  pointer-events: none;
+  background: radial-gradient(circle at 34% 30%, #ffffff, #e5e7eb 55%, #cbd5e1);
+  box-shadow: 0 0 10px 2px rgba(226, 232, 240, 0.35), inset -2px -3px 4px rgba(100, 116, 139, 0.35);
+  transform: translateX(var(--travel)) rotate(0deg);
+  transition: transform 0.6s cubic-bezier(0.68, -0.35, 0.27, 1.35), box-shadow 0.5s ease;
+}
+
+/* Mặt trăng có vết lõm (crater) */
+.theme-toggle__knob::before,
+.theme-toggle__knob::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  transition: opacity 0.4s ease;
+}
+
+.theme-toggle__knob::before {
+  opacity: 1;
+  background:
+    radial-gradient(circle at 62% 34%, rgba(148, 163, 184, 0.55) 0 2.5px, transparent 3px),
+    radial-gradient(circle at 36% 64%, rgba(148, 163, 184, 0.45) 0 3px, transparent 3.5px);
+}
+
+/* Mặt trời hoàng hôn đỏ cam */
+.theme-toggle__knob::after {
+  opacity: 0;
+  background: radial-gradient(circle at 45% 36%, #ffe8cc 0%, #fdba8c 40%, #fb8a5c 75%, #f2709c 100%);
+}
+
+/* ─── Trạng thái Light Mode ─── */
+[data-theme="light"] .theme-toggle {
+  border-color: rgba(244, 114, 182, 0.5);
+  box-shadow: inset 0 2px 5px rgba(157, 23, 77, 0.2), 0 2px 6px rgba(244, 114, 182, 0.18);
+}
+
+[data-theme="light"] .theme-toggle__sky--night {
+  opacity: 0;
+  transform: translateY(-6px);
+}
+
+[data-theme="light"] .theme-toggle__sky--day {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+[data-theme="light"] .theme-toggle__knob {
+  transform: translateX(0) rotate(-200deg);
+  box-shadow: 0 0 10px 2px rgba(251, 146, 60, 0.55);
+}
+
+[data-theme="light"] .theme-toggle__knob::before {
+  opacity: 0;
+}
+
+[data-theme="light"] .theme-toggle__knob::after {
+  opacity: 1;
+}
+
+/* Giảm chuyển động cho nút toggle */
+:root[data-reduce-motion] .theme-toggle,
+:root[data-reduce-motion] .theme-toggle__sky,
+:root[data-reduce-motion] .theme-toggle__knob,
+:root[data-reduce-motion] .theme-toggle__knob::before,
+:root[data-reduce-motion] .theme-toggle__knob::after {
+  transition: none !important;
+}
+
 
 .sidebar__login {
   display: flex;
@@ -609,14 +731,12 @@
 }
 
 /* Light mode adjustments for buttons & avatar */
-[data-theme="light"] .sidebar__theme-toggle,
 [data-theme="light"] .topbar__theme-toggle {
   background: var(--bg-secondary);
   border: 1px solid rgba(99, 102, 241, 0.18);
   color: var(--text-secondary);
 }
 
-[data-theme="light"] .sidebar__theme-toggle:hover,
 [data-theme="light"] .topbar__theme-toggle:hover {
   background: rgba(99, 102, 241, 0.08);
   border-color: var(--purple);
@@ -799,6 +919,19 @@
   gap: 8px;
   padding: 0;
   justify-content: center;
+}
+
+.sidebar--collapsed .theme-toggle {
+  --w: 46px;
+  --h: 24px;
+  --knob: 18px;
+  --pad: 2px;
+}
+
+.sidebar--collapsed .theme-toggle__knob::before {
+  background:
+    radial-gradient(circle at 62% 34%, rgba(148, 163, 184, 0.55) 0 1.8px, transparent 2.2px),
+    radial-gradient(circle at 36% 64%, rgba(148, 163, 184, 0.45) 0 2.2px, transparent 2.6px);
 }
 
 .sidebar--collapsed .sidebar__login {

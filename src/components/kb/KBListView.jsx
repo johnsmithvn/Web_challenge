@@ -113,7 +113,6 @@ function TopicHeader({ heading, tags, tagCounts, activeTagIds, onToggleTag, onMa
 
       {tags.length > 0 && (
         <div className="kb-tag-row">
-          <span className="kb-tag-row__label">Thẻ</span>
           {tags.map(t => (
             <button
               key={t.id}

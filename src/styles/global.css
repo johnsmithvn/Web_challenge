@@ -964,3 +964,24 @@ h1, h2, h3, h4, h5, h6 {
   min-width: 0;
   box-sizing: border-box;
 }
+
+/* ── 6. View Transitions API: Hiệu ứng lan tròn khi đổi theme (Circular Reveal) ── */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+
+::view-transition-old(root) {
+  z-index: 1;
+}
+
+::view-transition-new(root) {
+  z-index: 9999;
+}
+
+:root[data-reduce-motion]::view-transition-group(root),
+:root[data-reduce-motion]::view-transition-old(root),
+:root[data-reduce-motion]::view-transition-new(root) {
+  animation: none !important;
+}

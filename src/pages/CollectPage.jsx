@@ -643,7 +643,6 @@ export default function CollectPage() {
             onNewArticle={() => openEditor(null)}
             onAssign={handleAssignTopic}
             linkCount={wikiEdges.length}
-            edges={wikiEdges}
             onOpenGraph={() => setView('graph')}
           />
         ) : view === 'list' || view === 'overview' ? (

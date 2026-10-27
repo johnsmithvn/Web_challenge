@@ -8,59 +8,13 @@ import { useAuth } from '../../contexts/AuthContext';
 import { MAX_TOPICS } from '../../hooks/useCollectionTopics';
 
 /**
- * KBOverview — tab "Tổng quan" (1a): lời chào + chòm sao nhỏ, Xếp nhanh (bài mới chưa có chủ đề,
+ * KBOverview — tab "Tổng quan" (1a): lời chào, Xếp nhanh (bài mới chưa có chủ đề,
  * từng bài một, phím 1–9 / →), Các chủ đề, Gặp lại hôm nay, Gần đây.
  * Chỉ để xem và tìm lại: không có trạng thái đọc, không có việc phải dọn.
  */
 
 const ago = d => (d <= 0 ? 'hôm nay' : `${d} ngày trước`);
 const greetingOf = h => (h < 11 ? 'Chào buổi sáng' : h < 13 ? 'Chào buổi trưa' : h < 18 ? 'Chào buổi chiều' : 'Chào buổi tối');
-// Vị trí sao cố định theo id: cùng bài luôn nằm cùng chỗ trên bầu trời nhỏ
-const hash = s => [...s].reduce((h, c) => (Math.imul(h, 31) + c.charCodeAt(0)) >>> 0, 7);
-
-const SKY_W = 420;
-const SKY_H = 200;
-
-/** Bầu trời nhỏ: bài có liên kết sáng hơn và được nối bằng đường chòm sao. */
-function MiniSky({ articles, edges, onOpen }) {
-  const { stars, lines } = useMemo(() => {
-    const degree = new Map();
-    edges.forEach(e => { degree.set(e.from, (degree.get(e.from) || 0) + 1); degree.set(e.to, (degree.get(e.to) || 0) + 1); });
-    const picked = [...articles].sort((a, b) => (degree.get(b.id) || 0) - (degree.get(a.id) || 0)).slice(0, 26);
-    const pos = new Map(picked.map(a => {
-      const h = hash(a.id);
-      return [a.id, { x: 24 + (h % (SKY_W - 48)), y: 18 + ((h >>> 9) % (SKY_H - 44)) }];
-    }));
-    return {
-      stars: picked.map(a => ({ a, ...pos.get(a.id), d: degree.get(a.id) || 0 })),
-      lines: edges.filter(e => pos.has(e.from) && pos.has(e.to)).map(e => ({ ...e, p: pos.get(e.from), q: pos.get(e.to) })),
-    };
-  }, [articles, edges]);
-
-  return (
-    <button className="kb-ov-sky" onClick={onOpen} title="Mở bầu trời">
-      <svg viewBox={`0 0 ${SKY_W} ${SKY_H}`} preserveAspectRatio="xMidYMid slice" aria-hidden="true">
-        {lines.map(l => (
-          <line key={`${l.from}|${l.to}`} x1={l.p.x} y1={l.p.y} x2={l.q.x} y2={l.q.y} className="kb-ov-sky__line" />
-        ))}
-        {stars.map(s => (
-          <circle
-            key={s.a.id}
-            cx={s.x}
-            cy={s.y}
-            r={s.d ? 2.6 + Math.min(s.d, 4) * 0.35 : 1.5}
-            className={s.d ? 'kb-ov-sky__star is-lit' : 'kb-ov-sky__star'}
-            style={s.d && s.a._topic ? { fill: s.a._topic.color } : undefined}
-          />
-        ))}
-        {stars.filter(s => s.d).slice(0, 4).map(s => (
-          <text key={s.a.id} x={s.x + 8} y={s.y - 5} className="kb-ov-sky__label">{s.a.title.slice(0, 18)}</text>
-        ))}
-      </svg>
-      <span className="kb-ov-sky__caption">{articles.length} sao · {edges.length} đường nối</span>
-    </button>
-  );
-}
 
 /** Clickable card. A div (not <button>) because it holds headings and lists. */
 function Card({ onOpen, className = '', style, children }) {
@@ -79,7 +33,7 @@ function Card({ onOpen, className = '', style, children }) {
 }
 
 export default function KBOverview({
-  articles, topics, topicCounts, recentIds, keysDisabled, linkCount, edges,
+  articles, topics, topicCounts, recentIds, keysDisabled, linkCount,
   onOpenReader, onOpenTopic, onOpenMine, onManageTopics, onNewArticle, onAssign, onOpenGraph,
 }) {
   const { user, profile } = useAuth();
@@ -155,33 +109,30 @@ export default function KBOverview({
 
   return (
     <div className="kb-overview" style={{ animation: 'kb-in .22s ease' }}>
-      {/* Lời chào + bầu trời nhỏ */}
-      <section className="kb-ov-hero">
-        <div className="kb-ov-hero__text">
-          <p className="kb-ov-hero__date">
-            {new Date(now).toLocaleDateString('vi-VN', { weekday: 'long', day: 'numeric', month: 'long' })}
-          </p>
-          <h1 className="kb-ov-hero__title">{greetingOf(new Date(now).getHours())}, <em className="kb-em">{name}</em>.</h1>
-          <p className="kb-ov-hero__line">
-            Bầu trời của bạn có <b>{library.length} ngôi sao</b> và {linkCount} đường nối.
-            {fullQueue.length > 0 && ` ${fullQueue.length} bài mới đang chờ được xếp vào chòm.`}
-          </p>
-          <div className="kb-ov-hero__btns">
-            {canSort && (
-              <button
-                className="kb-btn-soft"
-                onClick={() => {
-                  sortRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                  sortRef.current?.querySelector('.kb-ov-topic')?.focus({ preventScroll: true });
-                }}
-              >
-                Bắt đầu xếp
-              </button>
-            )}
-            <button className="kb-btn-ghost" onClick={onOpenGraph}>Mở bầu trời ↗</button>
-          </div>
+      {/* Lời chào */}
+      <section>
+        <p className="kb-ov-hero__date">
+          {new Date(now).toLocaleDateString('vi-VN', { weekday: 'long', day: 'numeric', month: 'long' })}
+        </p>
+        <h1 className="kb-ov-hero__title">{greetingOf(new Date(now).getHours())}, <em className="kb-em">{name}</em>.</h1>
+        <p className="kb-ov-hero__line">
+          Bầu trời của bạn có <b>{library.length} ngôi sao</b> và {linkCount} đường nối.
+          {fullQueue.length > 0 && ` ${fullQueue.length} bài mới đang chờ được xếp vào chòm.`}
+        </p>
+        <div className="kb-ov-hero__btns">
+          {canSort && (
+            <button
+              className="kb-btn-soft"
+              onClick={() => {
+                sortRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                sortRef.current?.querySelector('.kb-ov-topic')?.focus({ preventScroll: true });
+              }}
+            >
+              Bắt đầu xếp
+            </button>
+          )}
+          <button className="kb-btn-ghost" onClick={onOpenGraph}>Mở bầu trời ↗</button>
         </div>
-        <MiniSky articles={library} edges={edges} onOpen={onOpenGraph} />
       </section>
 
       {/* Xếp nhanh */}

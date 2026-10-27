@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useEffect } from 'react';
+import { flushSync } from 'react-dom';
 
 const ThemeContext = createContext(null);
 
@@ -34,7 +35,69 @@ export function ThemeProvider({ children }) {
     localStorage.setItem('vl_reduce_motion', reduceMotion ? '1' : '0');
   }, [reduceMotion]);
 
-  const toggleTheme = () => setTheme(t => t === 'dark' ? 'light' : 'dark');
+  // Đổi giao diện với hiệu ứng lan tròn (Circular Reveal Transition)
+  const toggleTheme = (event) => {
+    const nextTheme = theme === 'dark' ? 'light' : 'dark';
+
+    // Không chạy hiệu ứng nếu user bật Giảm chuyển động hoặc trình duyệt không hỗ trợ View Transitions API
+    const isReduced = reduceMotion || document.documentElement.hasAttribute('data-reduce-motion');
+    if (!document.startViewTransition || isReduced) {
+      setTheme(nextTheme);
+      return;
+    }
+
+    // Tọa độ tâm lan tỏa (từ vị trí nút bấm hoặc giữa màn hình nếu kích hoạt qua phím/script)
+    let x = window.innerWidth / 2;
+    let y = window.innerHeight / 2;
+
+    if (event) {
+      if (event.currentTarget && typeof event.currentTarget.getBoundingClientRect === 'function') {
+        const rect = event.currentTarget.getBoundingClientRect();
+        x = rect.left + rect.width / 2;
+        y = rect.top + rect.height / 2;
+      } else if (typeof event.clientX === 'number' && typeof event.clientY === 'number') {
+        x = event.clientX;
+        y = event.clientY;
+      }
+    }
+
+    // Bán kính lớn nhất quét tới 4 góc màn hình
+    const endRadius = Math.hypot(
+      Math.max(x, window.innerWidth - x),
+      Math.max(y, window.innerHeight - y)
+    );
+
+    try {
+      const transition = document.startViewTransition(() => {
+        flushSync(() => {
+          document.documentElement.setAttribute('data-theme', nextTheme);
+          const metaThemeColor = document.querySelector('meta[name="theme-color"]');
+          if (metaThemeColor) {
+            metaThemeColor.setAttribute('content', nextTheme === 'light' ? '#f4f6fb' : '#0f0f13');
+          }
+          setTheme(nextTheme);
+        });
+      });
+
+      transition.ready.then(() => {
+        document.documentElement.animate(
+          {
+            clipPath: [
+              `circle(0px at ${x}px ${y}px)`,
+              `circle(${endRadius}px at ${x}px ${y}px)`,
+            ],
+          },
+          {
+            duration: 650,
+            easing: 'cubic-bezier(0.4, 0, 0.2, 1)',
+            pseudoElement: '::view-transition-new(root)',
+          }
+        );
+      }).catch(() => {});
+    } catch {
+      setTheme(nextTheme);
+    }
+  };
 
   return (
     <ThemeContext.Provider value={{ theme, toggleTheme, taskStyle, setTaskStyle, reduceMotion, setReduceMotion }}>

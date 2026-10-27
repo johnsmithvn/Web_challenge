@@ -110,10 +110,8 @@ export default function KBCanvasView({ articles, onOpenReader }) {
 
   return (
     <div className="kb-canvas-view" style={{ animation: 'kb-in .22s ease' }}>
-      {/* Toolbar */}
+      {/* Nút nổi trên canvas — không có thanh header */}
       <div className="kb-canvas__toolbar">
-        <span className="kb-canvas__toolbar-label">Canvas</span>
-        <div className="kb-canvas__toolbar-spacer" />
         <button className="kb-btn-ghost kb-btn-ghost--small" onClick={addBlankNode}>＋ Thẻ trắng</button>
         <button className="kb-btn-ghost kb-btn-ghost--small" onClick={addFromLibrary}>＋ Từ thư viện</button>
         <button

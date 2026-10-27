@@ -152,7 +152,7 @@ chủ đề cho user đang có bài, gán chủ đề theo `type` cũ (`ai` → 
 
 | Khối | Hiện khi | Nội dung |
 |---|---|---|
-| **Lời chào** | Luôn | Ngày, "Chào buổi sáng/trưa/chiều/tối, <tên>", câu "Bầu trời của bạn có N ngôi sao và M đường nối…"; "Bắt đầu xếp", "Mở bầu trời ↗"; **bầu trời nhỏ** (SVG, tối đa 26 sao, bài có liên kết sáng hơn và tô màu chủ đề, bấm → Sơ đồ) |
+| **Lời chào** | Luôn | Ngày, "Chào buổi sáng/trưa/chiều/tối, <tên>", câu "Bầu trời của bạn có N ngôi sao và M đường nối…"; "Bắt đầu xếp", "Mở bầu trời ↗". Không có bầu trời nhỏ đóng khung (bỏ ở v6.34.0, đã có nút Mở bầu trời) |
 | **Xếp nhanh** | Có bài chưa có chủ đề lưu trong 30 ngày (`quickSortQueue`) | Đếm `k / N` + vạch tiến độ; từng bài: loại · nguồn · tuổi, tiêu đề (bấm để mở), trích; "Để sau →". Bên phải lưới chủ đề có số phím `1`–`8`, gợi ý (`suggestTopic`), "+ Chủ đề mới" |
 | **Các chủ đề · n/8** | Luôn | Thẻ mỗi chủ đề (quầng màu chủ đề, 0 bài thì mờ): tên, số bài, định nghĩa, 2 bài mới nhất; thẻ cuối **Ghi chú của tôi**; "Quản lý" |
 | **Gặp lại hôm nay** | Có bài phù hợp | 3 bài cũ hơn 30 ngày là ghi chú / trích dẫn của mình hoặc có ghi chú (`pickResurface`), cố định trong ngày |
@@ -163,10 +163,10 @@ Bài chưa xếp cũ hơn 30 ngày không hiện ở đây (xếp hàng loạt t
 
 ### 4.3. Danh sách (`KBListView`)
 
-- **Đầu danh sách** (luôn có, dải mở không đóng khung: quầng màu chủ đề + vạch dưới, không quả cầu nên không thụt): tên in nghiêng
+- **Đầu danh sách** (luôn có, dải mở không đóng khung: chỉ quầng màu chủ đề, không vạch dưới, không quả cầu nên không thụt): tên in nghiêng
   (màu chủ đề; Tất cả / Chưa xếp / Ghi chú của tôi màu vàng đồng) + số bài +
   định nghĩa của phạm vi đang xem (một chủ đề · Chưa xếp · Ghi chú của tôi · Tất cả bài). Nút **Xếp nhanh** (Chưa xếp)
-  hoặc **Quản lý chủ đề**. Hàng **thẻ** để lọc (AND) và "Quản lý thẻ": thẻ đếm trong **phạm vi** (`scopeTagCounts` ở
+  hoặc **Quản lý chủ đề**. Hàng **thẻ** (không nhãn "Thẻ" — dấu # đã nói rõ) để lọc (AND) và "Quản lý thẻ": thẻ đếm trong **phạm vi** (`scopeTagCounts` ở
   `CollectPage`), không theo bộ lọc, nên lọc không làm hàng thẻ biến mất và cả danh sách nhảy.
 - **Thanh lọc (một hàng):** **↔ Có liên kết** (bài có `[[ ]]` đi hoặc được trỏ về) · **Nhóm theo** Tháng / Chủ đề / Không ·
   "N kết quả · Xoá lọc" · sắp xếp Mới nhất / Cũ nhất / Dài nhất · Chọn. Nút bật / tắt giữ nguyên chữ (trạng thái bằng màu)
@@ -184,7 +184,7 @@ Bài chưa xếp cũ hơn 30 ngày không hiện ở đây (xếp hàng loạt t
 
 - **Gallery:** lưới so le (CSS columns): loại · ngày, nguồn (chữ cái đầu tên miền), tiêu đề, trích tối đa 4 dòng, chân thẻ là chủ đề + số liên kết; trích dẫn có dấu “ lớn.
 - **Sơ đồ ("bầu trời"):** đồ thị lực; mỗi bài là một ngôi sao (to theo số nối, sáng màu chủ đề, bài chưa nối mờ), cạnh `[[ ]]` liền màu nhấn, cạnh thẻ chung đứt màu vàng. Bấm sao → chọn (vòng violet, cạnh của nó đổi màu), bấm lần nữa bỏ chọn; mô phỏng không chạy lại khi chọn. Cột phải: bài đang chọn ("Mở bài ↗", "Nối với · N") hoặc giới thiệu; luôn có "Sao sáng nhất". Điện thoại: cột phải xuống dưới.
-- **Canvas:** bảng kéo thả node và nối cạnh; `localStorage` `kb_canvas_nodes`, `kb_canvas_edges`. Màu node lấy theo loại lúc vẽ (node cũ còn lưu màu bảng cũ).
+- **Canvas:** bảng kéo thả node và nối cạnh; không thanh header — ba nút "＋ Thẻ trắng", "＋ Từ thư viện", "⟷ Nối" nổi góc phải, nền trong suốt; `localStorage` `kb_canvas_nodes`, `kb_canvas_edges`. Màu node lấy theo loại lúc vẽ (node cũ còn lưu màu bảng cũ).
 - Sơ đồ và Canvas chỉ lọc theo chủ đề (không theo chữ tìm / thẻ).
 
 ### 4.5. Trang đọc (`KBReaderView`)

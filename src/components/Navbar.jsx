@@ -284,13 +284,15 @@ export default function Navbar() {
               <UserAvatar profile={profile} user={user} onSignOut={signOut} onOpenShortcuts={() => setShortcutsOpen(true)} direction="up" />
             )}
             <button
-              className="sidebar__theme-toggle"
+              className="theme-toggle sidebar__theme-toggle"
               onClick={toggleTheme}
-              title={theme === 'dark' ? 'Light Mode' : 'Dark Mode'}
-              aria-label="Toggle theme"
+              title={theme === 'dark' ? 'Chuyển sang giao diện Sáng' : 'Chuyển sang giao diện Tối'}
+              aria-label="Đổi giao diện sáng/tối"
               id="navbar-theme-toggle"
             >
-              <AppIcon name={theme === 'dark' ? 'sun' : 'moon'} size={18} weight="fill" />
+              <span className="theme-toggle__sky theme-toggle__sky--night" aria-hidden="true" />
+              <span className="theme-toggle__sky theme-toggle__sky--day" aria-hidden="true" />
+              <span className="theme-toggle__knob" aria-hidden="true" />
             </button>
           </div>
         </div>

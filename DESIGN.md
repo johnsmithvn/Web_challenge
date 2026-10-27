@@ -1373,9 +1373,11 @@ Knowledge có contract riêng, scoped trên `.kb-page`; không dùng glass/gradi
   `scrollbar-gutter: stable`.
 - **Chống nhảy**: lọc / đổi kiểu xem không được đổi chiều cao phần trên hay đẩy nút cạnh — hàng thẻ đếm theo phạm vi,
   nút bật / tắt giữ nguyên chữ (trạng thái bằng màu + `aria-pressed`), không thêm / bớt tab theo kết quả lọc.
-- **Đầu danh sách** `.kb-topic-head`: dải mở, không khung — quầng `--kb-topic` góc trên trái + `border-bottom`,
+- **Đầu danh sách** `.kb-topic-head`: dải mở, không khung, không vạch dưới — chỉ quầng `--kb-topic` góc trên trái,
   không quả cầu; tên Spectral nghiêng 34px màu `--kb-topic` (không có thì `--kb-gold`; nền sáng pha 55% với `--kb-tx`),
-  số bài là viên `--kb-p2`, hàng thẻ thẳng lề trái.
+  số bài là viên `--kb-p2`, hàng thẻ thẳng lề trái, không nhãn "Thẻ".
+- **Không đóng khung trang trí trên trời**: không hộp viền bo chỉ để trang trí (bầu trời nhỏ ở Tổng quan đã bỏ). Canvas
+  không có thanh header — nút `.kb-canvas__toolbar` nổi góc phải, nền trong suốt; nút tự có viền (`.kb-btn-ghost`).
 - **Nút**: `.kb-btn-primary` (nền mint + quầng `--kb-glow`), `.kb-btn-soft` (nền accent-soft), `.kb-btn-ghost` (viền),
   `.kb-btn-violet`, `.kb-icon-btn` (32px, `--danger`, `.is-on`), `.kb-link`. Nhóm chọn một: `.kb-seg`
   (`--quiet` không khung). Chip chủ đề trong bộ chọn: `.kb-chip` viên tròn `999px`.
