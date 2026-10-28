@@ -17,6 +17,7 @@ export function useRandomPodcast() {
         .from('collections')
         .select('id, title, url')
         .eq('type', 'podcast')
+        .neq('status', 'archived') // bài trong Thùng rác
         .not('url', 'is', null);
 
       if (error) throw error;

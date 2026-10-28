@@ -34,7 +34,7 @@ function Card({ onOpen, className = '', style, children }) {
 
 export default function KBOverview({
   articles, topics, topicCounts, recentIds, keysDisabled, linkCount,
-  onOpenReader, onOpenTopic, onOpenMine, onManageTopics, onNewArticle, onAssign, onOpenGraph,
+  onOpenReader, onOpenTopic, onManageTopics, onNewArticle, onAssign, onOpenGraph,
 }) {
   const { user, profile } = useAuth();
   const name = profile?.display_name || user?.user_metadata?.display_name || user?.email?.split('@')[0] || 'bạn';
@@ -56,9 +56,6 @@ export default function KBOverview({
     [current, articles, topics],
   );
   const skip = () => setSkipped(prev => new Set(prev).add(current.id));
-
-  const mine = useMemo(() => filterArticles(articles, { mine: true }), [articles]);
-  const mineSnippet = mine.find(a => a._notes?.length)?._notes[0].content;
 
   const topicCards = useMemo(
     () => topics.map(t => ({ topic: t, latest: filterArticles(articles, { topic: t.id }).slice(0, 2) })),
@@ -211,14 +208,6 @@ export default function KBOverview({
               </Card>
             );
           })}
-          <Card onOpen={onOpenMine} className="kb-ov-card--mine">
-            <h3 className="kb-ov-card__name">
-              ✎ Ghi chú của tôi
-              <span className="kb-ov-card__num">{mine.length}</span>
-            </h3>
-            <p className="kb-ov-card__desc">Ghi chú, trích dẫn của bạn và những bài bạn có ghi chú</p>
-            {mineSnippet && <p className="kb-ov-card__quote">“{mineSnippet.slice(0, 120)}”</p>}
-          </Card>
         </div>
       </section>
 

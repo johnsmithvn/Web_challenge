@@ -25,6 +25,7 @@ import KBLinkModal from '../components/kb/KBLinkModal';
 import KBTagModal from '../components/kb/KBTagModal';
 import KBTopicModal from '../components/kb/KBTopicModal';
 import KBOverview from '../components/kb/KBOverview';
+import KBTrashView from '../components/kb/KBTrashView';
 
 import { filterArticles, pushRecent, deriveGraph, groupArticles } from '../utils/kbDeriveUtils';
 
@@ -37,13 +38,17 @@ const readRecent = () => {
 // Views Esc / "← Thư viện" can return to.
 const LIBRARY_VIEWS = ['overview', 'list', 'gallery', 'graph', 'canvas'];
 
-const MINE_HEADING = { kind: 'mine', name: 'Ghi chú của tôi', description: 'Ghi chú, trích dẫn của bạn và những bài bạn có ghi chú.' };
 const UNSORTED_HEADING = { kind: 'none', name: 'Chưa xếp', description: 'Bài chưa vào chủ đề nào. Xếp nhanh từng bài ở Tổng quan, hoặc bấm Chọn để gán nhiều bài một lần.' };
 const ALL_HEADING = { kind: 'all', name: 'Tất cả bài' };
 
+// Toast / hộp xác nhận thùng rác: tên bài khi một bài, "N bài" khi nhiều
+const countLabel = list => (list.length === 1 ? `"${list[0].title}"` : `${list.length} bài`);
+
 export default function CollectPage() {
   const { user } = useAuth();
-  const { items, isLoading, fetchItems, addItem, updateItem, updateItems, deleteItem } = useCollections();
+  const {
+    items, trash, isLoading, fetchItems, addItem, updateItem, updateItems, moveToTrash, restoreFromTrash, deleteForever,
+  } = useCollections();
   const {
     topics, addTopic, updateTopic, reorderTopics, deleteTopic, mergeTopics, seedStarterTopics,
   } = useCollectionTopics();
@@ -54,7 +59,7 @@ export default function CollectPage() {
   const { showToast } = useToast();
 
   // Navigation & View state
-  const [view, setView] = useState('overview'); // LIBRARY_VIEWS | 'reader' | 'editor'
+  const [view, setView] = useState('overview'); // LIBRARY_VIEWS | 'reader' | 'editor' | 'trash'
   // Only the id is kept; the bài itself always comes from live data (see selectedArticle below),
   // so topic / status / notes / link changes show in the reader without manual syncing.
   const [selectedId, setSelectedId] = useState(null);
@@ -65,7 +70,6 @@ export default function CollectPage() {
   // Filters
   const [search, setSearch] = useState('');
   const [topicFilter, setTopicFilter] = useState(''); // '' all · 'none' Chưa xếp · topic id
-  const [mineOnly, setMineOnly] = useState(false); // "Ghi chú của tôi", opened from Tổng quan
   const [activeTagIds, setActiveTagIds] = useState([]);
   const [sort, setSort] = useState('new');
   const [filterTaskId, setFilterTaskId] = useState('');
@@ -92,8 +96,8 @@ export default function CollectPage() {
   const [tagsOpen, setTagsOpen] = useState(false);
   const [topicsOpen, setTopicsOpen] = useState(false);
 
-  // Undo trash buffer
-  const [trash, setTrash] = useState(null);
+  // Bài vừa bỏ vào thùng rác — ⌘Z trả về
+  const [lastTrashed, setLastTrashed] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
 
   // G-key sequence for navigation
@@ -102,7 +106,7 @@ export default function CollectPage() {
 
   // Initial fetch
   useEffect(() => {
-    if (user) fetchItems({});
+    if (user) fetchItems();
   }, [user]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Tags used by Knowledge bài only — the filter row must not show Finance/Tasks tags.
@@ -151,23 +155,20 @@ export default function CollectPage() {
     sort,
     taskId: filterTaskId,
     topic: topicFilter,
-    mine: mineOnly,
     linked: linkedOnly ? linkedIds : null,
   }), groupBy, { topics }), [
-    articlesWithTasks, search, activeTagIds, sort, filterTaskId, topicFilter, mineOnly, linkedOnly, linkedIds, groupBy, topics,
+    articlesWithTasks, search, activeTagIds, sort, filterTaskId, topicFilter, linkedOnly, linkedIds, groupBy, topics,
   ]);
   const filteredArticles = useMemo(() => groups.flatMap(g => g.items), [groups]);
 
-  const mineCount = useMemo(() => filterArticles(articlesWithTasks, { mine: true }).length, [articlesWithTasks]);
-
-  // Hàng thẻ đầu danh sách đếm trong phạm vi (chủ đề / Ghi chú của tôi), không theo bộ lọc —
+  // Hàng thẻ đầu danh sách đếm trong phạm vi chủ đề, không theo bộ lọc —
   // lọc thì hàng thẻ vẫn đứng yên, không làm cả danh sách nhảy
   const scopeTagCounts = useMemo(() => {
     const counts = {};
-    filterArticles(articlesWithTasks, { topic: topicFilter, mine: mineOnly })
+    filterArticles(articlesWithTasks, { topic: topicFilter })
       .forEach(a => (a._tags || []).forEach(t => { counts[t.id] = (counts[t.id] || 0) + 1; }));
     return counts;
-  }, [articlesWithTasks, topicFilter, mineOnly]);
+  }, [articlesWithTasks, topicFilter]);
 
   // Sơ đồ / Canvas: chỉ lọc theo chủ đề
   const topicArticles = useMemo(
@@ -175,9 +176,9 @@ export default function CollectPage() {
     [articlesWithTasks, topicFilter],
   );
 
-  // Filters inside the list ("Xoá lọc"); the topic / "Ghi chú của tôi" scope is the sidebar's
+  // Filters inside the list ("Xoá lọc"); the topic scope is the sidebar's
   const listFiltering = !!(search || linkedOnly || activeTagIds.length > 0 || filterTaskId);
-  const hasFilter = listFiltering || !!(topicFilter || mineOnly);
+  const hasFilter = listFiltering || !!topicFilter;
 
   const clearListFilters = useCallback(() => {
     setSearch('');
@@ -190,37 +191,31 @@ export default function CollectPage() {
   const clearFilters = useCallback(() => {
     clearListFilters();
     setTopicFilter('');
-    setMineOnly(false);
   }, [clearListFilters]);
 
-  // Heading above the list: topic page, Chưa xếp, Ghi chú của tôi, or Tất cả bài
+  // Heading above the list: topic page, Chưa xếp, or Tất cả bài
   const currentTopic = topicById.get(topicFilter) || null;
   const listHeading = currentTopic
     ? { kind: 'topic', name: currentTopic.name, description: currentTopic.description, color: currentTopic.color, count: topicCounts[currentTopic.id] || 0 }
     : topicFilter === 'none' ? { ...UNSORTED_HEADING, count: topicCounts.none }
-      : mineOnly ? { ...MINE_HEADING, count: mineCount }
-        : { ...ALL_HEADING, count: topicCounts.all };
+      : { ...ALL_HEADING, count: topicCounts.all };
 
   // "Xếp nhanh" lives in Tổng quan, which shows every bài
   const goQuickSort = useCallback(() => {
     setTopicFilter('');
-    setMineOnly(false);
     setView('overview');
   }, []);
 
-  // Chip row / Tổng quan → list filtered to one topic (a chip replaces "Ghi chú của tôi")
+  // Chip row / Tổng quan / Thùng rác → list filtered to one topic
   const chooseTopic = useCallback((topicId) => {
     setTopicFilter(topicId);
-    setMineOnly(false);
     setCursor(0);
-    if (view === 'overview') setView('list');
+    if (view === 'overview' || view === 'trash') setView('list');
   }, [view]);
 
-  const openMine = useCallback(() => {
-    setMineOnly(true);
+  const openTrash = useCallback(() => {
     setTopicFilter('');
-    setCursor(0);
-    setView('list');
+    setView('trash');
   }, []);
 
   // Tag filter toggle
@@ -242,24 +237,32 @@ export default function CollectPage() {
     setPicked([]);
   }, []);
 
-  const handleBulkDelete = useCallback(async () => {
-    if (picked.length === 0) return;
-    const ok = await confirm({
-      title: `Xóa ${picked.length} bài viết?`,
-      message: 'Hành động này không thể hoàn tác.',
-      confirmLabel: 'Xóa tất cả',
-      danger: true,
-    });
-    if (!ok) return;
+  // Khôi phục (Hoàn tác, ⌘Z, nút ở Thùng rác) — luôn xoá bộ nhớ ⌘Z
+  const restoreTrashed = useCallback(async (list) => {
+    setLastTrashed(null);
+    if (await restoreFromTrash(list)) showToast(`Đã khôi phục ${countLabel(list)}`);
+  }, [restoreFromTrash, showToast]);
 
-    for (const id of picked) {
-      await deleteItem(id);
+  // Xoá = bỏ vào Thùng rác: lấy lại được nên không hỏi
+  const trashArticles = useCallback(async (ids) => {
+    const list = items.filter(i => ids.includes(i.id));
+    if (!(await moveToTrash(list))) {
+      showToast('Không xoá được. Thử lại.');
+      return;
     }
-    showToast(`Đã xóa ${picked.length} bài viết.`);
+    setLastTrashed(list);
+    showToast(`Đã chuyển ${countLabel(list)} vào thùng rác`, {
+      actionLabel: 'Hoàn tác (⌘Z)',
+      onAction: () => restoreTrashed(list),
+    });
+  }, [items, moveToTrash, restoreTrashed, showToast]);
+
+  const handleBulkDelete = useCallback(() => {
+    if (picked.length === 0) return;
+    trashArticles(picked);
     setPicked([]);
     setBulk(false);
-    fetchItems({});
-  }, [picked, confirm, deleteItem, showToast, fetchItems]);
+  }, [picked, trashArticles]);
 
   const handleBulkAssign = useCallback(async (topicId) => {
     if (picked.length === 0) return;
@@ -287,7 +290,7 @@ export default function CollectPage() {
       return;
     }
     if (topicFilter === topic.id) setTopicFilter('');
-    fetchItems({});
+    fetchItems();
   }, [topicCounts, confirm, deleteTopic, showToast, topicFilter, fetchItems]);
 
   const handleMergeTopic = useCallback(async (from, to) => {
@@ -304,7 +307,7 @@ export default function CollectPage() {
     }
     if (topicFilter === from.id) setTopicFilter(to.id);
     showToast(`Đã gộp vào ${to.name}`);
-    fetchItems({});
+    fetchItems();
   }, [topicCounts, confirm, mergeTopics, showToast, topicFilter, fetchItems]);
 
   // Navigation handlers — reader/editor remember which library view to go back to
@@ -335,40 +338,27 @@ export default function CollectPage() {
     setSelectedId(null);
   }, []);
 
-  // Delete article with undo trash buffer
-  const handleDeleteArticle = useCallback(async (article) => {
+  const handleDeleteArticle = useCallback((article) => {
+    if (view === 'reader') goLibrary();
+    trashArticles([article.id]);
+  }, [view, goLibrary, trashArticles]);
+
+  // ⌘Z — trả lại lần bỏ vào thùng rác gần nhất
+  const handleUndo = useCallback(() => {
+    if (lastTrashed) restoreTrashed(lastTrashed);
+  }, [lastTrashed, restoreTrashed]);
+
+  const handleDeleteForever = useCallback(async (list) => {
     const ok = await confirm({
-      title: `Xóa "${article.title}"?`,
-      message: 'Bài viết sẽ được đưa vào bộ đệm hoàn tác (⌘Z).',
-      confirmLabel: 'Xóa',
+      title: `Xoá vĩnh viễn ${countLabel(list)}?`,
+      message: 'Bài và ghi chú của bài mất hẳn, không khôi phục được.',
+      confirmLabel: 'Xoá vĩnh viễn',
       danger: true,
     });
     if (!ok) return;
-
-    const success = await deleteItem(article.id);
-    if (success) {
-      setTrash(article);
-      showToast(`Đã xóa "${article.title}"`, {
-        actionLabel: 'Hoàn tác (⌘Z)',
-        onAction: async () => {
-          await addItem(article);
-          setTrash(null);
-          showToast(`Đã hoàn tác khôi phục "${article.title}"`);
-          fetchItems({});
-        },
-      });
-      if (view === 'reader') goLibrary();
-    }
-  }, [confirm, deleteItem, addItem, showToast, view, goLibrary, fetchItems]);
-
-  // Undo delete
-  const handleUndo = useCallback(async () => {
-    if (!trash) return;
-    await addItem(trash);
-    showToast(`Đã hoàn tác khôi phục "${trash.title}"`);
-    setTrash(null);
-    fetchItems({});
-  }, [trash, addItem, showToast, fetchItems]);
+    setLastTrashed(null); // ⌘Z không được trả về bài đã xoá hẳn
+    if (!(await deleteForever(list.map(i => i.id)))) showToast('Không xoá được. Thử lại.');
+  }, [confirm, deleteForever, showToast]);
 
   const handleAssignTopic = useCallback((article, topicId) => updateItem(article.id, { topic_id: topicId }), [updateItem]);
 
@@ -422,7 +412,7 @@ export default function CollectPage() {
         }
       }
 
-      await fetchItems({});
+      await fetchItems();
       showToast(`Đã lưu "${draft.title}"`);
 
       // Open reader of the saved article
@@ -456,7 +446,7 @@ export default function CollectPage() {
       const mod = e.metaKey || e.ctrlKey;
 
       // ⌘Z — Undo delete (not while typing: there ⌘Z undoes text)
-      if (mod && e.key.toLowerCase() === 'z' && trash && !isTyping) {
+      if (mod && e.key.toLowerCase() === 'z' && lastTrashed && !isTyping) {
         e.preventDefault();
         handleUndo();
         return;
@@ -481,7 +471,7 @@ export default function CollectPage() {
           goLibrary();
           return;
         }
-        if (view === 'graph' || view === 'canvas') {
+        if (view === 'graph' || view === 'canvas' || view === 'trash') {
           setView('overview');
           return;
         }
@@ -575,7 +565,7 @@ export default function CollectPage() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [keysOpen, linkOpen, tagsOpen, topicsOpen, view, bulk, hasFilter, trash, cursor, filteredArticles, selectedArticle, openEditor, openReader, goLibrary, handleDeleteArticle, handleUndo, clearFilters]);
+  }, [keysOpen, linkOpen, tagsOpen, topicsOpen, view, bulk, hasFilter, lastTrashed, cursor, filteredArticles, selectedArticle, openEditor, openReader, goLibrary, handleDeleteArticle, handleUndo, clearFilters]);
 
   if (!user) {
     return (
@@ -608,11 +598,11 @@ export default function CollectPage() {
           onNewArticle={() => openEditor(null)}
           topics={topics}
           topicFilter={topicFilter}
-          mineOnly={mineOnly}
           onTopicFilter={chooseTopic}
-          onOpenMine={openMine}
           topicCounts={topicCounts}
-          mineCount={mineCount}
+          trashCount={trash.length}
+          trashOpen={view === 'trash'}
+          onOpenTrash={openTrash}
           onManageTopics={() => setTopicsOpen(true)}
         />
       )}
@@ -621,6 +611,13 @@ export default function CollectPage() {
       <main className="kb-content">
         {isLoading ? (
           <SkeletonList rows={6} gap="6px" label="Đang tải kho kiến thức" />
+        ) : view === 'trash' ? (
+          <KBTrashView
+            items={trash}
+            onRestore={item => restoreTrashed([item])}
+            onDelete={item => handleDeleteForever([item])}
+            onEmpty={() => handleDeleteForever(trash)}
+          />
         ) : view === 'overview' && !search.trim() ? (
           <KBOverview
             articles={articlesWithTasks}
@@ -630,7 +627,6 @@ export default function CollectPage() {
             keysDisabled={keysOpen || linkOpen || tagsOpen || topicsOpen}
             onOpenReader={openReader}
             onOpenTopic={chooseTopic}
-            onOpenMine={openMine}
             onManageTopics={() => setTopicsOpen(true)}
             onNewArticle={() => openEditor(null)}
             onAssign={handleAssignTopic}
@@ -709,7 +705,7 @@ export default function CollectPage() {
             onEdit={() => openEditor(selectedArticle)}
             onDelete={() => handleDeleteArticle(selectedArticle)}
             onAssignTopic={topicId => handleAssignTopic(selectedArticle, topicId)}
-            onNotesChange={() => fetchItems({})}
+            onNotesChange={() => fetchItems()}
             notesHook={notesHook}
             onOpenArticle={openReader}
             onOpenGraph={() => setView('graph')}
@@ -758,7 +754,7 @@ export default function CollectPage() {
           if (tag.id) {
             await deleteCentralTag(tag.id);
             showToast(`Đã xóa thẻ #${tag.name}`);
-            fetchItems({});
+            fetchItems();
           }
         }}
       />

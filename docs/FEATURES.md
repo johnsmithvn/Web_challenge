@@ -243,13 +243,14 @@ Giao diện "Cực quang" trên nền trời đêm dùng chung với Nhiệm v�
   (có gợi ý), đổi ở trang đọc, gán hàng loạt ở Danh sách, quản lý (kéo đổi thứ tự, đổi tên / màu, gộp / xoá) từ "Quản lý" ở cột trái.
 - **Loại** tự nhận từ link (Repo, Video, Bài FB, Âm thanh, Bài viết, Ghi chú, Trích dẫn); tiêu đề tự điền từ link khi trống.
 - **Tổng quan** (màn mở đầu): lời chào + "Mở bầu trời ↗", Xếp nhanh bài mới chưa có chủ đề
-  (phím `1`–`8`), thẻ các chủ đề, Ghi chú của tôi, Gặp lại hôm nay, Gần đây.
+  (phím `1`–`8`), thẻ các chủ đề, Gặp lại hôm nay, Gần đây.
 - **Danh sách / Gallery / Sơ đồ / Canvas**, lọc theo chủ đề ở cột trái. Danh sách: lọc Loại, Có liên kết, thẻ (chỉ thẻ của
   Knowledge); nhóm theo Tháng / Chủ đề / Loại; sắp xếp; chọn nhiều (gán chủ đề, xoá). Sơ đồ là "bầu trời": mỗi bài một ngôi sao.
 - **Tìm kiếm** không cần dấu, nhiều từ, trong cả ghi chú và tên chủ đề; `#thẻ`.
 - **Trang đọc:** mục lục, `[[liên kết]]` + backlink, khung **Xung quanh** (cùng chủ đề / cùng nguồn / lưu gần thời
   điểm), sơ đồ nhỏ, ghi chú cá nhân, nhiệm vụ liên kết, chế độ tập trung (`F`).
-- Xoá có hoàn tác (toast / `⌘Z`). Không có trạng thái đọc, lưu trữ hay nút tạo task (nối bài với task từ Nhiệm vụ).
+- **Thùng rác:** Xoá = bỏ vào thùng rác (hoàn tác bằng toast / `⌘Z`, bài về nguyên vẹn). Mục Thùng rác ở cột trái (chỉ hiện
+  khi có bài): Khôi phục, Xoá vĩnh viễn, Dọn sạch. Không có trạng thái đọc hay nút tạo task (nối bài với task từ Nhiệm vụ).
 
 **Data:** `collections` (+ `topic_id`), `collection_topics`, `collection_notes`, `collection_tags`, `task_collections`.
 **Local:** `vl_kb_recent` (Gần đây), `kb_editor_mode`, `kb_canvas_nodes`, `kb_canvas_edges`.

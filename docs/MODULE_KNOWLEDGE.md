@@ -105,7 +105,7 @@ Bộ khởi đầu (nguồn duy nhất: hàm SQL `seed_starter_collection_topics
 | `title` | Bắt buộc. Với trích dẫn: tên tác giả |
 | `url` | Link nguồn; hậu tố `#audio` / `#video` ép cách hiển thị |
 | `body`, `body_text`, `word_count`, `content_format` | Markdown thô **hoặc** JSON Tiptap; `body_text` là chữ trơn cho trích đoạn và tìm kiếm |
-| `status` | `unread / read / archived` theo CHECK. UI lưu bài mới là `read`; bài `archived` cũ (từ Inbox) bị ẩn. Không có thao tác nào trong UI đổi `status` |
+| `status` | `unread / read / archived` theo CHECK. UI lưu bài mới là `read`; `archived` = **Thùng rác** (Xoá đổi sang `archived`, Khôi phục về `read`; `updated_at` do trigger dùng làm ngày bỏ). Bài `archived` cũ (từ Inbox) cũng nằm trong Thùng rác |
 
 Bảng phụ: `collection_tags`, `task_collections` (RLS kiểm cả hai phía), `collection_notes` (cascade khi xoá bài).
 
@@ -128,9 +128,10 @@ chủ đề cho user đang có bài, gán chủ đề theo `type` cũ (`ai` → 
 
 ### 3.3. Hook trả về
 
-- `useCollections`: một query, tối đa 500 bài mới nhất, bỏ `archived`, join thẻ / id task đã nối / nội dung ghi chú.
-  Mỗi bài có `_tags`, `_linkedTaskIds`, `_linkedTaskCount`, `_notes`, `_noteCount`. Có `updateItems(ids, updates)` cho
-  thao tác hàng loạt (một request).
+- `useCollections`: một query, tối đa 500 bài mới nhất (tính cả Thùng rác), join thẻ / id task đã nối / nội dung ghi chú,
+  tách thành `items` (không `archived`) và `trash` (`archived`, bỏ gần nhất trước). Mỗi bài có `_tags`, `_linkedTaskIds`,
+  `_linkedTaskCount`, `_notes`, `_noteCount`. Hàng loạt một request: `updateItems(ids, updates)`, `moveToTrash(items)`,
+  `restoreFromTrash(items)` (chuyển ngay giữa hai danh sách, không tải lại), `deleteForever(ids)`.
 - `useCollectionTopics`: `topics` (theo `sort_order`), `addTopic`, `updateTopic`, `reorderTopics(ids)` (ghi lại `sort_order` các dòng đổi chỗ, song song; lỗi thì tải lại), `deleteTopic`,
   `mergeTopics`, `seedStarterTopics`; `MAX_TOPICS = 8`. Danh sách gắn với user nên phản hồi trễ của user trước không lọt vào.
 - `CollectPage` gắn thêm `_topic` và `_linkedTasks` (task chưa xong) cho mỗi bài.
@@ -143,7 +144,7 @@ chủ đề cho user đang có bài, gán chủ đề theo `type` cũ (`ai` → 
 
 - Trên xuống: "Kho Tàng Kiến Thức" + `N bài · M liên kết` · ô tìm (`/`) · **Viết bài mới** · **Chế độ xem** (Tổng quan ·
   Danh sách · Gallery · Sơ đồ · Canvas; rê chuột hiện phím `G` + chữ) · **Chủ đề** (Tất cả bài · Chưa xếp (chỉ khi có) ·
-  từng chủ đề với chấm màu + số bài, chủ đề 0 bài mờ đi · Ghi chú của tôi (khi có)) · "Quản lý" / "＋ Tạo". Không có nút Phím tắt (bảng
+  từng chủ đề với chấm màu + số bài, chủ đề 0 bài mờ đi · **Thùng rác** (khi có bài)) · "Quản lý" / "＋ Tạo". Không có nút Phím tắt (bảng
   mở bằng `?`; menu tài khoản đã có mục Phím tắt).
 - Chủ đề lọc mọi kiểu xem. Chọn chủ đề khi đang ở Tổng quan thì sang Danh sách. Bài mới viết mặc định vào chủ đề đang xem.
 - Ẩn khi đang đọc hoặc soạn. Mở Knowledge vào **Tổng quan**; đọc / soạn xong, nút quay lại và `Esc` về đúng kiểu xem trước đó.
@@ -154,8 +155,8 @@ chủ đề cho user đang có bài, gán chủ đề theo `type` cũ (`ai` → 
 |---|---|---|
 | **Lời chào** | Luôn | Ngày, "Chào buổi sáng/trưa/chiều/tối, <tên>", câu "Bầu trời của bạn có N ngôi sao và M đường nối…"; "Bắt đầu xếp", "Mở bầu trời ↗". Không có bầu trời nhỏ đóng khung (bỏ ở v6.34.0, đã có nút Mở bầu trời) |
 | **Xếp nhanh** | Có bài chưa có chủ đề lưu trong 30 ngày (`quickSortQueue`) | Đếm `k / N` + vạch tiến độ; từng bài: loại · nguồn · tuổi, tiêu đề (bấm để mở), trích; "Để sau →". Bên phải lưới chủ đề có số phím `1`–`8`, gợi ý (`suggestTopic`), "+ Chủ đề mới" |
-| **Các chủ đề · n/8** | Luôn | Thẻ mỗi chủ đề (quầng màu chủ đề, 0 bài thì mờ): tên, số bài, định nghĩa, 2 bài mới nhất; thẻ cuối **Ghi chú của tôi**; "Quản lý" |
-| **Gặp lại hôm nay** | Có bài phù hợp | 3 bài cũ hơn 30 ngày là ghi chú / trích dẫn của mình hoặc có ghi chú (`pickResurface`), cố định trong ngày |
+| **Các chủ đề · n/8** | Luôn | Thẻ mỗi chủ đề (quầng màu chủ đề, 0 bài thì mờ): tên, số bài, định nghĩa, 2 bài mới nhất; "Quản lý" |
+| **Gặp lại hôm nay** | Có bài phù hợp | 3 bài cũ hơn 30 ngày không có link, là trích dẫn hoặc có ghi chú (`pickResurface`), cố định trong ngày |
 | **Gần đây** | Có lịch sử | 5 bài mở gần nhất trên máy này: tiêu đề · loại · chủ đề · ngày |
 
 Bài chưa xếp cũ hơn 30 ngày không hiện ở đây (xếp hàng loạt từ Danh sách). Kho trống → "Bầu trời còn trống" + Viết bài mới.
@@ -164,8 +165,8 @@ Bài chưa xếp cũ hơn 30 ngày không hiện ở đây (xếp hàng loạt t
 ### 4.3. Danh sách (`KBListView`)
 
 - **Đầu danh sách** (luôn có, dải mở không đóng khung: chỉ quầng màu chủ đề, không vạch dưới, không quả cầu nên không thụt): tên in nghiêng
-  (màu chủ đề; Tất cả / Chưa xếp / Ghi chú của tôi màu vàng đồng) + số bài +
-  định nghĩa của phạm vi đang xem (một chủ đề · Chưa xếp · Ghi chú của tôi · Tất cả bài). Nút **Xếp nhanh** (Chưa xếp)
+  (màu chủ đề; Tất cả / Chưa xếp màu vàng đồng) + số bài +
+  định nghĩa của phạm vi đang xem (một chủ đề · Chưa xếp · Tất cả bài). Nút **Xếp nhanh** (Chưa xếp)
   hoặc **Quản lý chủ đề**. Hàng **thẻ** (không nhãn "Thẻ" — dấu # đã nói rõ) để lọc (AND) và "Quản lý thẻ": thẻ đếm trong **phạm vi** (`scopeTagCounts` ở
   `CollectPage`), không theo bộ lọc, nên lọc không làm hàng thẻ biến mất và cả danh sách nhảy.
 - **Thanh lọc (một hàng):** **↔ Có liên kết** (bài có `[[ ]]` đi hoặc được trỏ về) · **Nhóm theo** Tháng / Chủ đề / Không ·
@@ -175,7 +176,7 @@ Bài chưa xếp cũ hơn 30 ngày không hiện ở đây (xếp hàng loạt t
   trùng vai với Chủ đề. Loại vẫn hiện ở biểu tượng + meta từng bài, Gallery, Tổng quan.
 - **Nhóm** thu gọn được (mũi tên). Nhóm do `CollectPage` tính (`groupArticles`) nên `J`/`K` và ↑ ↓ ở trang đọc đi
   đúng thứ tự đang hiện.
-- **Thẻ bài:** biểu tượng loại; meta (chủ đề khi xem Tất cả / Ghi chú của tôi) · loại · tên miền · ngày · phút đọc · #thẻ;
+- **Thẻ bài:** biểu tượng loại; meta (chủ đề khi xem Tất cả) · loại · tên miền · ngày · phút đọc · #thẻ;
   tiêu đề; một dòng trích; nhãn ↔ liên kết, ◇ nhiệm vụ, ✎ ghi chú; rê chuột hiện Sửa / Xoá.
 - **Chọn nhiều:** thanh nổi dính đáy: "Đã chọn N" · Chọn tất cả / Bỏ chọn hết · **Gán chủ đề** (bảng chọn bật lên) · Xoá · ✕.
 - **Trống:** chủ đề chưa có bài → "Chưa có bài nào trong X", "Xếp nhanh · N bài chờ", "Viết bài mới"; lọc không ra → "Xoá lọc".
@@ -216,19 +217,24 @@ Chưa có chủ đề nào → "Dùng bộ 7 chủ đề gợi ý".
 
 `/` tìm · `N` bài mới · `V` chọn nhiều · `J`/`K` di chuyển · `Enter` mở · `E` sửa · `F` đọc tập trung · `Backspace` xoá · `⌘Z` hoàn tác xoá
 (không chạy khi đang gõ) · `G` rồi `T`/`L`/`G`/`C`/`Q` = Tổng quan / Danh sách / Sơ đồ / Canvas / Gallery · `?` bảng phím
-tắt · `Esc` lùi từng lớp (Sơ đồ, Canvas → Tổng quan) · Tổng quan: `1`–`8` xếp bài vào chủ đề, `→` để sau.
+tắt · `Esc` lùi từng lớp (Sơ đồ, Canvas, Thùng rác → Tổng quan) · Tổng quan: `1`–`8` xếp bài vào chủ đề, `→` để sau.
 Phím tắt trang không chạy khi đang mở hộp thoại.
 
-### 4.9. Xoá và hoàn tác
+### 4.9. Xoá, hoàn tác và Thùng rác (`KBTrashView`)
 
-Xoá có xác nhận; toast "Hoàn tác" hoặc `⌘Z` chèn lại bài (giữ nội dung và chủ đề).
+- **Xoá** (trang đọc, rê chuột ở Danh sách, `Backspace`, chọn nhiều) = bỏ vào Thùng rác, không hỏi vì lấy lại được.
+  Toast "Hoàn tác" hoặc `⌘Z` trả bài về nguyên vẹn (cùng id, thẻ, ghi chú, liên kết task, ngày tạo).
+- **Thùng rác** (cột trái / viên chủ đề trên điện thoại, chỉ hiện khi có bài): đầu trang "Thùng rác · N bài" + **Dọn sạch**;
+  mỗi dòng loại · tên miền · "Xoá <ngày>" · tiêu đề · **Khôi phục** · thùng rác đỏ (Xoá vĩnh viễn). Không mở đọc được —
+  muốn đọc thì Khôi phục. Xoá vĩnh viễn / Dọn sạch có xác nhận; ghi chú, thẻ gắn, liên kết task đi theo (cascade).
+- Bài trong Thùng rác không hiện ở bất cứ đâu khác (danh sách, tìm, Tổng quan, Sơ đồ, `[[ ]]`, podcast ngẫu nhiên).
 
 ### 4.10. Điện thoại
 
 **Điện thoại (≤768px, đã đăng nhập)** — như Finance: thanh Life Hub + tab đáy chung của app ẩn ở `/collect`
 (`body.in-knowledge-workspace` do `CollectPage` gắn; `Navbar` không vẽ hai thanh đó). `KBSidebar` (`isMobile`) vẽ:
 - **Hàng trên trong suốt** (trời hiện phía sau): ô tìm · **viên chủ đề** (`KBTopicSelect`: Tất cả bài / Chưa xếp / từng chủ đề /
-  Ghi chú của tôi; chọn ở Tổng quan thì sang Danh sách) · nút **＋** Viết bài mới.
+  Thùng rác; chọn ở Tổng quan thì sang Danh sách) · nút **＋** Viết bài mới.
 - **Tab đáy riêng**: Home (về Life Hub, nơi có đổi sáng / tối, tài khoản) · Tổng quan · Danh sách · Gallery · Sơ đồ · Canvas.
 - Trang đọc / soạn: không có hai thanh này (thanh của trang đọc có nút về). Chưa đăng nhập: giữ thanh chung để còn nút đăng nhập.
 - Nút tròn QuickCapture ẩn ở `/collect` (đã có Viết bài mới; trên điện thoại sẽ đè tab đáy).
@@ -260,7 +266,7 @@ không tự xếp.
 
 ### 5.4. Gặp lại hôm nay và Mở gần đây
 
-- `pickResurface`: bài > 30 ngày là của mình (`isMine`) hoặc trích dẫn; chọn theo hash ngày nên cả ngày ra cùng 3 bài.
+- `pickResurface`: bài > 30 ngày không có link, có ghi chú hoặc là trích dẫn; chọn theo hash ngày nên cả ngày ra cùng 3 bài.
 - `pushRecent`: tối đa 10 id, lưu `localStorage` `vl_kb_recent` (tiện ích trên máy, đọc / ghi trong try/catch).
 
 ---
@@ -284,8 +290,8 @@ không tự xếp.
 ## 7. Ghi chú cá nhân
 
 `useCollectionNotes`: thêm / sửa / xoá ghi chú của một bài (optimistic), sắp theo `created_at`. Ở trang đọc: sửa tại
-chỗ, `Ctrl+Enter` lưu, `Esc` huỷ. Xoá bài → ghi chú bị xoá theo (cascade). Bài có ghi chú vào "Ghi chú của tôi" và có
-thể hiện ở "Gặp lại hôm nay".
+chỗ, `Ctrl+Enter` lưu, `Esc` huỷ. Bỏ bài vào Thùng rác thì ghi chú vẫn còn; xoá vĩnh viễn thì ghi chú bị xoá theo (cascade).
+Bài có ghi chú có thể hiện ở "Gặp lại hôm nay".
 
 ## 8. Thẻ
 
@@ -309,7 +315,7 @@ Knowledge không tạo task; nối bài với task làm từ phía Tasks.
 `src/utils/kbDeriveUtils.js`, test `src/__tests__/core/kbDeriveUtils.test.js` (trong `npm test`):
 wiki link (`parseWikiLinks`, `findBacklinks`, `getOutboundLinks`, `extractContext`), `deriveGraph`, `filterArticles`, `groupArticles`
 (nhóm theo tháng / chủ đề / không, giữ thứ tự danh sách),
-`normalizeVi`, `itemPlainText`, `isMine`, `ageDays`, `KIND_META`, `contentKind`, `sourceKey`, `guessTitle`,
+`normalizeVi`, `itemPlainText`, `ageDays`, `KIND_META`, `contentKind`, `sourceKey`, `guessTitle`,
 `quickSortQueue`, `findNeighbors`, `suggestTopic`, `pickResurface`, `pushRecent`, `readTime`, `markdownToPlainText`,
 `extractHeadings`, `isTiptapBody`, `tiptapToPlainText`, `isThemeBreakingColor` + `migrateTiptapDoc` (gỡ màu chữ inline
 xám / đen / trắng / quá tối / quá sáng khi nạp bài Visual, đổi `audioBlock` → `mediaBlock`; `TiptapEditor` và
@@ -325,7 +331,8 @@ Contract test thẻ / ghi chú: `src/__tests__/core/tagsAndKnowledgeContract.tes
 | Trục "Muốn học / Tra cứu" | Không làm | Bắt đoán trước, thấy bị xé nhỏ |
 | Trạng thái đọc (Đọc xong, Đọc dở, Tiến độ 5 bước) | **Đã làm rồi bỏ (2026-10-25)** | Knowledge để xem và đọc, không cần thao tác quy trình |
 | Nút tạo task từ bài ("Thực hành") | **Bỏ (2026-10-25)** | Như trên; nối bài với task từ phía Tasks |
-| Lưu trữ | **Bỏ (2026-10-25)**, chỉ còn Xoá | Gọn; bài không cần thì xoá |
+| Lưu trữ | **Bỏ (2026-10-25)**, rồi làm lại thành **Thùng rác (2026-10-28)**: Xoá = bỏ vào thùng rác, xoá vĩnh viễn ở đó | Xoá thật + "Hoàn tác" chèn lại bài mới làm mất ghi chú, thẻ, liên kết task, ngày tạo |
+| "Ghi chú của tôi" (bài không link + bài có ghi chú) | **Bỏ (2026-10-28)** | Không phân biệt được bài tự viết với bài copy dán không kèm link |
 | Hộp "Cất vào" nhanh, share từ app khác, thư viện ngoài, upload mới | Không làm | Tự copy link / chữ là đủ; Supabase bản free |
 | Màn "Inbox" riêng | Không làm | Inbox đã gộp vào Tasks; thay bằng Xếp nhanh |
 | Tách module con theo loại (GitHub, Video…) | Không làm | Nhân bản câu hỏi "bỏ vào đâu" |
@@ -343,7 +350,7 @@ Contract test thẻ / ghi chú: `src/__tests__/core/tagsAndKnowledgeContract.tes
 |---|---|
 | 1 | Chọn nhiều chưa gắn thẻ hàng loạt (nút "Gắn thẻ" cũ chỉ mở hộp quản lý thẻ nên đã bỏ) |
 | 2 | `KBLinkModal`, `KBTagModal` gọi setState trong effect khi mở (cảnh báo lint) |
-| 3 | Xoá hàng loạt gọi `deleteItem` tuần tự |
+| 3 | Thùng rác tính chung giới hạn 500 bài của `useCollections`; không tự dọn sau N ngày |
 | 4 | Kiểu xem / bài đang đọc không có URL riêng: F5 về Tổng quan, Back rời trang |
 | 5 | `useRandomPodcast` không lọc `user_id`, dựa hoàn toàn vào RLS |
 | 6 | `collection_notes.sort_order` có trong schema nhưng không dùng |
@@ -353,7 +360,7 @@ Contract test thẻ / ghi chú: `src/__tests__/core/tagsAndKnowledgeContract.tes
 ## 13. Để sau
 
 - Thu gọn `type` còn `note/quote/podcast`, bỏ `'inbox'` khỏi CHECK, đổi `DEFAULT 'inbox'` → `'note'` (có bảng sao lưu).
-- Dọn cột `status` (giờ chỉ còn `read`; `archived` / `unread` là dữ liệu cũ).
+- Dọn cột `status` (giờ chỉ còn `read` + `archived` = Thùng rác; `unread` là dữ liệu cũ).
 - Nhóm nhỏ trong chủ đề khi một chủ đề > ~15 bài (dùng lại `tags`).
 - Lọc thời gian cho ô tìm (logic đã có trong `filterArticles`).
 - Trang tổng hợp tự viết; lấy tiêu đề / ảnh thật qua API.
@@ -366,7 +373,8 @@ Cần đăng nhập.
 - [ ] Bài mới dán link GitHub, tiêu đề trống → tự `owner/repo`; chọn chủ đề và Kiểu; bỏ trống chủ đề → Chưa xếp.
 - [ ] Chủ đề ở cột trái lọc đúng Danh sách / Gallery / Sơ đồ / Canvas; Chưa xếp + Chọn nhiều + Gán chủ đề chuyển cả loạt.
 - [ ] Danh sách: ↔ Có liên kết, Nhóm theo Tháng / Chủ đề / Không, thu gọn nhóm; bật lọc không làm đầu danh sách / nút nhảy; `J`/`K` đi đúng thứ tự đang hiện.
-- [ ] Tổng quan: Xếp nhanh chỉ bài 30 ngày, phím `1`–`8`, `→`; thẻ chủ đề mở đúng danh sách; Ghi chú của tôi; Gặp lại; Mở gần đây.
+- [ ] Tổng quan: Xếp nhanh chỉ bài 30 ngày, phím `1`–`8`, `→`; thẻ chủ đề mở đúng danh sách; Gặp lại; Mở gần đây.
+- [ ] Xoá → bài vào Thùng rác, Hoàn tác / `⌘Z` trả về còn đủ thẻ, ghi chú, liên kết task; Thùng rác: Khôi phục, Xoá vĩnh viễn, Dọn sạch (có xác nhận).
 - [ ] Trang đọc: đổi chủ đề bằng select hiện ngay; Xung quanh 3 nhóm không lặp; thêm ghi chú → số ghi chú ở danh sách cập nhật.
 - [ ] Quản lý chủ đề: kéo ⋮⋮ đổi thứ tự (cả trên điện thoại), ↑ ↓ khi tay cầm được chọn; đổi tên / màu; chủ đề thứ 9 bị chặn; gộp chuyển hết bài; xoá → bài về Chưa xếp.
 - [ ] Trang đọc: `F` ẩn / hiện cột phải; "+ Gán chủ đề" mở select. Sơ đồ: bấm sao không làm cả bầu trời chạy lại.

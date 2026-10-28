@@ -314,7 +314,7 @@
 }
 .kb-side__dot--all { background: transparent; border: 1.5px solid var(--kb-dim); }
 .kb-side__dot--none { background: transparent; border: 1.5px dashed var(--kb-gold); }
-.kb-side__mine-icon { flex: none; width: 16px; color: var(--kb-violet); }
+.kb-side__trash-icon { flex: none; width: 16px; color: var(--kb-faint); }
 
 /* ── Khung chung Danh sách / Tổng quan / Gallery ───────────────
    Cùng bề rộng + lề: đổi kiểu xem không làm nội dung co giãn, nhảy. */
@@ -424,6 +424,8 @@ span.kb-tag-chip { cursor: default; }
   box-shadow: 0 0 22px color-mix(in srgb, var(--kb-accent) 12%, transparent);
 }
 .kb-row--picked { border-color: color-mix(in srgb, var(--kb-accent) 45%, transparent); background: var(--kb-accent-soft); }
+/* Thùng rác: dòng không mở được, chỉ có nút Khôi phục / Xoá vĩnh viễn */
+.kb-row--trash, .kb-row--trash:hover { cursor: default; border-color: var(--kb-line); }
 .kb-check { flex: none; width: 16px; height: 16px; margin-top: 9px; accent-color: var(--kb-accent); cursor: pointer; }
 .kb-row__icon {
   display: grid; place-items: center; flex: none;
@@ -684,7 +686,6 @@ span.kb-tag-chip { cursor: default; }
   transform: translateY(-2px);
 }
 .kb-ov-card.is-dim { opacity: 0.55; }
-.kb-ov-card--mine { --kb-topic: var(--kb-violet); }
 .kb-ov-card__name { display: flex; align-items: center; gap: 9px; margin: 0; font: 500 15px/1.3 var(--kb-display); color: var(--kb-tx); }
 .kb-ov-card__num { margin-left: auto; font: 500 13px var(--kb-font); color: var(--kb-faint); font-variant-numeric: tabular-nums; }
 .kb-ov-card__desc {
@@ -705,7 +706,6 @@ span.kb-tag-chip { cursor: default; }
 }
 .kb-ov-card__list li { font-size: 13px; color: var(--kb-dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .kb-ov-card__list li::before { content: '✦'; margin-right: 7px; font-size: 10px; color: var(--kb-topic, var(--kb-accent)); }
-.kb-ov-card__quote { margin: 0; padding-left: 10px; border-left: 2px solid var(--kb-violet); font-size: 13px; line-height: 1.5; color: var(--kb-dim); }
 
 .kb-ov-two { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
 .kb-ov-panel {

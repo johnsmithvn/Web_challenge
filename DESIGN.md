@@ -1399,6 +1399,9 @@ Knowledge có contract riêng, scoped trên `.kb-page`; không dùng glass/gradi
   không bị che. Cột chữ `max-width: 760px` giữa vùng đọc (~90 ký tự/dòng — đã là trần dễ đọc, đừng nới chữ), cột phải
   360px. Khối cấp đầu rộng — code / sơ đồ ASCII, bảng (`width`), ảnh (`max-width`, giữ cỡ thật, canh giữa) — tràn đều hai
   bên tới `min(960px, 100cqw)`; `.kb-reader__main` là container nên màn hẹp không tràn ra ngoài.
+- **Thùng rác** (`KBTrashView`): dùng lại `.kb-topic-head` + `.kb-row`; dòng `.kb-row--trash` không con trỏ tay, không sáng
+  viền khi rê (không mở được); "Dọn sạch" là `.kb-btn-ghost--danger`, Xoá vĩnh viễn là `.kb-icon-btn--danger`. Mục ở cột trái
+  dùng icon thùng rác màu `--kb-faint`.
 - **Media trong bài** (`MediaPreview`, CSS cuối `tiptap.css`): thanh audio nền `--kb-p1` viền `--kb-line`, nút
   play `--kb-accent`; `<video>` giữ tỉ lệ file (`max-width: 100%`, `max-height: 70vh`), YouTube 16:9, bo 12px.
   Iframe Drive (khi app không stream được): audio cao 160px (80px thì trình phát Drive bị cắt), còn lại 16:9.

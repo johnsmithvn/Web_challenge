@@ -191,11 +191,6 @@ export function ageDays(item, now = Date.now()) {
   return Math.floor((now - Date.parse(item.created_at)) / DAY_MS);
 }
 
-/** "Ghi chú của tôi": your own words — a note / quote without a link, or any bài you wrote notes on. */
-export function isMine(item) {
-  return !item.url || (item._noteCount || 0) > 0;
-}
-
 /* ── Filter & sort ─────────────────────────────────────────── */
 /**
  * Filter and sort articles.
@@ -209,18 +204,16 @@ export function isMine(item) {
  * @param {string} params.topic - '' = all, 'none' = no topic, else topic id
  * @param {string} params.kind - contentKind() value, '' = all
  * @param {string} params.time - '' | '7' | '30' | '90' (saved within N days) | 'old' (> 90 days)
- * @param {boolean} params.mine - only "Ghi chú của tôi" (isMine)
  * @param {Set<string>|null} params.linked - keep only these ids ("Có liên kết"), null = no filter
  * @param {number} params.now - clock for `time` (ms)
  * @returns {Array}
  */
 export function filterArticles(articles, {
   q = '', type = 'all', tags = [], sort = 'new', taskId = '',
-  topic = '', kind = '', time = '', mine = false, linked = null, now = Date.now(),
+  topic = '', kind = '', time = '', linked = null, now = Date.now(),
 } = {}) {
   let list = articles.filter(a => a.type !== 'inbox' && a.status !== 'archived');
 
-  if (mine) list = list.filter(isMine);
   if (linked) list = list.filter(a => linked.has(a.id));
 
   // Type filter
@@ -619,7 +612,7 @@ function hashStr(s) {
 export function pickResurface(items, dateStr, n = 3, now = Date.now()) {
   return items
     .filter(a => a.type !== 'inbox' && a.status !== 'archived' && ageDays(a, now) > 30)
-    .filter(a => isMine(a) || a.type === 'quote')
+    .filter(a => !a.url || (a._noteCount || 0) > 0 || a.type === 'quote')
     .map(a => ({ a, h: hashStr(`${dateStr}|${a.id}`) }))
     .sort((x, y) => x.h - y.h)
     .slice(0, n)

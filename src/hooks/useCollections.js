@@ -8,41 +8,39 @@ import { logger } from '../utils/logger';
  *
  * type: note | quote | podcast (older rows may still hold learn / idea / ai / entertainment).
  * topic_id: chủ đề, see useCollectionTopics. NULL = Chưa xếp.
- * status: unread | read | archived (DB values; the Knowledge UI saves read and hides archived rows).
+ * status: unread | read | archived (DB values; the Knowledge UI saves read). archived = Thùng rác:
+ * `items` never holds them, they live in `trash` until restored or deleted for good.
  *
  * Fetched items carry: _tags, _linkedTaskIds, _linkedTaskCount, _notes ({content}[]), _noteCount.
  *
- * Used by: CollectPage, TaskListSection (for linking).
+ * Used by: CollectPage, HomeDashboard (fetchStats).
  */
 export function useCollections() {
   const { user, isAuthenticated } = useAuth();
   const enabled = isSupabaseEnabled && isAuthenticated && !!user;
 
   const [items, setItems]       = useState([]);
+  const [trash, setTrash]       = useState([]); // status archived, bỏ gần nhất trước
   // Bắt đầu ở true khi có user: CollectPage gọi fetchItems trong effect, frame đầu không được hiện kho rỗng.
   const [isLoading, setIsLoading] = useState(enabled);
 
-  // ── Fetch items (recent 500) with tags, linked tasks and notes ──
-  // filters: { type?, status? } — archived rows are skipped unless a status is asked for.
-  const fetchItems = useCallback(async (filters = {}) => {
+  // ── Fetch items + trash (recent 500, one query) with tags, linked tasks and notes ──
+  // Trash rows come fully shaped so restoring one needs no refetch.
+  // ponytail: trash counts toward the 500 limit; give it its own query if it ever crowds the kho out.
+  const fetchItems = useCallback(async () => {
     if (!enabled) return;
     setIsLoading(true);
 
-    let query = supabase
+    const { data, error } = await supabase
       .from('collections')
       .select('*, collection_tags(tags(id, name, color)), task_collections(task_id), collection_notes(content)')
       .eq('user_id', user.id)
       .order('created_at', { ascending: false })
       .limit(500);
-    if (filters.type) query = query.eq('type', filters.type);
-    if (filters.status) query = query.eq('status', filters.status);
-    else query = query.neq('status', 'archived');
-
-    const { data, error } = await query;
     if (error) {
       logger.warn('[useCollections] fetch error:', error.message);
     } else {
-      setItems((data || []).map(({ collection_tags, task_collections, collection_notes, ...item }) => {
+      const all = (data || []).map(({ collection_tags, task_collections, collection_notes, ...item }) => {
         const _linkedTaskIds = (task_collections || []).map(tc => tc.task_id);
         const _notes = collection_notes || [];
         return {
@@ -53,7 +51,11 @@ export function useCollections() {
           _notes,
           _noteCount: _notes.length,
         };
-      }));
+      });
+      setItems(all.filter(i => i.status !== 'archived'));
+      // updated_at (trigger) đổi khi bỏ vào thùng rác → dùng làm "ngày bỏ"
+      setTrash(all.filter(i => i.status === 'archived')
+        .sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at)));
     }
     setIsLoading(false);
   }, [enabled, user]);
@@ -144,27 +146,53 @@ export function useCollections() {
     return true;
   }, [enabled, user, fetchItems]);
 
-  // ── Delete item ─────────────────────────────────────────────
-  const deleteItem = useCallback(async (id) => {
-    if (!enabled) return false;
+  // ── Thùng rác ───────────────────────────────────────────────
+  // Bỏ vào / khôi phục = chỉ đổi status (bài giữ id, thẻ, ghi chú, liên kết task, ngày tạo).
+  // `list` là bài đầy đủ (từ items / trash) để chuyển ngay giữa hai danh sách.
+  const setTrashed = useCallback(async (list, trashed) => {
+    if (!enabled || list.length === 0) return false;
+    const ids = list.map(i => i.id);
+    const idSet = new Set(ids);
+    const status = trashed ? 'archived' : 'read';
+    const moved = list.map(i => ({ ...i, status, updated_at: new Date().toISOString() }));
+    const [setFrom, setTo] = trashed ? [setItems, setTrash] : [setTrash, setItems];
+    setFrom(prev => prev.filter(i => !idSet.has(i.id)));
+    // Bỏ bài đã có ở đích: bấm Hoàn tác sau khi đã ⌘Z không được nhân đôi bài
+    setTo(prev => [...moved.filter(m => !prev.some(i => i.id === m.id)), ...prev]);
 
-    // Optimistic
-    setItems(prev => prev.filter(item => item.id !== id));
-
-    try {
-      const { error } = await supabase
-        .from('collections')
-        .delete()
-        .eq('id', id)
-        .eq('user_id', user.id);
-
-      if (error) throw error;
-      return true;
-    } catch (err) {
-      logger.warn('[useCollections] delete error:', err.message);
+    const { error } = await supabase
+      .from('collections')
+      .update({ status })
+      .in('id', ids)
+      .eq('user_id', user.id);
+    if (error) {
+      logger.warn('[useCollections] trash move error:', error.message);
       fetchItems();
       return false;
     }
+    return true;
+  }, [enabled, user, fetchItems]);
+
+  const moveToTrash = useCallback(list => setTrashed(list, true), [setTrashed]);
+  const restoreFromTrash = useCallback(list => setTrashed(list, false), [setTrashed]);
+
+  // Xoá vĩnh viễn (chỉ từ thùng rác) — ghi chú, thẻ, liên kết task đi theo FK cascade
+  const deleteForever = useCallback(async (ids) => {
+    if (!enabled || ids.length === 0) return false;
+    const idSet = new Set(ids);
+    setTrash(prev => prev.filter(i => !idSet.has(i.id)));
+
+    const { error } = await supabase
+      .from('collections')
+      .delete()
+      .in('id', ids)
+      .eq('user_id', user.id);
+    if (error) {
+      logger.warn('[useCollections] delete error:', error.message);
+      fetchItems();
+      return false;
+    }
+    return true;
   }, [enabled, user, fetchItems]);
 
   // ── Stats nhẹ cho ô Knowledge ở Trang chủ ─────────────────────
@@ -189,14 +217,17 @@ export function useCollections() {
   }, [enabled, user]);
 
   return {
-    items,         // current fetched items
+    items,         // current fetched items (not in trash)
+    trash,         // Thùng rác, bỏ gần nhất trước
     isLoading,
-    fetchItems,    // (filters?) => Promise<void>
+    fetchItems,    // () => Promise<void>
     fetchStats,    // (sinceDate) => Promise<{ total, createdAt[] } | null>
     addItem,       // (item) => Promise<row|null>
     updateItem,    // (id, updates) => Promise<boolean>
     updateItems,   // (ids, updates) => Promise<boolean>
-    deleteItem,    // (id) => Promise<boolean>
+    moveToTrash,      // (items[]) => Promise<boolean>
+    restoreFromTrash, // (items[]) => Promise<boolean>
+    deleteForever,    // (ids[]) => Promise<boolean>
     enabled,       // boolean
   };
 }

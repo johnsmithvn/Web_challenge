@@ -171,7 +171,7 @@ export default function KBListView({
     return next;
   });
 
-  const showTopic = (heading.kind === 'all' || heading.kind === 'mine') && groupBy !== 'topic';
+  const showTopic = heading.kind === 'all' && groupBy !== 'topic';
   const allPicked = total > 0 && picked.length >= total;
 
   return (

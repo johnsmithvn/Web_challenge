@@ -56,8 +56,8 @@ function SearchBox({ inputRef, search, onSearchChange }) {
 export default function KBSidebar({ isMobile,
   view, onViewChange, search, onSearchChange,
   articleCount, linkCount, onNewArticle,
-  topics, topicFilter, mineOnly, onTopicFilter, onOpenMine, topicCounts, mineCount,
-  onManageTopics,
+  topics, topicFilter, onTopicFilter, topicCounts,
+  trashCount, trashOpen, onOpenTrash, onManageTopics,
 }) {
   const searchRef = useRef(null);
 
@@ -80,16 +80,16 @@ export default function KBSidebar({ isMobile,
       <>
         <header className="kb-mbar">
           <SearchBox inputRef={searchRef} search={search} onSearchChange={onSearchChange} />
-          {/* 'all' = Tất cả bài (topicFilter ''), 'none' = Chưa xếp, 'mine' = Ghi chú của tôi */}
+          {/* 'all' = Tất cả bài (topicFilter ''), 'none' = Chưa xếp, 'trash' = Thùng rác */}
           <KBTopicSelect
             options={[
               { value: 'all', label: 'Tất cả bài' },
               ...(topicCounts.none > 0 || topicFilter === 'none' ? [{ value: 'none', label: 'Chưa xếp', color: 'var(--kb-gold)' }] : []),
               ...topics.map(t => ({ value: t.id, label: t.name, color: t.color })),
-              ...(mineCount > 0 || mineOnly ? [{ value: 'mine', label: 'Ghi chú của tôi', color: 'var(--kb-violet)' }] : []),
+              ...(trashCount > 0 || trashOpen ? [{ value: 'trash', label: 'Thùng rác', color: 'var(--kb-faint)' }] : []),
             ]}
-            value={mineOnly ? 'mine' : topicFilter || 'all'}
-            onChange={v => (v === 'mine' ? onOpenMine() : onTopicFilter(v === 'all' ? '' : v))}
+            value={trashOpen ? 'trash' : topicFilter || 'all'}
+            onChange={v => (v === 'trash' ? onOpenTrash() : onTopicFilter(v === 'all' ? '' : v))}
             ariaLabel="Chủ đề"
           />
           <button className="kb-btn-primary kb-mbar__new" onClick={onNewArticle} title="Viết bài mới" aria-label="Viết bài mới">
@@ -157,7 +157,7 @@ export default function KBSidebar({ isMobile,
         </span>
         <div className="kb-side__list kb-side__list--topics">
           <NavItem
-            active={!topicFilter && !mineOnly}
+            active={!topicFilter && !trashOpen}
             onClick={() => onTopicFilter('')}
             dot={<span className="kb-side__dot kb-side__dot--all" />}
             label="Tất cả bài"
@@ -188,13 +188,13 @@ export default function KBSidebar({ isMobile,
               />
             );
           })}
-          {mineCount > 0 && (
+          {(trashCount > 0 || trashOpen) && (
             <NavItem
-              active={mineOnly}
-              onClick={onOpenMine}
-              dot={<AppIcon name="pencil" size={13} className="kb-side__mine-icon" />}
-              label="Ghi chú của tôi"
-              count={mineCount}
+              active={trashOpen}
+              onClick={onOpenTrash}
+              dot={<AppIcon name="trash" size={13} className="kb-side__trash-icon" />}
+              label="Thùng rác"
+              count={trashCount}
             />
           )}
         </div>

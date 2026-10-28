@@ -23,7 +23,6 @@ import {
   suggestTopic,
   pickResurface,
   pushRecent,
-  isMine,
   quickSortQueue,
   groupArticles,
   isThemeBreakingColor,
@@ -350,21 +349,14 @@ const daysAgo = d => new Date(NOW - d * 86400000).toISOString();
   console.log('pickResurface: OK');
 }
 
-/* ── isMine + mine filter ──────────────────────────────────── */
+/* ── filterArticles bỏ bài trong thùng rác ─────────────────── */
 {
-  assert.equal(isMine({ url: '' }), true, 'ghi chú / trích dẫn không link');
-  assert.equal(isMine({ url: 'https://x.com', _noteCount: 1 }), true, 'bài có ghi chú của mình');
-  assert.equal(isMine({ url: 'https://x.com' }), false, 'link trơn');
-
   const arts = [
     { id: 'r', title: 'b', type: 'note', status: 'read', url: 'https://y.com', body: '', created_at: daysAgo(3) },
-    { id: 'n', title: 'c', type: 'note', status: 'read', url: '', body: '', created_at: daysAgo(4) },
     { id: 'z', title: 'd', type: 'note', status: 'archived', url: '', body: '', created_at: daysAgo(5) },
   ];
-  const ids = mine => filterArticles(arts, { mine }).map(a => a.id).sort().join(',');
-  assert.equal(ids(true), 'n', 'bài lưu trữ cũ không vào');
-  assert.equal(ids(false), 'n,r');
-  console.log('isMine + mine: OK');
+  assert.equal(filterArticles(arts).map(a => a.id).join(','), 'r', 'bài trong thùng rác không vào');
+  console.log('filterArticles trash: OK');
 }
 
 /* ── quickSortQueue ────────────────────────────────────────── */
