@@ -1073,7 +1073,9 @@ Types/Tags filter bar is gone.
   list rows and around detail panels. The header has no "Keyplate / Vault 01" wordmark (the
   name stays only on the unlock / signed-out cards): on desktop the search (`.acc-search`,
   260px) opens the bar on the left and the action buttons sit on the right, leaving the middle
-  open so the moon (fixed ~436px from the left) and its lunar-date label stay visible.
+  open so the moon (fixed ~436px from the left) and its lunar-date label stay visible. The
+  search input is translucent (`--color-bg` 45%): on phones it wraps to row 2, right where the
+  mobile moon sits (~77%, 50px), so the moon glows through instead of being hidden.
 - **This module owns a scoped token set — one of two deliberate domain
   exceptions alongside Finance Nocturne (`--n-*`).** Everything inside Vault reads its
   own tokens instead of `--purple` / `--radius-*` from `global.css`; the vault declares a

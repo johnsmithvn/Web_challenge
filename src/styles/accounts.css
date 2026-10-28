@@ -279,7 +279,8 @@
    (cố định ~436px từ mép trái) + chữ âm lịch. */
 .acc-search { position: relative; flex: 0 1 260px; }
 .acc-search svg { position: absolute; left: 9px; top: 11px; opacity: .5; pointer-events: none; }
-.acc-search .acc-input { padding-left: 30px; }
+/* Nền trong mờ: điện thoại xếp ô tìm hàng 2 đúng chỗ trăng (~77%, 50px) → trăng sáng xuyên qua */
+.acc-search .acc-input { padding-left: 30px; background: color-mix(in srgb, var(--color-bg) 45%, transparent); }
 
 .acc-head__right { margin-left: auto; display: flex; align-items: center; gap: 10.2px; }
 /* Thanh "‹ Vault · Email 3" của màn list trên mobile — desktop không dùng */
