@@ -67,12 +67,40 @@ export function useWorkouts() {
     }
     setIsLoading(true);
     try {
-      // 1. Fetch routines
-      const { data: rData, error: rErr } = await supabase
-        .from('body_routines')
-        .select('*')
-        .eq('user_id', userId)
-        .order('created_at', { ascending: false });
+      // Chỉ routine items phụ thuộc routines; sessions, sets, custom exercises độc lập
+      // → bắn cùng lúc với routines thay vì 5 lượt nối đuôi.
+      const [
+        { data: rData, error: rErr },
+        { data: sessData, error: sessErr },
+        { data: setsData, error: setsErr },
+        { data: customData, error: customErr },
+      ] = await Promise.all([
+        supabase
+          .from('body_routines')
+          .select('*')
+          .eq('user_id', userId)
+          .order('created_at', { ascending: false }),
+        // Recent sessions
+        supabase
+          .from('body_workout_sessions')
+          .select('*')
+          .eq('user_id', userId)
+          .order('local_date', { ascending: false })
+          .order('started_at', { ascending: false })
+          .limit(120),
+        // Recent sets (for PR & progression comparison)
+        supabase
+          .from('body_workout_sets')
+          .select('*')
+          .eq('user_id', userId)
+          .order('completed_at', { ascending: false })
+          .limit(200),
+        supabase
+          .from('body_custom_exercises')
+          .select('*')
+          .eq('user_id', userId)
+          .is('archived_at', null),
+      ]);
 
       if (rErr) throw rErr;
 
@@ -86,7 +114,7 @@ export function useWorkouts() {
         setActiveRoutine(null);
       }
 
-      // 2. Fetch routine items for active routine
+      // Routine items for active routine
       if (currentRoutine) {
         const { data: itemData, error: itemErr } = await supabase
           .from('body_routine_items')
@@ -102,37 +130,13 @@ export function useWorkouts() {
         setRoutineItems([]);
       }
 
-      // 3. Fetch recent sessions
-      const { data: sessData, error: sessErr } = await supabase
-        .from('body_workout_sessions')
-        .select('*')
-        .eq('user_id', userId)
-        .order('local_date', { ascending: false })
-        .order('started_at', { ascending: false })
-        .limit(120);
-
       if (!sessErr && sessData) {
         setSessions(sessData);
       }
 
-      // 4. Fetch recent sets (for PR & progression comparison)
-      const { data: setsData, error: setsErr } = await supabase
-        .from('body_workout_sets')
-        .select('*')
-        .eq('user_id', userId)
-        .order('completed_at', { ascending: false })
-        .limit(200);
-
       if (!setsErr && setsData) {
         setRecentSets(setsData);
       }
-
-      // 5. Fetch custom exercises
-      const { data: customData, error: customErr } = await supabase
-        .from('body_custom_exercises')
-        .select('*')
-        .eq('user_id', userId)
-        .is('archived_at', null);
 
       if (!customErr && customData) {
         setCustomExercises(customData);

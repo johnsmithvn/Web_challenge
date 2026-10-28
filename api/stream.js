@@ -5,6 +5,7 @@
  * enabling custom HTML5 audio/video players instead of ugly Drive iframes.
  *
  * GET /api/stream?id={driveFileId}
+ * GET /api/stream?id={driveFileId}&meta=1 → { mimeType, streamable } (no content)
  *
  * Supports Range headers for seeking.
  * Reuses the same Service Account credentials as /api/upload.
@@ -112,24 +113,27 @@ async function getAllowedFolders(accessToken, rootId) {
   return allowedFolders || set;
 }
 
-// Authorize the requested file: it must have a parent inside the allowed folder set.
+// File type + whether it has a parent inside the allowed folder set (= this proxy may stream it).
+// null when the service account cannot see the file at all.
+async function getFileMeta(accessToken, fileId, rootId) {
+  const metaRes = await fetch(
+    `https://www.googleapis.com/drive/v3/files/${fileId}?fields=mimeType,parents&supportsAllDrives=true`,
+    { headers: { Authorization: `Bearer ${accessToken}` }, signal: AbortSignal.timeout(8000) }
+  );
+  if (!metaRes.ok) return null;
+
+  const { mimeType, parents = [] } = await metaRes.json();
+  const allowed = await getAllowedFolders(accessToken, rootId);
+  const streamable = parents.some(p => allowed.has(p));
+  if (streamable) fileAuthCache.set(fileId, Date.now() + FILE_AUTH_TTL);
+  else fileAuthCache.delete(fileId);
+  return { mimeType, streamable };
+}
+
 async function isFileAuthorized(accessToken, fileId, rootId) {
   const cachedExp = fileAuthCache.get(fileId);
   if (cachedExp && Date.now() < cachedExp) return true;
-
-  const metaRes = await fetch(
-    `https://www.googleapis.com/drive/v3/files/${fileId}?fields=parents&supportsAllDrives=true`,
-    { headers: { Authorization: `Bearer ${accessToken}` }, signal: AbortSignal.timeout(8000) }
-  );
-  if (!metaRes.ok) return false;
-
-  const meta = await metaRes.json();
-  const parents = meta.parents || [];
-  const allowed = await getAllowedFolders(accessToken, rootId);
-  const ok = parents.some(p => allowed.has(p));
-  if (ok) fileAuthCache.set(fileId, Date.now() + FILE_AUTH_TTL);
-  else fileAuthCache.delete(fileId);
-  return ok;
+  return (await getFileMeta(accessToken, fileId, rootId))?.streamable || false;
 }
 
 export default async function handler(req, res) {
@@ -155,6 +159,17 @@ export default async function handler(req, res) {
 
   try {
     const accessToken = await getDriveToken(DRIVE_SCOPE_RO);
+
+    // ?meta=1 → type only, never content, so it is not bounded by the folder: outside it the
+    // service account only sees files shared by link (or with the account itself) — their type
+    // is already visible to anyone holding the ID.
+    // The client uses it to pick an audio/video player and to know whether streaming will work.
+    if (req.query.meta) {
+      const meta = await getFileMeta(accessToken, fileId, rootFolderId);
+      if (!meta) return res.status(404).json({ error: 'Not found' });
+      res.setHeader('Cache-Control', 'private, max-age=86400');
+      return res.status(200).json(meta);
+    }
 
     // Authorization: only serve files that live under the app's Drive folder.
     const authorized = await isFileAuthorized(accessToken, fileId, rootFolderId);

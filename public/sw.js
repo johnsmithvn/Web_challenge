@@ -90,7 +90,6 @@ const STATIC_PRECACHE = [
   '/',
   '/index.html',
   '/manifest.json',
-  '/favicon.svg',
   '/favicon.png',
   '/apple-touch-icon.png',
   '/pwa-192x192.png',

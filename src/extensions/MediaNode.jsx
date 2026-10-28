@@ -14,26 +14,24 @@ import {
 
 // Regex for Google Drive links, YouTube links, and standard direct audio/video links
 const DRIVE_REGEX = /(https?:\/\/drive\.google\.com\/(?:file\/d\/[a-zA-Z0-9_-]+|open\?id=[a-zA-Z0-9_-]+)[^\s]*)/g;
-const YOUTUBE_REGEX = /(https?:\/\/(?:www\.)?(?:youtube\.com\/(?:[^/]+\/.+\/|(?:v|e(?:mbed)?|shorts)\/|.*[?&]v=)|youtu\.be\/)([^"&? ]{11}))/ig;
+// Ăn hết phần đuôi sau ID (`&list=…&index=…`) — không thì nó sót lại thành dòng chữ riêng sau khối video
+const YOUTUBE_REGEX = /(https?:\/\/(?:www\.)?(?:youtube\.com\/(?:[^/]+\/.+\/|(?:v|e(?:mbed)?|shorts)\/|.*[?&]v=)|youtu\.be\/)([^"&? ]{11})[^\s]*)/ig;
 const AUDIO_REGEX = /(https?:\/\/[^\s]+\.(?:mp3|m4a|ogg|wav|aac|flac|webm)(?:\?[^\s]*)?)/ig;
 const VIDEO_REGEX = /(https?:\/\/[^\s]+\.(?:mp4|webm|ogg|ogv|mov|mkv)(?:\?[^\s]*)?)/ig;
 
 /**
  * React Component for the NodeView wrapper.
  */
-function MediaNodeView({ node, updateAttributes }) {
+function MediaNodeView({ node, updateAttributes, editor }) {
   const { src, title } = node.attrs;
-
-  const handleToggleFormat = (newUrl) => {
-    updateAttributes({ src: newUrl });
-  };
 
   return (
     <NodeViewWrapper className="kb-tiptap-media-wrapper" style={{ margin: '1.25rem 0', display: 'block' }}>
-      <MediaPreview 
-        url={src} 
-        title={title} 
-        onToggleFormat={handleToggleFormat} 
+      <MediaPreview
+        url={src}
+        title={title}
+        // Chỉ khi đang soạn: ở trang đọc đổi attr không được lưu
+        onToggleFormat={editor.isEditable ? (newUrl) => updateAttributes({ src: newUrl }) : undefined}
       />
     </NodeViewWrapper>
   );

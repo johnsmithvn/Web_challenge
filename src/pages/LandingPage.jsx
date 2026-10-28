@@ -4,14 +4,17 @@
  * MODULES là bản đồ workflow gọn trên landing; module mới phải cập nhật cả
  * mảng này và docs/FEATURES.md để copy không lệch source.
  */
-import { useState } from 'react';
+import { lazy, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import AuthModal from '../components/AuthModal';
 import AppIcon from '../components/AppIcon';
-import HomeDashboard from '../components/dashboard/HomeDashboard';
 import '../styles/landing.css';
+
+// Chunk riêng: dashboard kéo theo hook của mọi domain, khách chưa đăng nhập không cần tải.
+// Suspense ở AppShell lo fallback.
+const HomeDashboard = lazy(() => import('../components/dashboard/HomeDashboard'));
 
 const FLOW = [
   { icon: 'inbox', label: 'Ghi vào Inbox', desc: 'Nghĩ ra gì gõ vào đó, chưa cần phân loại' },

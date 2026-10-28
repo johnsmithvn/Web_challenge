@@ -714,7 +714,7 @@ export default function CollectPage() {
             onOpenArticle={openReader}
             onOpenGraph={() => setView('graph')}
             onOpenLinkModal={() => setLinkOpen(true)}
-            onUpdateUrl={(oldUrl, newUrl) => updateItem(selectedArticle.id, { url: newUrl })}
+            onUpdateUrl={url => updateItem(selectedArticle.id, { url })}
           />
         ) : view === 'editor' ? (
           <KBEditorView

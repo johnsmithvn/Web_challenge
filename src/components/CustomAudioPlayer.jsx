@@ -13,8 +13,7 @@ function formatTime(secs) {
 }
 
 /**
- * CustomAudioPlayer — A gorgeous glassmorphic HTML5 audio player.
- * Automatically falls back to Google Drive iframe preview if the direct audio stream fails (CORS/Private).
+ * CustomAudioPlayer — thanh phát audio HTML5 của Knowledge (MediaPreview).
  */
 const stringifyChildren = (children) => {
   if (!children) return '';
@@ -24,14 +23,13 @@ const stringifyChildren = (children) => {
   return '';
 };
 
-function CustomAudioPlayer({ src, fallbackUrl, title }) {
+function CustomAudioPlayer({ src, title }) {
   const [isPlaying, setIsPlaying] = useState(false);
   const [duration, setDuration] = useState(0);
   const [currentTime, setCurrentTime] = useState(0);
   const [volume, setVolume] = useState(0.8);
   const [isMuted, setIsMuted] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const [hasError, setHasError] = useState(false);
 
   const audioRef = useRef(null);
 
@@ -64,7 +62,6 @@ function CustomAudioPlayer({ src, fallbackUrl, title }) {
     if (audioRef.current) {
       setDuration(audioRef.current.duration);
       setIsLoading(false);
-      setHasError(false);
     }
   };
 
@@ -77,41 +74,15 @@ function CustomAudioPlayer({ src, fallbackUrl, title }) {
   };
 
   const handleError = () => {
-    logger.warn("Direct audio streaming failed, falling back to iframe:", src);
+    logger.warn('Audio load failed:', src);
     setIsLoading(false);
-    // Only fall back to iframe if a fallbackUrl is available
-    if (fallbackUrl) {
-      setHasError(true);
-    } else {
-      // Direct file error
-      setDuration(0);
-    }
+    setDuration(0);
   };
-
-  // If the stream fails and we have a Google Drive fallback URL, render the iframe
-  if (hasError && fallbackUrl) {
-    return (
-      <div className="kb-custom-audio-player card kb-audio-player--iframe-fallback">
-        <iframe
-          src={fallbackUrl}
-          width="100%"
-          height="80px"
-          style={{ 
-            border: 'none', 
-            borderRadius: '8px', 
-            overflow: 'hidden'
-          }}
-          allow="autoplay"
-          title={title || 'Google Drive Media'}
-        />
-      </div>
-    );
-  }
 
   const progressPercent = duration > 0 ? (currentTime / duration) * 100 : 0;
 
   return (
-    <div className="kb-custom-audio-player card">
+    <div className="kb-custom-audio-player">
       <audio
         ref={audioRef}
         src={src}
@@ -160,7 +131,7 @@ function CustomAudioPlayer({ src, fallbackUrl, title }) {
             onChange={handleProgressChange}
             className="kb-audio-slider"
             style={{
-              background: `linear-gradient(to right, var(--cyan) 0%, var(--cyan) ${progressPercent}%, rgba(255,255,255,0.1) ${progressPercent}%, rgba(255,255,255,0.1) 100%)`
+              background: `linear-gradient(to right, var(--kb-accent) ${progressPercent}%, var(--kb-line) ${progressPercent}%)`
             }}
           />
         </div>
@@ -188,7 +159,7 @@ function CustomAudioPlayer({ src, fallbackUrl, title }) {
             }}
             className="kb-audio-volume-slider"
             style={{
-              background: `linear-gradient(to right, var(--text-secondary) 0%, var(--text-secondary) ${(isMuted ? 0 : volume) * 100}%, rgba(255,255,255,0.1) ${(isMuted ? 0 : volume) * 100}%, rgba(255,255,255,0.1) 100%)`
+              background: `linear-gradient(to right, var(--kb-dim) ${(isMuted ? 0 : volume) * 100}%, var(--kb-line) ${(isMuted ? 0 : volume) * 100}%)`
             }}
           />
         </div>
@@ -200,7 +171,6 @@ function CustomAudioPlayer({ src, fallbackUrl, title }) {
 const MemoizedCustomAudioPlayer = React.memo(CustomAudioPlayer, (prev, next) => {
   return (
     prev.src === next.src &&
-    prev.fallbackUrl === next.fallbackUrl &&
     stringifyChildren(prev.title) === stringifyChildren(next.title)
   );
 });

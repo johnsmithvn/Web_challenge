@@ -472,7 +472,8 @@ const isFacebookHost = host => host === 'facebook.com' || host === 'fb.com' || h
 
 /**
  * What an item is, for icons and the "Loại" filter.
- * `quote` wins over the url; Drive links follow MediaPreview (audio unless #video).
+ * `quote` wins over the url; Drive links: audio unless #video — a guess, MediaPreview asks
+ * /api/stream?meta=1 for the real type, so a Drive video without #video shows as a player but counts as audio here.
  * @returns {'repo'|'video'|'fb'|'audio'|'article'|'note'|'quote'}
  */
 export function contentKind(item) {

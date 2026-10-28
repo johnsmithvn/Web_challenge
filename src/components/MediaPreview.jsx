@@ -1,21 +1,8 @@
-import React from 'react';
-import { extractDriveFileId, getMediaType, getYoutubeEmbedUrl, extractDriveDirectUrl, getDriveStreamUrl } from '../utils/mediaUtils';
+import React, { useEffect, useState } from 'react';
+import { extractDriveFileId, getMediaType, getYoutubeEmbedUrl, getDriveStreamUrl, stripMediaTag } from '../utils/mediaUtils';
 import CustomAudioPlayer from './CustomAudioPlayer';
 import AppIcon from './AppIcon';
 
-/**
- * MediaPreview — Shared component for rendering Google Drive, YouTube, or standard media links (Audio/Video).
- * Bypasses CORS/third-party cookie restrictions by embedding Drive links via iframe previews,
- * and renders compact player bars for audio files.
- *
- * @param {Object} props
- * @param {string} props.url - The file/media URL
- * @param {string} [props.type] - The note/article type (e.g. 'podcast')
- * @param {string} [props.title] - Media title/label
- * @param {Object} [props.style] - Custom styles
- * @param {string} [props.className] - Custom class name
- * @param {Function} [props.onToggleFormat] - Callback when media type is toggled manually
- */
 const stringifyChildren = (children) => {
   if (!children) return '';
   if (typeof children === 'string') return children;
@@ -24,177 +11,97 @@ const stringifyChildren = (children) => {
   return '';
 };
 
-function MediaPreview({ url, title, style, className, onToggleFormat }) {
-  if (!url) return null;
+/**
+ * Drive: hỏi `/api/stream?meta=1` loại file và proxy có stream được không.
+ * Stream được → trình phát của app (thanh audio / <video>); không → iframe Drive cỡ theo loại.
+ * Không biết loại (file riêng tư, hoặc `npm run dev` không có api/) → iframe + nút chọn tay, lưu bằng #video.
+ */
+function DriveMedia({ url, title, onToggleFormat }) {
+  const streamUrl = getDriveStreamUrl(url);
+  const [meta, setMeta] = useState(); // undefined = đang hỏi, null = không biết
 
-  const mediaType = getMediaType(url);
+  useEffect(() => {
+    let alive = true;
+    fetch(`${streamUrl}&meta=1`)
+      .then(r => (r.ok ? r.json() : null))
+      .catch(() => null)
+      .then(m => { if (alive) setMeta(m?.mimeType ? m : null); });
+    return () => { alive = false; };
+  }, [streamUrl]);
 
-  const handleToggle = (format) => {
-    if (!onToggleFormat) return;
-    const cleanUrl = url.split('#')[0];
-    let newUrl = cleanUrl;
-    if (format === 'audio') newUrl += '#audio';
-    if (format === 'video') newUrl += '#video';
-    onToggleFormat(newUrl);
-  };
+  if (meta === undefined) return <div className="kb-media-pending" aria-busy="true" />;
 
-  const renderToggleBar = () => {
-    if (!onToggleFormat) return null;
-    const hasVideoTag = url.includes('#video');
+  const isAudio = meta?.mimeType.startsWith('audio/');
+  const isVideo = meta?.mimeType.startsWith('video/');
+  if (meta?.streamable && isAudio) return <CustomAudioPlayer src={streamUrl} title={title} />;
+  if (meta?.streamable && isVideo) return <video className="kb-media-video" src={streamUrl} controls preload="metadata" playsInline />;
 
-    // Show format toggles for Drive and direct Audio/Video links (Audio + Video only, no Drive)
-    if (mediaType !== 'drive' && mediaType !== 'audio' && mediaType !== 'video') {
-      return null;
-    }
+  // Ảnh / PDF trên Drive cũng vào khung 16:9 — chỉ audio mới cần khung thấp
+  const asVideo = meta ? !isAudio : url.includes('#video');
+  const pick = (format) => onToggleFormat(`${stripMediaTag(url)}#${format}`);
 
-    return (
-      <div className="kb-media-toggle-bar">
-        <span className="kb-media-toggle-label">Định dạng:</span>
-        <button
-          type="button"
-          className={`kb-media-toggle-btn${!hasVideoTag ? ' kb-media-toggle-btn--active' : ''}`}
-          onClick={() => handleToggle('audio')}
-        >
-          <AppIcon name="headphones" size={14} /> Dạng audio
-        </button>
-        <button
-          type="button"
-          className={`kb-media-toggle-btn${hasVideoTag ? ' kb-media-toggle-btn--active' : ''}`}
-          onClick={() => handleToggle('video')}
-        >
-          <AppIcon name="video" size={14} /> Dạng video
-        </button>
-      </div>
-    );
-  };
+  return (
+    <div className={`kb-drive${asVideo ? ' kb-drive--video' : ''}`}>
+      <iframe
+        className="kb-drive__frame"
+        src={`https://drive.google.com/file/d/${extractDriveFileId(url)}/preview`}
+        allow="autoplay"
+        allowFullScreen
+        title={stringifyChildren(title) || 'Google Drive'}
+      />
+      {!meta && onToggleFormat && (
+        <div className="kb-seg kb-seg--quiet" role="group" aria-label="Kiểu khung">
+          <button type="button" className={`kb-seg__item${asVideo ? '' : ' is-active'}`} aria-pressed={!asVideo} onClick={() => pick('audio')}>
+            <AppIcon name="headphones" size={14} /> Audio
+          </button>
+          <button type="button" className={`kb-seg__item${asVideo ? ' is-active' : ''}`} aria-pressed={asVideo} onClick={() => pick('video')}>
+            <AppIcon name="video" size={14} /> Video
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
 
-  switch (mediaType) {
-    case 'youtube': {
-      const embedUrl = getYoutubeEmbedUrl(url);
-      if (!embedUrl) return null;
+/**
+ * MediaPreview — YouTube, Google Drive, hoặc link audio/video trực tiếp, dùng chung cho trang đọc và Tiptap.
+ *
+ * @param {Object} props
+ * @param {string} props.url - Link media
+ * @param {string} [props.title] - Tên hiện trên thanh audio
+ * @param {Function} [props.onToggleFormat] - Lưu link mới khi user chọn tay Audio/Video (chỉ Drive không rõ loại)
+ */
+function MediaPreview({ url, title, onToggleFormat }) {
+  switch (getMediaType(url)) {
+    case 'youtube':
       return (
-        <div className={`kb-video-embed ${className || ''}`} style={style}>
+        <div className="kb-video-embed">
           <iframe
-            src={embedUrl}
-            title={title || 'YouTube Video'}
+            src={getYoutubeEmbedUrl(url)}
+            title={stringifyChildren(title) || 'YouTube Video'}
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
             allowFullScreen
           />
         </div>
       );
-    }
 
-    case 'drive': {
-      const driveFileId = extractDriveFileId(url);
-      if (!driveFileId) return null;
-      const isVideo = url.includes('#video');
-      
-      // Default: render as audio player using proxy stream to bypass CORS.
-      // Primary src = /api/stream?id=xxx (our proxy, enables custom player).
-      // Fallback = Drive iframe preview (if proxy is unavailable).
-      if (!isVideo) {
-        const proxyUrl = getDriveStreamUrl(url);
-        const fallbackUrl = `https://drive.google.com/file/d/${driveFileId}/preview`;
-        return (
-          <div className={`${className || ''}`} style={{ margin: '1rem 0', ...style }}>
-            <CustomAudioPlayer 
-              src={proxyUrl || extractDriveDirectUrl(url) || url} 
-              fallbackUrl={fallbackUrl} 
-              title={title} 
-            />
-            {renderToggleBar()}
-          </div>
-        );
-      }
-      
-      // Explicit #video tag: render Drive iframe for video preview
-      return (
-        <div 
-          className={`kb-audio-player ${className || ''}`} 
-          style={{ background: 'none', padding: 0, border: 'none', margin: '1rem 0', ...style }}
-        >
-          <iframe
-            src={`https://drive.google.com/file/d/${driveFileId}/preview`}
-            width="100%"
-            height="360"
-            style={{ 
-              border: '1px solid rgba(255,255,255,0.08)', 
-              borderRadius: '8px', 
-              background: '#000', 
-              boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-              transition: 'height 0.3s ease'
-            }}
-            allow="autoplay"
-            allowFullScreen
-            title={title || 'Google Drive Video'}
-          />
-          {title && (
-            <span 
-              className="kb-audio-player__label" 
-              style={{ marginTop: '0.5rem', display: 'block' }}
-            >
-              {title}
-            </span>
-          )}
-          {renderToggleBar()}
-        </div>
-      );
-    }
+    case 'drive':
+      // key: đổi file thì dựng lại, không hiện meta của file trước
+      return <DriveMedia key={extractDriveFileId(url)} url={url} title={title} onToggleFormat={onToggleFormat} />;
 
-    case 'audio': {
-      return (
-        <div className={`${className || ''}`} style={{ margin: '1rem 0', ...style }}>
-          <CustomAudioPlayer 
-            src={url.split('#')[0]} 
-            title={title} 
-          />
-          {renderToggleBar()}
-        </div>
-      );
-    }
+    case 'audio':
+      return <CustomAudioPlayer src={stripMediaTag(url)} title={title} />;
 
-    case 'video': {
-      return (
-        <div className={`kb-audio-player ${className || ''}`} style={{ background: 'none', padding: 0, border: 'none', margin: '1rem 0', ...style }}>
-          <video 
-            controls 
-            src={url.split('#')[0]} 
-            preload="metadata" 
-            style={{ 
-              width: '100%', 
-              maxHeight: '400px', 
-              borderRadius: '8px', 
-              background: '#000',
-              border: '1px solid rgba(255,255,255,0.08)',
-              boxShadow: '0 4px 12px rgba(0,0,0,0.15)'
-            }} 
-          />
-          {title && (
-            <span 
-              className="kb-audio-player__label" 
-              style={{ marginTop: '0.5rem', display: 'block' }}
-            >
-              {title}
-            </span>
-          )}
-          {renderToggleBar()}
-        </div>
-      );
-    }
+    case 'video':
+      return <video className="kb-media-video" src={stripMediaTag(url)} controls preload="metadata" playsInline />;
 
     default:
       return null;
   }
 }
 
-const MemoizedMediaPreview = React.memo(MediaPreview, (prev, next) => {
-  return (
-    prev.url === next.url &&
-    prev.type === next.type &&
-    prev.className === next.className &&
-    JSON.stringify(prev.style) === JSON.stringify(next.style) &&
-    stringifyChildren(prev.title) === stringifyChildren(next.title)
-  );
-});
+const MemoizedMediaPreview = React.memo(MediaPreview, (prev, next) => (
+  prev.url === next.url && stringifyChildren(prev.title) === stringifyChildren(next.title)
+));
 
 export default MemoizedMediaPreview;

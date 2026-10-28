@@ -166,7 +166,9 @@ Chi tiết mật mã: [`DESIGN_ACCOUNT_VAULT.md`](DESIGN_ACCOUNT_VAULT.md).
 
 `UrlInputPopover`/Tiptap gửi multipart cùng Supabase access token tới `api/upload.js`. Function xác
 thực user, upload vào thư mục Drive được cấu hình và trả URL. `api/stream.js` xác minh file thuộc
-`DRIVE_FOLDER_ID`, lấy token readonly và proxy Range/seek. Hai function dùng rate limit in-memory theo
+`DRIVE_FOLDER_ID`, lấy token readonly và proxy Range/seek. `?meta=1` chỉ trả `{ mimeType, streamable }`
+(không nội dung, không giới hạn folder — ngoài folder service account chỉ thấy file chia sẻ bằng link) để
+`MediaPreview` chọn trình phát audio / video hoặc iframe Drive. Hai function dùng rate limit in-memory theo
 instance; đây không phải quota phân tán toàn hệ thống.
 
 ## Browser storage đang dùng

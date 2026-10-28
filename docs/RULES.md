@@ -122,7 +122,8 @@ password.
 - `VITE_*` được đưa vào browser; chỉ dùng giá trị public phù hợp.
 - `GOOGLE_SERVICE_ACCOUNT_JSON`, `DRIVE_FOLDER_ID`, `ALLOWED_ORIGIN` là server-side.
 - Upload phải xác thực Supabase JWT.
-- Stream chỉ phục vụ file dưới folder được cấu hình và giữ Range semantics.
+- Stream chỉ phục vụ file dưới folder được cấu hình và giữ Range semantics. `?meta=1` chỉ được trả
+  `mimeType` + `streamable`, không bao giờ trả nội dung file.
 - Retry, pagination và loop luôn bounded; write không idempotent không retry mù.
 
 ## 9. XP và Task log

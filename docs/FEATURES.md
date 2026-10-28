@@ -431,8 +431,12 @@ Module quản lý toàn diện thể trạng và rèn luyện thể chất, tuâ
 ## 10. Media, widget và PWA
 
 - `api/upload.js`: authenticated multipart upload vào Google Drive folder đã cấu hình.
-- `api/stream.js`: folder-scoped readonly proxy, hỗ trợ HTTP Range/seek cho media.
-- `GlobalAudioPlayer`: tiếp tục phát khi đổi page; `CustomAudioPlayer` dùng cho audio inline.
+- `api/stream.js`: folder-scoped readonly proxy, hỗ trợ HTTP Range/seek cho media; `?meta=1` trả
+  `{ mimeType, streamable }`.
+- `MediaPreview` (Knowledge): media Drive tự chọn dạng theo `?meta=1` — stream được thì `CustomAudioPlayer`
+  (audio) hoặc `<video>` đúng tỉ lệ file; không thì iframe Drive (audio khung thấp, còn lại 16:9). Không biết
+  loại (file Drive riêng tư) → nút chọn tay Audio / Video, chỉ hiện ở link chính của bài và khi đang soạn.
+- `GlobalAudioPlayer`: tiếp tục phát khi đổi page.
 - Manifest + service worker cung cấp install metadata/cache cơ bản và Task notification best-effort.
 
 ## Routes cũ

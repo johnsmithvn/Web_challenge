@@ -46,27 +46,32 @@ function PageMeta() {
     : pathname.startsWith('/body')
     ? ROUTE_META['/body']
     : ROUTE_META[pathname] || ROUTE_META['/'];
-  document.title = meta.title;
-  const descEl = document.querySelector('meta[name="description"]');
-  if (descEl) descEl.setAttribute('content', meta.desc);
+  useEffect(() => {
+    document.title = meta.title;
+    const descEl = document.querySelector('meta[name="description"]');
+    if (descEl) descEl.setAttribute('content', meta.desc);
+  }, [meta]);
   return null;
 }
 
 // ── App Shell ──────────────────────────────────────────────────────
 function AppShell() {
   const { user, loading: authLoading } = useAuth();
-  const domainTransitionKey = location.pathname.startsWith('/body')
+  const { pathname } = useLocation();
+  const domainTransitionKey = pathname.startsWith('/body')
     ? '/body'
-    : location.pathname.startsWith('/finance')
+    : pathname.startsWith('/finance')
     ? '/finance'
-    : location.pathname;
+    : pathname;
 
   return (
     <>
       <PageMeta />
       <Navbar />
       <QuickCapture />
-      <GlobalAudioPlayer />
+      {/* Podcast lấy từ Knowledge (auth-only): khách không mount → không query; key theo user
+          để đăng xuất / đổi tài khoản không giữ podcast của người trước. */}
+      {user && <GlobalAudioPlayer key={user.id} />}
 
       <div className="app-content">
         <ErrorBoundary>

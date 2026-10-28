@@ -279,11 +279,12 @@ export default function KBReaderView({
     },
     a: ({ href, children }) => {
       if (href && /youtube\.com|youtu\.be|\.(mp3|m4a|ogg|wav|aac|flac)(\?|$)|drive\.google\.com/i.test(href)) {
-        return <MediaPreview url={href} title={children} onToggleFormat={onUpdateUrl ? (newUrl) => onUpdateUrl(href, newUrl) : undefined} />;
+        // Không có nút chọn Audio/Video: link nằm trong thân bài, chọn ở đây không lưu được
+        return <MediaPreview url={href} title={children} />;
       }
       return <a href={href} target="_blank" rel="noopener noreferrer">{children}</a>;
     },
-  }), [allArticles, onOpenArticle, onUpdateUrl]);
+  }), [allArticles, onOpenArticle]);
 
   // Sub-note handlers
   const handleAddNote = async () => {
@@ -393,7 +394,7 @@ export default function KBReaderView({
             {/* Media preview block if url exists */}
             {article.url && (
               <div className="kb-reader__media">
-                <MediaPreview url={article.url} type={article.type} onToggleFormat={onUpdateUrl} />
+                <MediaPreview url={article.url} onToggleFormat={onUpdateUrl} />
               </div>
             )}
 
