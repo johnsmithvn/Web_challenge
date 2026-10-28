@@ -1070,7 +1070,9 @@ Types/Tags filter bar is gone.
   `.acc-head` is transparent with no bottom rule, like Knowledge (Body's `.body-header` /
   `.body-mhead` too). Group column, sticky list head and every panel keep their solid
   `--surface` / `--color-bg`, so small mono text stays crisp; the sky shows behind the header,
-  list rows and around detail panels.
+  list rows and around detail panels. On desktop the search (`.acc-search`, 260px) sits on the
+  right next to the action buttons, leaving the middle of the header open so the moon
+  (fixed ~436px from the left) and its lunar-date label stay visible.
 - **This module owns a scoped token set — one of two deliberate domain
   exceptions alongside Finance Nocturne (`--n-*`).** Everything inside Vault reads its
   own tokens instead of `--purple` / `--radius-*` from `global.css`; the vault declares a
@@ -1416,7 +1418,7 @@ Knowledge có contract riêng, scoped trên `.kb-page`; không dùng glass/gradi
 
 Trang Nhiệm vụ dùng bộ token riêng `--tk-*`, khai báo trên `.tasks-workspace`
 theo `[data-theme]`: tối = mockup 2a (mint `#5EF2C2`, nền trời `#0C1634→#060914`), sáng = mockup 2b
-(violet `#7C3AED`, nền `#F4F2FF`). Nền trời do `SkyBackground.jsx` + `sky.css` vẽ (dùng chung với Knowledge, Body, Tài khoản — bản `calm`, nền gốc
+(violet `#7C3AED`, nền `#F4F2FF`). Nền trời do `SkyBackground.jsx` + `sky.css` vẽ (dùng chung với Knowledge, Body, Tài khoản, Tài chính — bản `calm`, nền gốc
 `--sky-base` — và FX Lab):
 tối = aurora, Ngân Hà, 4 lớp sao, sao băng vệt sáng mint (góc 32°, lấy từ bản thiết kế Kiến Thức), sao chổi; desktop thêm trăng đúng pha âm lịch hôm nay,
 sao sáng 4 cánh, 6 chòm sao lần lượt hiện (chu kỳ 150s) và chân trời hành tinh.

@@ -26,7 +26,9 @@
   flex-direction: column;
   height: 100dvh;
   min-height: 0;
-  background: var(--n-bg); color: var(--n-txt);
+  /* Nền trời chung (sky.css) — SkyBackground là con đầu, .fin-content / .fin-gate relative để vẽ đè lên */
+  position: relative;
+  background: var(--sky-base); color: var(--n-txt);
   font-family: var(--font-body), system-ui, sans-serif; font-size: 13.5px; font-weight: 400;
   border-radius: 0; overflow: hidden; margin: 0;
   font-variant-numeric: tabular-nums;
@@ -84,11 +86,6 @@
   --n-kind-loan: #d9822b; --n-kind-loan-soft: rgba(217,130,43,0.12);
   --n-kind-save: #2f8a57; --n-kind-save-soft: rgba(47,138,87,0.12);
   --n-kind-lend: #0e9384; --n-kind-lend-soft: rgba(14,147,132,0.12);
-}
-
-[data-theme="light"] .fin-header {
-  background: rgba(255, 255, 255, 0.9);
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
 }
 
 [data-theme="light"] .fin-card {
@@ -179,18 +176,13 @@
   min-height: 0;
   min-width: 0;
   overflow: hidden;
+  position: relative; /* không z-index: vẽ trên lớp trời mà không tạo stacking context */
 }
+/* Trong suốt trên nền trời như Kiến thức */
 .fin-header {
   display: flex; align-items: center; gap: 10px;
   position: relative; z-index: 5; min-height: 64px; padding: 11px 22px;
-  background: rgba(16,18,28,.92); backdrop-filter: blur(16px);
-  border-bottom: 1px solid var(--n-border);
-  box-shadow: 0 8px 24px rgba(4,5,12,.16);
   flex-shrink: 0;
-}
-[data-theme="light"] .fin-header {
-  background: rgba(255, 255, 255, 0.9);
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
 }
 .fin-header__brand { display: flex; align-items: center; gap: 12px; margin-right: auto; min-width: 0; }
 .fin-header__copy { min-width: 0; }
@@ -610,7 +602,7 @@ select.fin-input { color-scheme: dark; cursor: pointer; }
 .fin-form__more { display: grid; gap: 10px; padding: 12px; border: 1px solid var(--n-border); border-radius: var(--n-r); background: rgba(10,11,18,.2); animation: fin-rise .16s ease both; }
 
 .finance-module--gate { display: grid; min-height: calc(100vh + .5rem); place-items: center; padding: 24px; }
-.finance-module--gate .fin-gate { padding: 18px 22px; border: 1px solid var(--n-border); border-radius: var(--n-r-lg); background: var(--n-card); box-shadow: 0 16px 40px rgba(4,5,12,.24); color: var(--n-txt2); }
+.finance-module--gate .fin-gate { position: relative; padding: 18px 22px; border: 1px solid var(--n-border); border-radius: var(--n-r-lg); background: var(--n-card); box-shadow: 0 16px 40px rgba(4,5,12,.24); color: var(--n-txt2); }
 
 .fin-saving-toggle { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 11px; margin-bottom: 14px; padding: 12px 14px; border: 1px solid var(--n-border); border-radius: var(--n-r-lg); background: var(--n-card); cursor: pointer; transition: border-color .15s ease, background .15s ease; }
 .fin-saving-toggle:hover { border-color: color-mix(in srgb, var(--n-accent) 55%, var(--n-border)); }

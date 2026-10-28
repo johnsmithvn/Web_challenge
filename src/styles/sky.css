@@ -1,11 +1,11 @@
 /* ==========================================================================
-   sky.css — Nền trời dùng chung (SkyBackground.jsx): Nhiệm vụ, Kiến thức, Body, Tài khoản, FX Lab.
+   sky.css — Nền trời dùng chung (SkyBackground.jsx): Nhiệm vụ, Kiến thức, Body, Tài khoản, Tài chính, FX Lab.
    Tối: cực quang, Ngân Hà, sao, sao băng, sao chổi, trăng âm lịch, chòm sao.
    Sáng: bình minh (trước 12h) / hoàng hôn (.is-dusk, từ 12h).
    Tên class giữ tiền tố task- lịch sử (Rừng tiên trong tasks-elf.css ghi đè theo tên này).
    ========================================================================== */
 
-/* Nền gốc tĩnh dưới lớp trời — khung trang đặt `background: var(--sky-base)` (Kiến thức, Body, Tài khoản).
+/* Nền gốc tĩnh dưới lớp trời — khung trang đặt `background: var(--sky-base)` (Kiến thức, Body, Tài khoản, Tài chính).
    Nhiệm vụ có nền gốc riêng trong tasks-aurora.css. */
 :root { --sky-base: radial-gradient(120% 80% at 70% -10%, #0E1B40 0%, #070B18 45%, #04060D 100%); }
 [data-theme="light"] { --sky-base: linear-gradient(180deg, #F7F5FF 0%, #F4F2FF 60%, #EFEDFF 100%); }

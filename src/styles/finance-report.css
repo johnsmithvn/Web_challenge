@@ -6,16 +6,13 @@
    and desktop popover / mobile bottom sheet for Card Manager.
    ========================================================================== */
 
+/* Không còn "tấm" riêng: thẻ nằm thẳng trên nền trời của Finance (finance.css .finance-module) */
 .fin-report {
   display: flex;
   flex-direction: column;
-  background: #F7F6F3;
-  border: 1px solid #E8E7E2;
-  border-radius: 18px;
   font-family: 'Be Vietnam Pro', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   color: #15161A;
   min-height: 100%;
-  box-shadow: 0 1px 2px rgba(16, 17, 20, 0.06), 0 24px 60px -16px rgba(16, 17, 20, 0.18);
   position: relative;
   box-sizing: border-box;
 }
@@ -1834,15 +1831,6 @@
 }
 
 @media (max-width: 768px) {
-  /* Mobile: báo cáo không còn là "tấm" riêng — thẻ nằm thẳng trên nền module, chỉ chừa lề 12px
-     của .fin-screen. Trước thân báo cáo lùi thêm 18px mỗi bên → thẻ cách mép 30px, nội dung hẹp. */
-  .fin-report {
-    border: none;
-    border-radius: 0;
-    box-shadow: none;
-    background: transparent;
-  }
-
   .fin-report__header {
     height: auto;
     padding: 0 0 12px;
@@ -2063,10 +2051,7 @@
   --rp-must: #6e7287;
   --rp-want: #4a4436;
   --rp-want-cur: #a88d5a;
-  background: var(--n-bg);
-  border-color: var(--n-border);
   color: var(--n-txt);
-  box-shadow: none;
 }
 
 /* Bề mặt thẻ / nút / popover */

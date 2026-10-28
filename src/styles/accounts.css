@@ -280,11 +280,13 @@
 }
 .acc-brand__vault::before { content: '/ '; }
 
-.acc-search { position: relative; flex: 1 1 auto; max-width: 420px; }
+/* Ô tìm nằm bên phải, sát cụm nút: khoảng trống giữa thanh để lộ mặt trăng của nền trời
+   (trăng cố định ~436px từ mép trái). Vault hẹp thì trăng vẫn khuất sau ô tìm — chấp nhận. */
+.acc-search { position: relative; flex: 0 1 260px; margin-left: auto; }
 .acc-search svg { position: absolute; left: 9px; top: 11px; opacity: .5; pointer-events: none; }
 .acc-search .acc-input { padding-left: 30px; }
 
-.acc-head__right { margin-left: auto; display: flex; align-items: center; gap: 10.2px; }
+.acc-head__right { display: flex; align-items: center; gap: 10.2px; }
 /* Thanh "‹ Vault · Email 3" của màn list trên mobile — desktop không dùng */
 .acc-head__nav { display: none; flex: 1; min-width: 0; align-items: center; gap: 2px; }
 .acc-head__back {
@@ -1517,10 +1519,10 @@ button.acc-guard:hover { border-color: var(--color-accent-300); }
      bàn phím. "Đổi mật khẩu" + badge AES-GCM không còn chỗ: nút đổi mật khẩu
      xuống cuối màn Vault (.acc-groups__passphrase). */
   .acc-head { flex-wrap: wrap; gap: 8px; padding: 6px 8px 10px 13.6px; }
-  .acc-search { order: 3; flex-basis: 100%; max-width: none; width: 100%; margin-right: 5.6px; }
+  .acc-search { order: 3; flex-basis: 100%; width: 100%; margin: 0 5.6px 0 0; }
   .acc-head__secure-tip,
   .acc-head__right > .acc-act:not(.acc-head__icon) { display: none; }
-  .acc-head__right { gap: 4px; }
+  .acc-head__right { gap: 4px; margin-left: auto; }
   .acc-vault .acc-head .acc-head__icon { width: 44px; height: 44px; min-height: 44px; padding: 0; justify-content: center; }
   .acc-head .acc-head__icon.acc-act { border-color: transparent; }
   .acc-head__label {

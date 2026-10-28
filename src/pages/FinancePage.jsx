@@ -7,6 +7,8 @@ import {
   listPeriodOptions, currentMonthPeriod, periodFromKey,
 } from '../utils/financeLogic';
 import AppIcon from '../components/AppIcon';
+import SkyBackground from '../components/SkyBackground';
+import { useIsMobile } from '../hooks/useIsMobile';
 import OverviewScreen from '../components/finance/OverviewScreen';
 import AddScreen from '../components/finance/AddScreen';
 import ListScreen from '../components/finance/ListScreen';
@@ -34,6 +36,7 @@ export default function FinancePage() {
   const location = useLocation();
   const navigate = useNavigate();
   const { screen: routeScreen } = useParams();
+  const isMobile = useIsMobile();
 
   // `fin.dataFrom` = mốc đầu cửa sổ giao dịch đã fetch. Truyền xuống để "Tất cả"
   // và bộ chọn kỳ chỉ hứa đúng phần dữ liệu đang có trong state.
@@ -133,6 +136,7 @@ export default function FinancePage() {
   if (!fin.enabled) {
     return (
       <div className="finance-module finance-module--gate">
+        <SkyBackground isMobile={isMobile} calm />
         <div className="fin-gate"><AppIcon name="lock" size={22} /> Đăng nhập để dùng Chi tiêu</div>
       </div>
     );
@@ -154,6 +158,8 @@ export default function FinancePage() {
 
   return (
     <div className="finance-module">
+      {/* Dùng chung nền trời với Kiến thức, Body, Tài khoản */}
+      <SkyBackground isMobile={isMobile} calm />
       <section className="fin-content">
         {/* Định kỳ & Quỹ tự có header (tiêu đề · tháng · Thêm nguồn chi) theo bản chốt. */}
         {screen !== 'list' && screen !== 'overview' && screen !== 'recurring' && (

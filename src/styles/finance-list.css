@@ -78,17 +78,15 @@
   --nhip-color-scheme: dark;
 }
 
+/* Không còn "tấm" riêng: header, thanh lọc, biểu đồ nằm thẳng trên nền trời của Finance
+   (finance.css .finance-module); nút, ô tìm, thẻ giao dịch giữ nền đặc. */
 .fin-nhipchi {
   display: flex;
   flex-direction: column;
-  background: var(--nhip-bg);
-  border: 1px solid var(--nhip-border);
-  border-radius: 16px;
   overflow: visible;
   font-family: 'Be Vietnam Pro', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   color: var(--nhip-txt);
   min-height: 100%;
-  box-shadow: var(--nhip-shadow-card);
 }
 
 /* --------------------------------------------------------------------------
@@ -101,9 +99,6 @@
   align-items: center;
   justify-content: space-between;
   padding: 0 32px;
-  border-bottom: 1px solid var(--nhip-border);
-  background: var(--nhip-card);
-  border-radius: 15px 15px 0 0;
 }
 
 .fin-nhipchi__header-title-wrap {
@@ -197,8 +192,6 @@
   align-items: center;
   gap: 10px;
   padding: 14px 32px;
-  border-bottom: 1px solid var(--nhip-border);
-  background: var(--nhip-card);
   position: relative;
   z-index: 40;
   overflow: visible;
@@ -487,8 +480,6 @@
 .fin-nhipchi__spark-section {
   flex: none;
   padding: 20px 32px 18px;
-  border-bottom: 1px solid var(--nhip-border);
-  background: var(--nhip-card);
 }
 
 .fin-nhipchi__bars {
