@@ -408,11 +408,6 @@ function Vault() {
     <div className="acc-vault" data-screen={screen} data-view={view === 'money' ? 'money' : undefined}>
       {/* ── Header ── */}
       <header className="acc-head">
-        <div className="acc-brand">
-          <span className="acc-brand__name">Keyplate</span>
-          <span className="acc-brand__vault">Vault 01</span>
-        </div>
-
         {/* Thanh điều hướng màn 'list' trên mobile (M2) — CSS ẩn ở desktop và ở các màn khác */}
         <div className="acc-head__nav">
           <button type="button" className="acc-head__back" onClick={() => setScreen('home')}>

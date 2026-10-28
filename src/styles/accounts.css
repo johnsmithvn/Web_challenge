@@ -272,21 +272,16 @@
   display: flex; align-items: center; gap: 16px;
   padding: 10px 18px;
 }
-.acc-brand { display: flex; align-items: baseline; gap: 8px; flex: none; }
+/* Tên thương hiệu — giờ chỉ còn ở màn mở khoá / chưa đăng nhập */
 .acc-brand__name { font-size: 15px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
-.acc-brand__vault {
-  font-family: var(--acc-mono); font-size: 12px;
-  color: color-mix(in srgb, var(--color-text) 64%, transparent);
-}
-.acc-brand__vault::before { content: '/ '; }
 
-/* Ô tìm nằm bên phải, sát cụm nút: khoảng trống giữa thanh để lộ mặt trăng của nền trời
-   (trăng cố định ~436px từ mép trái). Vault hẹp thì trăng vẫn khuất sau ô tìm — chấp nhận. */
-.acc-search { position: relative; flex: 0 1 260px; margin-left: auto; }
+/* Ô tìm đầu thanh, gọn 260px: khoảng trống giữa thanh để lộ trăng của nền trời
+   (cố định ~436px từ mép trái) + chữ âm lịch. */
+.acc-search { position: relative; flex: 0 1 260px; }
 .acc-search svg { position: absolute; left: 9px; top: 11px; opacity: .5; pointer-events: none; }
 .acc-search .acc-input { padding-left: 30px; }
 
-.acc-head__right { display: flex; align-items: center; gap: 10.2px; }
+.acc-head__right { margin-left: auto; display: flex; align-items: center; gap: 10.2px; }
 /* Thanh "‹ Vault · Email 3" của màn list trên mobile — desktop không dùng */
 .acc-head__nav { display: none; flex: 1; min-width: 0; align-items: center; gap: 2px; }
 .acc-head__back {
@@ -1514,22 +1509,21 @@ button.acc-guard:hover { border-color: var(--color-accent-300); }
    @container, KHÔNG @media — đo bề rộng của vault chứ không của viewport
    (xem chú thích `container-type` ở đầu file). */
 @container (max-width: 899px) {
-  /* ── Header: M1 = brand + Lock + "+", M2 = "‹ Vault · Email 3" + "+", M3 = ẩn.
+  /* ── Header: M1 = Lock + "+", M2 = "‹ Vault · Email 3" + "+", M3 = ẩn.
      Ô tìm kiếm ở lại header qua cả M1 lẫn M2 nên gõ dở mà đổi màn không mất
      bàn phím. "Đổi mật khẩu" + badge AES-GCM không còn chỗ: nút đổi mật khẩu
      xuống cuối màn Vault (.acc-groups__passphrase). */
   .acc-head { flex-wrap: wrap; gap: 8px; padding: 6px 8px 10px 13.6px; }
-  .acc-search { order: 3; flex-basis: 100%; width: 100%; margin: 0 5.6px 0 0; }
+  .acc-search { order: 3; flex-basis: 100%; width: 100%; margin-right: 5.6px; }
   .acc-head__secure-tip,
   .acc-head__right > .acc-act:not(.acc-head__icon) { display: none; }
-  .acc-head__right { gap: 4px; margin-left: auto; }
+  .acc-head__right { gap: 4px; }
   .acc-vault .acc-head .acc-head__icon { width: 44px; height: 44px; min-height: 44px; padding: 0; justify-content: center; }
   .acc-head .acc-head__icon.acc-act { border-color: transparent; }
   .acc-head__label {
     position: absolute; width: 1px; height: 1px; overflow: hidden;
     clip-path: inset(50%); white-space: nowrap;
   }
-  .acc-vault[data-screen="list"] .acc-brand,
   .acc-vault[data-screen="list"] .acc-head__icon.acc-act { display: none; }
   .acc-vault[data-screen="list"] .acc-head__nav { display: flex; }
   .acc-vault[data-screen="detail"] .acc-head { display: none; }

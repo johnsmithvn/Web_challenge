@@ -1070,9 +1070,10 @@ Types/Tags filter bar is gone.
   `.acc-head` is transparent with no bottom rule, like Knowledge (Body's `.body-header` /
   `.body-mhead` too). Group column, sticky list head and every panel keep their solid
   `--surface` / `--color-bg`, so small mono text stays crisp; the sky shows behind the header,
-  list rows and around detail panels. On desktop the search (`.acc-search`, 260px) sits on the
-  right next to the action buttons, leaving the middle of the header open so the moon
-  (fixed ~436px from the left) and its lunar-date label stay visible.
+  list rows and around detail panels. The header has no "Keyplate / Vault 01" wordmark (the
+  name stays only on the unlock / signed-out cards): on desktop the search (`.acc-search`,
+  260px) opens the bar on the left and the action buttons sit on the right, leaving the middle
+  open so the moon (fixed ~436px from the left) and its lunar-date label stay visible.
 - **This module owns a scoped token set — one of two deliberate domain
   exceptions alongside Finance Nocturne (`--n-*`).** Everything inside Vault reads its
   own tokens instead of `--purple` / `--radius-*` from `global.css`; the vault declares a
@@ -1300,7 +1301,7 @@ Types/Tags filter bar is gone.
 - **Mobile (<900px) is its own drill-down layout, not the desktop squeezed** (designs
   M1–M4 on the canvas, 2026-10-24). `screen` ∈ `home | list | detail` sits on
   `.acc-vault[data-screen]`; CSS shows one pane per screen:
-  - **M1 `home`** — header = brand + Lock + "+" (icon-only 44px; labels hidden by
+  - **M1 `home`** — header = Lock + "+" (icon-only 44px; labels hidden by
     `clip-path`), search, then the groups column as a full-screen list of 50px rows
     with `›` (`.acc-grp__chev`); `Password only` becomes an amber card; tags; "Đổi mật
     khẩu Vault" at the bottom (`.acc-groups__passphrase`) because the header has no room
