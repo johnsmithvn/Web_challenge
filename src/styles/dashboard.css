@@ -10,7 +10,6 @@
 }
 
 .dash-workspace {
-  --dash-bg: #F7F6F3;
   --dash-card-bg: #FFFFFF;
   --dash-border: #ECEBE6;
   --dash-border-subtle: #F3F2EE;
@@ -43,7 +42,9 @@
   flex-direction: column;
   height: 100dvh;
   overflow: hidden;
-  background: var(--dash-bg);
+  /* Nền trời chung (sky.css) — SkyBackground là con đầu, header / .dash-scroll vẽ đè lên */
+  position: relative;
+  background: var(--sky-base);
   color: var(--dash-text);
   font-family: 'Be Vietnam Pro', -apple-system, BlinkMacSystemFont, sans-serif;
   box-sizing: border-box;
@@ -52,7 +53,6 @@
 
 /* Chế độ Dark mode đồng bộ */
 [data-theme="dark"] .dash-workspace {
-  --dash-bg: #121316;
   --dash-card-bg: #1A1C20;
   --dash-border: #2A2D35;
   --dash-border-subtle: #24262C;
@@ -87,9 +87,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 18px 36px;
-  background: var(--dash-card-bg);
-  border-bottom: 1px solid var(--dash-border);
+  padding: 18px 36px; /* trong suốt trên nền trời như Kiến thức */
   gap: 20px;
   z-index: 10;
 }
@@ -220,6 +218,7 @@
 
 /* ── VÙNG CUỘN NỘI BỘ (Workspace Scroll Container) ───────────────── */
 .dash-scroll {
+  position: relative; /* không z-index: vẽ trên lớp trời mà không tạo stacking context */
   flex: 1;
   overflow-y: auto;
   overflow-x: hidden;

@@ -21,6 +21,8 @@ import { money } from '../finance/parts';
 import MUSCLES from '../../data/body-muscles.json';
 import TaskDetailModal from '../TaskDetailModal';
 import AppIcon from '../AppIcon';
+import SkyBackground from '../SkyBackground';
+import { useIsMobile } from '../../hooks/useIsMobile';
 import '../../styles/dashboard.css';
 
 const VN_WEEKDAYS = ['Chủ Nhật', 'Thứ Hai', 'Thứ Ba', 'Thứ Tư', 'Thứ Năm', 'Thứ Sáu', 'Thứ Bảy'];
@@ -81,6 +83,7 @@ export default function HomeDashboard() {
   const navigate = useNavigate();
   const { showToast } = useToast();
   const { confirm, ConfirmModal } = useConfirm();
+  const isMobile = useIsMobile();
 
   const taskModel = useUserTasks();
   const {
@@ -460,6 +463,8 @@ export default function HomeDashboard() {
 
   return (
     <div className="dash-workspace">
+      {/* Dùng chung nền trời với Kiến thức, Body, Tài khoản, Tài chính */}
+      <SkyBackground isMobile={isMobile} calm />
       {/* ── HEADER CỐ ĐỊNH (Pinned Header) ────────────────────────────── */}
       <header className="dash-header">
         <div className="dash-header__left">

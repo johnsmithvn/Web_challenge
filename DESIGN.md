@@ -1421,7 +1421,7 @@ Knowledge có contract riêng, scoped trên `.kb-page`; không dùng glass/gradi
 
 Trang Nhiệm vụ dùng bộ token riêng `--tk-*`, khai báo trên `.tasks-workspace`
 theo `[data-theme]`: tối = mockup 2a (mint `#5EF2C2`, nền trời `#0C1634→#060914`), sáng = mockup 2b
-(violet `#7C3AED`, nền `#F4F2FF`). Nền trời do `SkyBackground.jsx` + `sky.css` vẽ (dùng chung với Knowledge, Body, Tài khoản, Tài chính — bản `calm`, nền gốc
+(violet `#7C3AED`, nền `#F4F2FF`). Nền trời do `SkyBackground.jsx` + `sky.css` vẽ (dùng chung với Knowledge, Body, Tài khoản, Tài chính, trang chủ — bản `calm`, nền gốc
 `--sky-base` — và FX Lab):
 tối = aurora, Ngân Hà, 4 lớp sao, sao băng vệt sáng mint (góc 32°, lấy từ bản thiết kế Kiến Thức), sao chổi; desktop thêm trăng đúng pha âm lịch hôm nay,
 sao sáng 4 cánh, 6 chòm sao lần lượt hiện (chu kỳ 150s) và chân trời hành tinh.
@@ -1514,7 +1514,8 @@ Bật Giảm chuyển động (Cài đặt) thì tắt mọi chuyển động n�
 - **Home dashboard palette (`dashboard.css`):** the redesigned home page follows its own design file,
   so `.dash-workspace` declares a scoped `--dash-*` palette (paper light by default, override under
   `[data-theme="dark"] .dash-workspace`) — the third scoped system next to Vault (Ops console) and Finance
-  Nocturne. State colours (calendar cells, priority pills, body/recovery states, chart strokes) are
+  Nocturne. The page itself sits on the shared night sky (`<SkyBackground calm />` + `--sky-base`, no
+  `--dash-bg`); `.dash-header` is transparent with no bottom rule, cards keep `--dash-card-bg`. State colours (calendar cells, priority pills, body/recovery states, chart strokes) are
   classes over that palette; JSX keeps only geometry (`width`, `height`, `top/left`) inline.
 - **Don't** hard-code a hex or rgba for something a token already covers.
   Existing exceptions (`#c4b5fd`, `#fca5a5`, `#f87171`, `#a78bfa` written
