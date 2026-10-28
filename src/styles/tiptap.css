@@ -1201,6 +1201,27 @@
 }
 .kb-audio-volume-btn:hover { color: var(--kb-tx); }
 
+/* Thanh sửa khối media — chỉ hiện trong trình soạn (khối là atom, không gõ vào được) */
+.kb-media-edit {
+  display: flex; align-items: center; gap: 8px;
+  margin-bottom: 6px;
+  padding: 2px 2px 2px 10px;
+  border: 1px solid var(--kb-line);
+  border-radius: 10px;
+  background: var(--kb-p1);
+  color: var(--kb-faint);
+}
+.kb-media-edit__url {
+  flex: 1; min-width: 0;
+  padding: 6px 0;
+  border: none;
+  background: none;
+  color: var(--kb-dim);
+  font: inherit; font-size: 13px;
+  outline: none;
+}
+.kb-media-edit__url:focus { color: var(--kb-tx); }
+
 /* Đang hỏi /api/stream?meta=1 — giữ chỗ cỡ thanh audio */
 .kb-media-pending {
   height: 62px;

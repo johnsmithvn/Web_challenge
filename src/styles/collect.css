@@ -1252,7 +1252,8 @@ span.kb-tag-chip { cursor: default; }
   color: var(--kb-tx);
   font: 13.5px var(--kb-font);
 }
-.kb-editor__url { min-width: 180px; color: var(--kb-dim); }
+/* Giãn hết phần còn lại của hàng: link Drive / YouTube dài, 180px thì bị cụt */
+.kb-editor__url { flex: 1 1 240px; min-width: 180px; color: var(--kb-dim); }
 .kb-tag-input__field::placeholder,
 .kb-editor__url::placeholder { color: var(--kb-faint); }
 .kb-editor__body { flex: 1; min-height: 0; overflow-y: auto; background: color-mix(in srgb, var(--kb-bg) 82%, transparent); }

@@ -5,6 +5,7 @@ import React from 'react';
 import { Node, mergeAttributes, nodePasteRule } from '@tiptap/core';
 import { ReactNodeViewRenderer, NodeViewWrapper } from '@tiptap/react';
 import MediaPreview from '../components/MediaPreview';
+import AppIcon from '../components/AppIcon';
 import { 
   extractDriveDirectUrl, 
   extractDriveFileId, 
@@ -22,11 +23,36 @@ const VIDEO_REGEX = /(https?:\/\/[^\s]+\.(?:mp4|webm|ogg|ogv|mov|mkv)(?:\?[^\s]*
 /**
  * React Component for the NodeView wrapper.
  */
-function MediaNodeView({ node, updateAttributes, editor }) {
+function MediaNodeView({ node, updateAttributes, deleteNode, editor }) {
   const { src, title } = node.attrs;
+
+  // Đổi link: Enter hoặc rời ô. Link Drive chuẩn hoá giống nút chèn media trên thanh công cụ
+  const commitUrl = (e) => {
+    const v = e.target.value.trim();
+    if (!v) { e.target.value = src; return; }
+    const next = extractDriveDirectUrl(v) || v;
+    if (next !== src) updateAttributes({ src: next });
+  };
 
   return (
     <NodeViewWrapper className="kb-tiptap-media-wrapper" style={{ margin: '1.25rem 0', display: 'block' }}>
+      {editor.isEditable && (
+        <div className="kb-media-edit" contentEditable={false}>
+          <AppIcon name="link" size={14} />
+          <input
+            key={src}
+            className="kb-media-edit__url"
+            defaultValue={src}
+            placeholder="Dán link Drive / YouTube / mp3…"
+            aria-label="Link media"
+            onBlur={commitUrl}
+            onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); e.currentTarget.blur(); } }}
+          />
+          <button type="button" className="kb-icon-btn kb-icon-btn--danger" onClick={deleteNode} title="Xoá khối media">
+            <AppIcon name="trash" size={15} />
+          </button>
+        </div>
+      )}
       <MediaPreview
         url={src}
         title={title}

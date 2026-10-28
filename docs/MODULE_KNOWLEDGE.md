@@ -203,6 +203,7 @@ Bài chưa xếp cũ hơn 30 ngày không hiện ở đây (xếp hàng loạt t
 - Markdown / Visual (chỉ chọn khi tạo mới), thống kê chữ, nút nối `[[ ]]`, Lưu (`Ctrl+S`).
 - Tiêu đề · hàng **chủ đề** (gợi ý: viền đứt + chữ "gợi ý"; có Chưa xếp) · **Kiểu** Bài viết / Trích dẫn / Podcast · thẻ · URL.
 - Rời ô URL khi tiêu đề trống → tự điền tiêu đề đoán từ link (`guessTitle`: repo → `owner/repo`, YouTube → "Video YouTube", Facebook → "Bài Facebook", còn lại → tên miền).
+- Visual: khối media (`MediaNode`, liền khối không gõ vào được) có thanh sửa phía trên — ô link (`Enter` / rời ô là đổi) + nút xoá khối. Trang đọc không có thanh này.
 - Lưu thất bại → báo lỗi và ở lại trình soạn thảo.
 
 ### 4.7. Quản lý chủ đề (`KBTopicModal`)
