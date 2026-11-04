@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useUserTasks } from '../../hooks/useUserTasks';
-import { groupDigits, parseCurrencyInput, sanitizeDigits, stripAmountWords } from '../../utils/currencyUtils';
+import { groupDigits, parseCurrencyInput, sanitizeDigits, sanitizeSignedDigits, stripAmountWords } from '../../utils/currencyUtils';
 import { matchCategory, deriveNecessity, cardBalance, billAmountEstimate, billCycle, billSettled } from '../../utils/financeLogic';
 import {
   money, catInfo, subLabel, pickableSubs, NECESSITY_META, TaskPicker, FinanceIcon, DateField,
@@ -185,7 +185,7 @@ export default function AddScreen({ fin, nav }) {
 
   const updateDraftItem = (index, key, value) => {
     const normalized = key === 'qty' ? sanitizeDigits(value, 3)
-      : key === 'price' ? sanitizeDigits(value) : value;
+      : key === 'price' ? sanitizeSignedDigits(value) : value;
     const next = draftItems.map((item, itemIndex) => itemIndex === index ? { ...item, [key]: normalized } : item);
     setDraftItems(next);
     const total = next.reduce((sum, item) => sum
@@ -701,7 +701,7 @@ export default function AddScreen({ fin, nav }) {
                       />
                       <input
                         inputMode="numeric"
-                        pattern="[0-9.]*"
+                        pattern="-?[0-9.]*"
                         aria-label="Đơn giá"
                         value={groupDigits(item.price)}
                         onChange={event => updateDraftItem(index, 'price', event.target.value)}

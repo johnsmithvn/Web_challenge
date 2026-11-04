@@ -4,8 +4,19 @@ import { readFileSync } from 'node:fs';
 // Auto-K và tỷ giá USD đã bỏ (2026-10-11): ô tiền gõ số nào lưu số đó, chỉ nhân khi
 // có chữ chỉ độ lớn (k, nghìn, triệu, tr, củ…). Parser không còn đọc localStorage.
 const {
-  groupDigits, parseCurrencyInput, sanitizeDecimal, sanitizeDigits, stripAmountWords, formatVND,
+  groupDigits, parseCurrencyInput, sanitizeDecimal, sanitizeDigits, sanitizeSignedDigits, stripAmountWords, formatVND,
 } = await import('../../utils/currencyUtils.js');
+
+/* Số âm cho dòng trừ tiền trong chi tiết món (hoàn lại, chia đôi) — chỉ `-` đứng đầu */
+assert.equal(sanitizeSignedDigits('-350.000'), '-350000');
+assert.equal(sanitizeSignedDigits('35-0'), '350', '`-` giữa chuỗi bị bỏ');
+assert.equal(sanitizeSignedDigits('-'), '-', 'đang gõ dở thì giữ dấu');
+assert.equal(groupDigits('-350000'), '-350.000');
+assert.equal(sanitizeSignedDigits(groupDigits('-350000')), '-350000');
+assert.equal(parseCurrencyInput('-350000'), -350000);
+assert.equal(parseCurrencyInput('-50k'), -50000);
+assert.equal(parseCurrencyInput('-') || 0, 0);
+assert.equal(parseCurrencyInput('phòng 2-3 người 100k'), 2, '`-` không đứng đầu không đổi dấu');
 
 assert.equal(sanitizeDigits('12abc.345 ₫'), '12345');
 assert.equal(sanitizeDigits('123456', 4), '1234');

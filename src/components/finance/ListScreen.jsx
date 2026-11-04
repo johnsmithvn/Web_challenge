@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState, useEffect } from 'react';
 import { useUserTasks } from '../../hooks/useUserTasks';
-import { groupDigits, parseCurrencyInput, sanitizeDigits } from '../../utils/currencyUtils';
+import { groupDigits, parseCurrencyInput, sanitizeDigits, sanitizeSignedDigits } from '../../utils/currencyUtils';
 import { formatDate, toDateStr } from '../../utils/dateUtils';
 import { groupByDate, billPeriods } from '../../utils/financeLogic';
 import {
@@ -789,7 +789,7 @@ function TxDetail({ tx, fin, nav, tasks, inPeriod = [], isMobileSheet = false, s
 
   const updateDraftItem = (index, key, value) => {
     const normalized = key === 'qty' ? sanitizeDigits(value, 3)
-      : key === 'price' ? sanitizeDigits(value) : value;
+      : key === 'price' ? sanitizeSignedDigits(value) : value;
     const next = draftItems.map((item, itemIndex) => itemIndex === index ? { ...item, [key]: normalized } : item);
     setDraftItems(next);
     const total = next.reduce((sum, item) => sum
@@ -1035,7 +1035,7 @@ function TxDetail({ tx, fin, nav, tasks, inPeriod = [], isMobileSheet = false, s
                       ariaLabel={`Số lượng món thứ ${index + 1}`}
                     />
                     <div className="fin-item-price-wrap">
-                      <input className="fin-input" inputMode="numeric" pattern="[0-9.]*" aria-label="Đơn giá" value={groupDigits(item.price)} onChange={event => updateDraftItem(index, 'price', event.target.value)} placeholder="0" />
+                      <input className="fin-input" inputMode="numeric" pattern="-?[0-9.]*" aria-label="Đơn giá" value={groupDigits(item.price)} onChange={event => updateDraftItem(index, 'price', event.target.value)} placeholder="0" />
                       <span>₫</span>
                     </div>
                     <button type="button" className="fin-item-del-btn" aria-label="Xóa món" onClick={() => setDraftItems(current => current.filter((_, itemIndex) => itemIndex !== index))}><AppIcon name="x" size={14} /></button>

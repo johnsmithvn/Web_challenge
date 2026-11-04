@@ -2,6 +2,12 @@ export function sanitizeDigits(value, maxLength = 18) {
   return String(value ?? '').replace(/\D/g, '').slice(0, maxLength);
 }
 
+/** Như `sanitizeDigits` nhưng giữ dấu `-` ở đầu — dòng trừ tiền (hoàn lại, chia đôi) trong chi tiết món. */
+export function sanitizeSignedDigits(value, maxLength = 18) {
+  const str = String(value ?? '').trim();
+  return (str.startsWith('-') ? '-' : '') + sanitizeDigits(str, maxLength);
+}
+
 /**
  * Chèn dấu phân cách nghìn để HIỂN THỊ trong ô nhập tiền: "45000" → "45.000".
  *
@@ -67,11 +73,13 @@ export function stripAmountWords(text) {
  * - "50k" / "50 nghìn" -> 50000
  * - "1.5m" / "1.5 triệu" / "1.5tr" -> 1500000
  * - "120.000" -> 120000
+ * - "-350.000" -> -350000 (chỉ dấu `-` ĐỨNG ĐẦU mới là số âm)
  */
 export function parseCurrencyInput(value) {
   if (!value) return 0;
 
   const str = String(value).trim().replace(/\s+/g, '');
+  const sign = str.startsWith('-') ? -1 : 1;
 
   // Tách phần số (hỗ trợ cả chấm/phẩy thập phân) và chữ chỉ độ lớn nếu có
   const m = str.match(new RegExp(`(\\d[\\d.,]*)\\s*(${MAGNITUDE_ALT})?`, 'i'));
@@ -80,7 +88,7 @@ export function parseCurrencyInput(value) {
   const val = parseNumericPart(m[1]);
   if (isNaN(val)) return 0;
 
-  return Math.round(val * (MAGNITUDE[(m[2] || '').toLowerCase()] || 1));
+  return sign * Math.round(val * (MAGNITUDE[(m[2] || '').toLowerCase()] || 1));
 }
 
 /**
