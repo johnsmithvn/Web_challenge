@@ -247,7 +247,7 @@ kind `finance`. Vault tag không liên quan vì được mã hóa.
   | Thẻ tổng / hero | 14px | `0 10px 28px rgba(4,5,12,.12)` | `.fin-obligation-summary` · `.fin-summary-strip` · `.fin-entry-card` |
   | Dòng danh sách | 8px | không bóng, chỉ viền 1px | `.fin-txrow` · `.fin-category-card` · `.fin-rule` |
   | Khối mở trong dòng | 8px | không bóng | `.fin-payblock` (máy tính lãi mất) · `.fin-bill-history` · `.fin-ruleform--edit` |
-  | Khối trong panel Hub | 12px | không bóng | `.fin-pay` · `.fin-hub__progbox` |
+  | Khối trong panel Hub | 12px | không bóng | `.fin-hub__progbox` (`.fin-pay` sát mép panel, không bo) |
   | Empty state | 10px | viền đứt, nền `rgba(35,37,50,.45)` | `.fin-list-empty` · `.fin-rules-empty` |
 
 - Không màn nào tự đặt `max-width` riêng; mọi màn tràn hết vùng nội dung và co bằng grid bên trong.
@@ -265,8 +265,8 @@ kind `finance`. Vault tag không liên quan vì được mã hóa.
   mini đã mang màu), cột NHÓM 46%.
 - Hub Định kỳ & Quỹ (v6.23):
   - Desktop: Layout 2 cột — Cột trái danh sách timeline, cột phải panel chi tiết; cả hai cuộn nội bộ (Workspace pattern), không cuộn trang. Không có thanh tiêu đề trang (ẩn `fin-header` của FinancePage): tháng và nút "Thêm nguồn chi" nằm trên thẻ Lịch chi.
+  - Đang ghi một kỳ (desktop lẫn mobile): panel/sheet chỉ còn đầu (tên + Sửa/đóng) và `.fin-pay` sát mép (`:has(> .fin-pay)`); thân khối cuộn, chân Hủy / Xác nhận ghim đáy panel — form dài không đẩy nút Xác nhận khỏi màn. Số cần trả, lịch sử, bảng thông tin hiện lại khi Hủy/Xác nhận.
   - Mobile (≤768px): 1 cột; panel chi tiết thành bottom sheet (cùng component với desktop) có backdrop, nút đóng, Escape; z-index trên tab dưới và FAB QuickCapture. Không thêm FAB riêng.
-    - Đang ghi một kỳ: sheet chỉ còn đầu (tên + đóng) và `.fin-pay` (`:has(> .fin-pay)`); thân khối cuộn, chân Hủy / Xác nhận dính đáy.
     - Lớp chồng lên sheet (hộp thoại Thêm/Sửa, sổ) trượt thẳng từ đáy (`fin-sheet-up`, .28s, cùng đường cong với sheet) — không dùng animation nảy (phóng 0.97 + overshoot) của `GenericModal`. Không form nào trong sheet/hộp thoại tự focus ô nhập trên điện thoại: bàn phím bật giữa lúc trượt làm cả sheet giật.
     - Sheet, thân hộp thoại `overscroll-behavior: contain`; lớp tối `touch-action: none` — cuộn tới mép không kéo trang phía sau.
   - 6 ô KPI kiêm bộ lọc, 3 tầng: tên + số đếm · số chính + dòng phụ · thanh tiến độ + chú thích mono. Mobile: cuộn ngang 150px, ẩn số đếm và chú thích.

@@ -795,8 +795,8 @@ function SourceModal({ kind: startKind, fin, nav, initial, focusNote = false, on
 // ── Khối ghi một kỳ ──────────────────────────────────────────────────────────
 // Mở ngay trong panel chi tiết, không chồng thêm modal: người dùng thường trả liền
 // ba bốn khoản, rời danh sách mỗi lần là hỏng nhịp. Cùng khuôn với hộp thoại Sửa
-// (`fin-sm__*`): tiêu đề · trường · chân có nút chính. Trên điện thoại panel là sheet —
-// khối này chiếm cả sheet, chân dính đáy (CSS `.fin-hub__detail:has(> .fin-pay)`).
+// (`fin-sm__*`): tiêu đề · trường · chân có nút chính. Đang ghi thì khối này chiếm cả panel
+// (sheet trên điện thoại), thân cuộn, chân ghim đáy (CSS `.fin-hub__detail:has(> .fin-pay)`).
 function PayBlock({ fin, kind, title, tasks = [], defaultAmount, dueDay, allowSource = false, amountLabel = 'Số tiền đã trả',
   quickAmount = null, interestQuick = null, note = null, periods = null, periodForDate = null,
   confirmLabel = 'Xác nhận thanh toán', onPay, onCancel }) {
