@@ -223,7 +223,8 @@ export function DatePopover({ value, max, onPick, onClose, style, className = ''
 
 /**
  * Đổi ngày giờ của việc (mockup): ô Bắt đầu + Kết thúc (tuỳ chọn), lịch có ngày âm, dòng giờ bắt đầu → kết thúc.
- * Bấm ngày kiểu ClickUp: Bắt đầu xong tự nhảy sang Kết thúc (`datePickClick`), rê chuột xem trước khoảng.
+ * Bấm ngày kiểu ClickUp: Bắt đầu xong tự nhảy sang Kết thúc (`datePickClick`), rê chuột xem trước khoảng;
+ * bấm lại chính ngày Bắt đầu = Kết thúc cùng ngày. Nút ◎ "Hôm nay" điền hôm nay vào ô đang chọn.
  * ✕ "Bỏ hạn" xoá hết, ✕ "Bỏ ngày kết thúc" chỉ bỏ ngày cuối.
  * Chỉ lưu khi bấm Lưu (mờ khi chưa đổi); onSave nhận patch { start_date, start_time, due_date, due_time }.
  */
@@ -236,14 +237,19 @@ export function TaskDatePickerPopover({ task, onSave, onClose, style }) {
   const [timeOn, setTimeOn] = useState(() => !!(dr.ta || dr.tb));
   const [month, setMonth] = useState(() => monthOf(dr.a || toDateStr()));
   const [hover, setHover] = useState(null);
-  const B = dr.a && dr.b && dr.b > dr.a ? dr.b : null;
-  // Đang chờ ngày cuối: ngày rê chuột (sau Bắt đầu) là ngày cuối xem trước
-  const P = field === 'b' && dr.a && hover > dr.a ? hover : B;
+  const B = dr.a && dr.b && dr.b >= dr.a ? dr.b : null;
+  // Ngày cuối của khoảng tô: đang chờ ngày cuối thì là ngày rê chuột (sau Bắt đầu); cùng ngày thì không tô khoảng
+  const P = field === 'b' && dr.a && hover > dr.a ? hover : B !== dr.a ? B : null;
 
   const pick = (v) => {
     const r = datePickClick(dr, field, v);
     setDr(r.dr);
     setField(r.field);
+  };
+  const pickToday = () => {
+    const t = toDateStr();
+    pick(t);
+    setMonth(monthOf(t));
   };
   const clearA = (e) => {
     e.stopPropagation();
@@ -337,6 +343,9 @@ export function TaskDatePickerPopover({ task, onSave, onClose, style }) {
             Thêm giờ
           </button>
         )}
+        <button type="button" className="tk-dp-btn" title="Hôm nay" aria-label="Hôm nay" onClick={pickToday}>
+          <AppIcon name="target" size={13} />
+        </button>
         <button type="button" className="tk-dp-btn tk-dp-cancel" onClick={onClose}>Huỷ</button>
         <button type="button" className={`tk-dp-save${dirty ? '' : ' is-idle'}`} onClick={save}>
           <AppIcon name="check" size={12} />

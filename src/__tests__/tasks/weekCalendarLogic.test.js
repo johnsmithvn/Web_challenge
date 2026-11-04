@@ -388,11 +388,13 @@ console.log('date picker draft/patch: OK');
   // Đang chờ ngày cuối mà bấm trước Bắt đầu → Bắt đầu mới, vẫn chờ ngày cuối
   r = datePickClick({ ...E, a: '2026-10-24' }, 'b', '2026-10-20');
   assert.deepEqual(r, { dr: { ...E, a: '2026-10-20' }, field: 'b' });
-  // Bấm trùng Bắt đầu → 1 ngày
+  // Bấm trùng Bắt đầu → Kết thúc cùng ngày (patch vẫn là 1 ngày)
   r = datePickClick({ ...E, a: '2026-10-24', b: '2026-10-31' }, 'b', '2026-10-24');
-  assert.deepEqual(r, { dr: { ...E, a: '2026-10-24', b: null }, field: 'a' });
-  // Ô Bắt đầu: giữ Kết thúc nếu vẫn sau, bỏ nếu không
+  assert.deepEqual(r, { dr: { ...E, a: '2026-10-24', b: '2026-10-24' }, field: 'a' });
+  assert.deepEqual(datePickPatch(r.dr), datePickPatch({ ...E, a: '2026-10-24' }));
+  // Ô Bắt đầu: giữ Kết thúc nếu không trước Bắt đầu mới, bỏ nếu có
   assert.deepEqual(datePickClick({ ...E, a: '2026-10-24', b: '2026-10-31' }, 'a', '2026-10-26').dr.b, '2026-10-31');
+  assert.equal(datePickClick({ ...E, a: '2026-10-24', b: '2026-10-31' }, 'a', '2026-10-31').dr.b, '2026-10-31');
   assert.equal(datePickClick({ ...E, a: '2026-10-24', b: '2026-10-31' }, 'a', '2026-11-02').dr.b, null);
   // Ô Kết thúc khi chưa có Bắt đầu → đặt Bắt đầu
   assert.deepEqual(datePickClick(E, 'b', '2026-10-24'), { dr: { ...E, a: '2026-10-24' }, field: 'b' });

@@ -2556,8 +2556,10 @@ select.fin-input { color-scheme: dark; cursor: pointer; }
 .fin-hub__detail .fin-type-picker { grid-template-columns: minmax(0, 1fr); }
 .fin-hub__detail .fin-inline-message .fin-inline-command, .fin-hub__kv-val .fin-inline-command { display: inline; min-height: 0; padding: 0; font-size: inherit; }
 /* Khối ghi một kỳ (PayBlock): cùng khuôn với hộp thoại Sửa — tiêu đề · trường `fin-sm__*` ·
-   chân có nút chính. Màu nhấn `--k` theo loại nguồn chi. Mobile: chiếm cả sheet, chân dính đáy. */
-.fin-pay { display: flex; flex-direction: column; min-height: 0; border: 1px solid var(--n-border); border-radius: 12px; color: var(--n-txt); }
+   chân có nút chính. Màu nhấn `--k` theo loại nguồn chi. Mobile: chiếm cả sheet, chân dính đáy.
+   KHÔNG `min-height: 0` ở đây: panel desktop cuộn cả khối, cho co là thân form tràn đè biểu đồ
+   + bảng bên dưới. Chỉ sheet mobile cần co (để thân cuộn) — đặt trong khối ≤768px. */
+.fin-pay { display: flex; flex-direction: column; border: 1px solid var(--n-border); border-radius: 12px; color: var(--n-txt); }
 .fin-pay__head { flex: none; display: flex; align-items: center; gap: 8px; padding: 13px 16px; border-bottom: 1px solid var(--n-line); }
 .fin-pay__head > svg { flex: none; color: var(--k); }
 .fin-pay__head strong { font-size: 14.5px; font-weight: 600; line-height: 1.25; }
@@ -2781,7 +2783,7 @@ select.fin-input { color-scheme: dark; cursor: pointer; }
      Hủy / Xác nhận dính đáy như hộp thoại Sửa. Phần chi tiết hiện lại khi Hủy/Xác nhận. */
   .fin-hub__detail:has(> .fin-pay) { overflow: hidden; padding-bottom: 0; }
   .fin-hub__detail:has(> .fin-pay) > :not(.fin-hub__detail-handle, .fin-hub__detail-head, .fin-pay) { display: none; }
-  .fin-hub__detail > .fin-pay { flex: 0 1 auto; margin: 0 -20px; border: 0; border-top: 1px solid var(--n-line); border-radius: 0; }
+  .fin-hub__detail > .fin-pay { flex: 0 1 auto; min-height: 0; margin: 0 -20px; border: 0; border-top: 1px solid var(--n-line); border-radius: 0; }
   .fin-hub__detail > .fin-pay .fin-pay__head { padding: 14px 20px; }
   .fin-hub__detail > .fin-pay .fin-pay__body { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 18px 20px 22px; }
   .fin-hub__detail > .fin-pay .fin-pay__foot { padding: 12px 20px calc(12px + env(safe-area-inset-bottom, 0px)); }
