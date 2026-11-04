@@ -100,7 +100,6 @@
    Auto Dark Mode của trình duyệt mà [data-theme="light"] (global.css) đặt — Chrome/Samsung
    trên điện thoại bật "web tối" sẽ tô đen riêng các ô đó giữa form sáng. */
 [data-theme="light"] select.fin-input,
-[data-theme="light"] .fin-payblock__dates .fin-input,
 [data-theme="light"] .fin-period__yearbar select {
   color-scheme: only light;
 }
@@ -675,18 +674,10 @@ select.fin-input { color-scheme: dark; cursor: pointer; }
 .fin-term__bar { height: 9px; overflow: hidden; border-radius: 20px; background: var(--n-sink-2); }
 .fin-term__bar i { display: block; height: 100%; border-radius: inherit; background: var(--n-accent-2); }
 
-/* Ghi má»™t ká»³: má»Ÿ ngay dÆ°á»›i dÃ²ng, khÃ´ng modal, khÃ´ng rá»i danh sÃ¡ch. */
-.fin-payblock { display: grid; gap: 9px; padding: 11px; border: 1px solid var(--n-border); border-radius: 8px; background: var(--n-bg); animation: fin-rise .15s ease both; }
-.fin-payblock__grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr); gap: 10px; }
-.fin-payblock__dates { display: flex; gap: 5px; flex-wrap: wrap; }
-.fin-payblock__dates .fin-input { width: auto; min-width: 132px; color-scheme: dark; }
-.fin-payblock__dates > button { min-height: 34px; padding: 6px 10px; border: 1px solid var(--n-border); border-radius: 8px; background: transparent; color: var(--n-txt2); font: inherit; font-size: 11.5px; cursor: pointer; }
-.fin-payblock__dates > button:hover { border-color: var(--n-accent); color: var(--n-on-accent); }
-.fin-payblock__dates > button.is-active { border-color: var(--n-accent); background: var(--n-accent-soft); color: var(--n-on-accent); }
+/* Khối nháp nhỏ mở trong form (máy tính lãi mất của ForfeitCalc). Khối ghi một kỳ là `.fin-pay`. */
+.fin-payblock { display: grid; gap: 9px; padding: 11px; border: 1px solid var(--n-border); border-radius: 8px; background: var(--n-bg); }
 .fin-payblock__hint { color: var(--n-txt3); font-size: 10.5px; line-height: 1.45; }
 .fin-payblock__foot { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; }
-.fin-payblock__foot .fin-taskpick { margin-right: auto; }
-.fin-payblock .fin-source-picker > button { min-height: 32px; font-size: 11.5px; padding: 5px 10px; }
 
 /* Form thÃªm / sá»­a dÃ¹ng chung má»™t component; báº£n sá»­a má»Ÿ ngay trong dÃ²ng. */
 .fin-ruleform { gap: 11px; border-color: var(--n-accent-3); }
@@ -1773,6 +1764,9 @@ select.fin-input { color-scheme: dark; cursor: pointer; }
 .fin-slide-drawer__foot { display: flex; align-items: center; justify-content: flex-end; gap: 10px; padding: 14px 24px; border-top: 1px solid var(--n-border); background: var(--n-card); flex-shrink: 0; box-shadow: 0 -8px 24px rgba(0,0,0,0.18); }
 .fin-slide-drawer__foot .fin-btn { margin: 0; }
 @media (max-width: 800px) { .fin-slide-drawer { width: 100vw; } }
+/* ≤900px sheet chi tiết giao dịch (.fin-nhipchi-sheet-overlay, z 1000) ở lại dưới khi bấm Sửa,
+   nên ngăn Sửa phải nằm trên nó. Vẫn dưới lịch nổi .fin-datepop (1100). */
+@media (max-width: 900px) { .fin-drawer-overlay { top: 0; z-index: 1010; } }
 .fin-detail { min-width: 0; }
 .fin-detail__hero { display: flex; align-items: flex-start; gap: 11px; }
 .fin-detail__ico { display: grid; place-items: center; width: 38px; height: 38px; flex: 0 0 38px; border-radius: 11px; background: var(--n-sink-2); }
@@ -1837,6 +1831,8 @@ select.fin-input { color-scheme: dark; cursor: pointer; }
 .fin-item-del-btn:hover { color: var(--n-danger); background: rgba(239, 68, 68, 0.1); border-color: rgba(239, 68, 68, 0.2); }
 
 @keyframes fin-fade { from { opacity: 0; } }
+/* Mọi sheet đáy trên điện thoại (hộp thoại Sửa/Thêm, sổ, Sửa giao dịch) trượt cùng một kiểu. */
+@keyframes fin-sheet-up { from { transform: translateY(100%); } to { transform: translateY(0); } }
 
 @media (max-width: 1100px) {
   .fin-ruleform__grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -1878,9 +1874,20 @@ select.fin-input { color-scheme: dark; cursor: pointer; }
   .fin-overview-panel .fin-donut-row { align-items: flex-start; flex-direction: column; }
   .fin-overview-panel .fin-legend { width: 100%; }
   .fin-overview-panel .fin-need__rows { grid-template-columns: 1fr; }
-  /* Ngăn Sửa giao dịch phủ cả màn, TRÊN thanh tab đáy (.fin-mobile-bottom-nav z 100) — trước là
-     top 64px + z 99 nên tab đáy che mất chân Hủy / Lưu. Vẫn dưới lịch nổi .fin-datepop (1100). */
-  .fin-drawer-overlay { top: 0; z-index: 110; }
+  /* Sửa giao dịch là sheet đáy như hộp thoại Sửa hóa đơn, trượt lên đè sheet chi tiết (không còn
+     trượt ngang từ phải, lệch hướng với sheet bên dưới). Lớp phủ đã top 0 + z 1010 ở khối ≤900px. */
+  .fin-drawer-overlay { align-items: flex-end; }
+  .fin-drawer-backdrop { touch-action: none; }
+  .fin-slide-drawer {
+    width: 100%; height: auto; max-height: 94dvh; overflow: hidden; border-left: 0; border-radius: 26px 26px 0 0;
+    box-shadow: 0 -10px 40px rgba(4,5,12,.4); animation: fin-sheet-up .28s cubic-bezier(.16, 1, .3, 1);
+  }
+  .fin-slide-drawer__head { position: relative; padding-top: 22px; }
+  .fin-slide-drawer__head::before {
+    content: ''; position: absolute; top: 9px; left: 50%; width: 40px; height: 5px; margin-left: -20px;
+    border-radius: 3px; background: var(--n-border);
+  }
+  .fin-slide-drawer__body { flex: 1 1 auto; overscroll-behavior: contain; }
   .fin-slide-drawer__foot { padding: 12px 16px calc(12px + env(safe-area-inset-bottom, 0px)); }
   .fin-slide-drawer__foot .fin-btn { flex: 1; }
   .fin-slide-drawer__kbd { display: none; }
@@ -1932,8 +1939,6 @@ select.fin-input { color-scheme: dark; cursor: pointer; }
   .fin-obligation-summary > div:first-child strong { font-size: 25px; }
   .fin-obligation-summary > small { width: 100%; }
   .fin-rules-empty { min-height: 180px; padding: 28px 18px; }
-  .fin-payblock__grid { grid-template-columns: 1fr; }
-  .fin-payblock__dates .fin-input { width: 100%; }
   .fin-rule__right { margin-left: auto; }
   .fin-rule__foot { width: 100%; }
   .fin-rule__foot .fin-btn { flex: 1; justify-content: center; min-height: 42px; }
@@ -2550,6 +2555,19 @@ select.fin-input { color-scheme: dark; cursor: pointer; }
 .fin-hub__detail > .fin-editor { margin: 0; }
 .fin-hub__detail .fin-type-picker { grid-template-columns: minmax(0, 1fr); }
 .fin-hub__detail .fin-inline-message .fin-inline-command, .fin-hub__kv-val .fin-inline-command { display: inline; min-height: 0; padding: 0; font-size: inherit; }
+/* Khối ghi một kỳ (PayBlock): cùng khuôn với hộp thoại Sửa — tiêu đề · trường `fin-sm__*` ·
+   chân có nút chính. Màu nhấn `--k` theo loại nguồn chi. Mobile: chiếm cả sheet, chân dính đáy. */
+.fin-pay { display: flex; flex-direction: column; min-height: 0; border: 1px solid var(--n-border); border-radius: 12px; color: var(--n-txt); }
+.fin-pay__head { flex: none; display: flex; align-items: center; gap: 8px; padding: 13px 16px; border-bottom: 1px solid var(--n-line); }
+.fin-pay__head > svg { flex: none; color: var(--k); }
+.fin-pay__head strong { font-size: 14.5px; font-weight: 600; line-height: 1.25; }
+.fin-pay__body { display: flex; flex-direction: column; gap: 18px; padding: 16px; }
+.fin-pay__body .fin-taskpick { align-self: flex-start; max-width: 100%; }
+.fin-pay__body .fin-taskpick__btn { min-height: 40px; border-radius: 11px; }
+.fin-pay__foot { flex: none; display: flex; align-items: center; gap: 8px; padding: 12px 16px; border-top: 1px solid var(--n-line); }
+.fin-pay__foot .fin-btn { height: 42px; margin: 0; border-radius: 11px; }
+.fin-pay__foot .fin-btn--primary { flex: 1; }
+.fin-pay__foot .fin-btn--primary:disabled { opacity: .45; }
 /* Hộp thoại sổ: DepositForm nằm trong GenericModal. */
 .generic-modal.fin-dep-modal { max-height: calc(100dvh - 72px); background: var(--n-card); border: 1px solid var(--n-border); border-radius: 20px; box-shadow: 0 30px 80px -20px rgba(4,5,12,.6); }
 .fin-dep-modal > .fin-editor { margin: 0; padding: 20px 24px; border: 0; border-radius: 0; background: transparent; animation: none; }
@@ -2628,6 +2646,7 @@ select.fin-input { color-scheme: dark; cursor: pointer; }
   border: 1px solid var(--n-border); border-radius: 9px; background: transparent; color: var(--n-txt2); font: inherit; font-size: 12.5px; font-weight: 500; cursor: pointer;
 }
 .fin-sm__chips button.is-on { border-color: var(--k); background: var(--k-soft); color: var(--k); }
+.fin-sm__chips button:disabled { opacity: .45; cursor: not-allowed; }
 .fin-sm__name { display: flex; gap: 10px; }
 .fin-sm__icon {
   position: relative; width: 48px; height: 48px; flex: none; display: grid; place-items: center;
@@ -2748,14 +2767,24 @@ select.fin-input { color-scheme: dark; cursor: pointer; }
   .fin-hub__detail-backdrop {
     display: block; position: fixed; inset: 0; z-index: 170; background: rgba(4,5,12,.55);
     opacity: 0; pointer-events: none; transition: opacity .25s ease;
+    touch-action: none;   /* kéo trên lớp tối không cuộn danh sách phía sau */
   }
   .fin-hub__detail-backdrop.is-open { opacity: 1; pointer-events: auto; }
   .fin-hub__detail {
     position: fixed; inset: auto 0 0 0; z-index: 171; max-height: 92dvh; gap: 18px;
     padding: 10px 20px calc(28px + env(safe-area-inset-bottom, 0px)); border-radius: 26px 26px 0 0; border-bottom: 0;
     box-shadow: 0 -10px 40px rgba(4,5,12,.4); transform: translateY(105%); transition: transform .28s cubic-bezier(.16, 1, .3, 1);
+    overscroll-behavior: contain;
   }
   .fin-hub__detail.is-open { transform: translateY(0); }
+  /* Đang ghi một kỳ: sheet chỉ còn đầu (tên + đóng) và khối trả; thân khối cuộn, chân
+     Hủy / Xác nhận dính đáy như hộp thoại Sửa. Phần chi tiết hiện lại khi Hủy/Xác nhận. */
+  .fin-hub__detail:has(> .fin-pay) { overflow: hidden; padding-bottom: 0; }
+  .fin-hub__detail:has(> .fin-pay) > :not(.fin-hub__detail-handle, .fin-hub__detail-head, .fin-pay) { display: none; }
+  .fin-hub__detail > .fin-pay { flex: 0 1 auto; margin: 0 -20px; border: 0; border-top: 1px solid var(--n-line); border-radius: 0; }
+  .fin-hub__detail > .fin-pay .fin-pay__head { padding: 14px 20px; }
+  .fin-hub__detail > .fin-pay .fin-pay__body { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 18px 20px 22px; }
+  .fin-hub__detail > .fin-pay .fin-pay__foot { padding: 12px 20px calc(12px + env(safe-area-inset-bottom, 0px)); }
   .fin-hub__detail-handle { display: block; flex: none; width: 40px; height: 5px; margin: 0 auto; border-radius: 3px; background: var(--n-border); }
   .fin-hub__detail-close { display: inline-flex; }
   .fin-hub__detail-edit { width: 36px; padding: 0; justify-content: center; }
@@ -2764,6 +2793,11 @@ select.fin-input { color-scheme: dark; cursor: pointer; }
   /* Hộp thoại thành sheet cao gần hết màn */
   .generic-modal-backdrop:has(.fin-sm-modal) { align-items: flex-end; padding: 0; }
   .generic-modal.fin-sm-modal { max-width: none !important; max-height: 94dvh; border-radius: 26px 26px 0 0; border-bottom: 0; }
+  /* Sheet trượt thẳng từ đáy như panel chi tiết. Animation chung của GenericModal (nhích 12px +
+     phóng 0.97 → 1 kiểu nảy quá đà) trên một sheet cao 94dvh, chồng lên sheet chi tiết, là
+     chỗ giật thấy rõ nhất. Cuộn tới mép thân hộp cũng không kéo theo trang phía sau. */
+  .generic-modal.fin-sm-modal, .generic-modal.fin-dep-modal { animation: fin-sheet-up .28s cubic-bezier(.16, 1, .3, 1); }
+  .fin-sm__body, .generic-modal.fin-dep-modal { overscroll-behavior: contain; }
   .fin-sm__grab { display: flex; justify-content: center; padding: 10px 0 2px; }
   .fin-sm__grab span { width: 40px; height: 5px; border-radius: 3px; background: var(--n-border); }
   .fin-sm__head { padding: 4px 10px 14px 20px; gap: 8px; }

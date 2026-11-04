@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react';
 import { useUserTasks } from '../../hooks/useUserTasks';
+import { useIsMobile } from '../../hooks/useIsMobile';
 import { parseCurrencyInput, sanitizeDecimal, sanitizeDigits, groupDigits } from '../../utils/currencyUtils';
 import { formatDate } from '../../utils/dateUtils';
 import {
@@ -45,6 +46,9 @@ const QUICK_TERMS = ['1', '2', '3', '6', '12', '24'];
 const QUICK_YEARS = [1, 2, 3, 5, 10];
 
 export function DepositForm({ fin, nav, goal, deposit, activeGoals = [], onDone }) {
+  // Ba form này mở trong sheet trên điện thoại: tự bật bàn phím đúng lúc sheet trượt lên
+  // làm cả sheet giật — trên điện thoại để người dùng tự chạm vào ô.
+  const isMobile = useIsMobile();
   // Quỹ Tích lũy chung (is_default): lựa chọn mặc định '' trong ô quỹ, tạo khi lưu lần đầu.
   const defaultFund = fin.goals.find(g => g.is_default && !g.closed_at);
   const goalChoices = activeGoals.filter(g => !g.is_default);
@@ -225,7 +229,7 @@ export function DepositForm({ fin, nav, goal, deposit, activeGoals = [], onDone 
             onChange={field(isAnGia ? 'initial_amount' : 'amount', sanitizeDigits)}
             aria-label={isAnGia ? 'Số tiền gửi lần đầu' : 'Số tiền đang gửi'}
             placeholder={isAnGia ? 'Ví dụ: 5.000.000' : 'Ví dụ: 50.000.000'}
-            autoFocus={!deposit}
+            autoFocus={!deposit && !isMobile}
             required
           />
         </label>
@@ -465,6 +469,7 @@ const SETTLE_MODES = [
 ];
 
 export function MaturityForm({ fin, nav, deposit, onDone }) {
+  const isMobile = useIsMobile();
   const [mode, setMode] = useState('withdraw');
   const [interest, setInterest] = useState(() => String(maturityInterest(deposit)));
   const [on, setOn] = useState(deposit.matures_at);
@@ -535,7 +540,7 @@ export function MaturityForm({ fin, nav, deposit, onDone }) {
             value={interest ? groupDigits(interest) : ''}
             onChange={e => setInterest(sanitizeDigits(e.target.value))}
             placeholder="0"
-            autoFocus
+            autoFocus={!isMobile}
           />
           <small style={{ color: 'var(--n-txt3)', fontSize: '11px' }}>Điền sẵn theo lãi suất · sửa theo số ngân hàng trả thật. Ghi thành Thu › Lãi tiết kiệm.</small>
         </label>
@@ -589,6 +594,7 @@ function projectedMaturity(openedAt, term) {
 
 export function SavingMoveForm({ fin, goal, dir, onDone, onOpenNewDeposit, initialDepositId }) {
   const { pendingTasks } = useUserTasks();
+  const isMobile = useIsMobile();
   const deposits = fin.deposits.filter(d => d.fund_id === goal.id && !d.closed_on);
   const flexDeposits = deposits.filter(d => canDepositTopUp(d));
   const hasFlex = flexDeposits.length > 0;
@@ -721,7 +727,7 @@ export function SavingMoveForm({ fin, goal, dir, onDone, onOpenNewDeposit, initi
             onChange={e => setAmount(sanitizeDigits(e.target.value))}
             aria-label="Số tiền"
             placeholder={dir === 'out' && deposit ? `Tối đa ${money(deposit.amount)}` : 'Ví dụ: 5.000.000'}
-            autoFocus
+            autoFocus={!isMobile}
             required
           />
         </label>

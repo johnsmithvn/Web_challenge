@@ -522,8 +522,10 @@ export default function ListScreen({ fin, nav }) {
         />
       )}
 
-      {/* Mobile Bottom Sheet (shown when item selected on mobile screens and not editing) */}
-      {selected && !isEditing && (
+      {/* Sheet chi tiết trên điện thoại (CSS ẩn nó trên desktop). Bấm Sửa thì sheet VẪN Ở DƯỚI,
+          form sửa trượt lên đè: trước đây sheet bị gỡ ra rồi gắn lại nên lớp tối tắt-bật (nháy)
+          và Hủy thì sheet trượt lên lại từ đầu (giật). `suspended` để Escape chỉ đóng form sửa. */}
+      {selected && (
         <div className="fin-nhipchi-sheet-overlay" onClick={() => { setSelId(null); setIsEditing(false); }}>
           <div
             className="fin-nhipchi-sheet"
@@ -541,6 +543,7 @@ export default function ListScreen({ fin, nav }) {
               tasks={pendingTasks}
               inPeriod={inPeriod}
               isMobileSheet
+              suspended={isEditing}
               onClose={() => { setSelId(null); setIsEditing(false); }}
               onSelect={id => { setSelId(id); setIsEditing(false); }}
               isEditing={false}
@@ -696,7 +699,7 @@ function FilterPop({ cats, cards = [], value, onChange }) {
 /**
  * TxDetail Component (Desktop & Mobile Sheet & Edit Drawer)
  */
-function TxDetail({ tx, fin, nav, tasks, inPeriod = [], isMobileSheet = false, onClose, onSelect, isEditing, onEditingChange, onFilterCat }) {
+function TxDetail({ tx, fin, nav, tasks, inPeriod = [], isMobileSheet = false, suspended = false, onClose, onSelect, isEditing, onEditingChange, onFilterCat }) {
   const [amount, setAmount] = useState(String(tx.amount));
   const [note, setNote] = useState(tx.note || '');
   const [description, setDescription] = useState(tx.description || '');
@@ -837,6 +840,7 @@ function TxDetail({ tx, fin, nav, tasks, inPeriod = [], isMobileSheet = false, o
   };
 
   useEffect(() => {
+    if (suspended) return undefined;   // form sửa đang đè lên: phím là của nó
     const handleKeyDown = (e) => {
       if (isEditing) {
         if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {

@@ -128,6 +128,9 @@ nhau.
   **Lọc**. Điều kiện cộng dồn (AND); danh mục con phải có nhóm cha; khoảng ngày thu hẹp trong kỳ chứ
   không thay bộ chọn kỳ (kỳ dùng chung với Tổng quan). Điều kiện đang bật phải đọc được ngoài popover.
 - Mobile detail dùng layout thay thế; desktop có detail column.
+  - Điện thoại: chi tiết là sheet đáy; bấm **Sửa** thì sheet chi tiết **ở lại dưới**, form sửa là sheet
+    đáy 94dvh trượt lên đè (không trượt ngang). Hủy/Lưu chỉ gỡ form sửa — sheet bên dưới không gắn lại
+    nên không nháy lớp tối, không trượt lại từ đầu. Escape lúc đó chỉ đóng form sửa.
 
 ### Nghĩa vụ
 
@@ -152,8 +155,11 @@ sửa/công tắc/xóa, phần mở thêm (khối ghi kỳ, form sửa, lịch s
   | `due` | đúng ngày đến hạn | `#d2cefd` | `rgba(145,132,217,.45)` | `#9184d9` |
   | `paid` · `wait` · `off` | còn lại | `#7fc060` / `#75798c` | mặc định | trong suốt |
 - Danh sách sắp theo **ngày trong tháng**, không theo mức khẩn — vị trí một dòng không đổi theo ngày.
-- Ghi một kỳ mở **inline dưới dòng**, không modal: số tiền gợi ý bôi đen sẵn, ngày trả có nút nhanh
-  (hôm nay / hôm qua / đúng hạn), nguồn tiền dạng chip. Trả sớm không bị chặn.
+- Ghi một kỳ (`PayBlock`, `.fin-pay`) mở **ngay trong panel chi tiết**, không chồng modal, nhưng cùng
+  khuôn với hộp thoại Sửa: tiêu đề (vd "Trả lãi kỳ 11/2026") · trường `fin-sm__*` (ô 44px, chip, gợi ý
+  11.5px) · chân **Hủy / Xác nhận** (nút chính giãn hết hàng). Số tiền gợi ý điền sẵn và bôi đen trên
+  desktop; điện thoại không tự focus. Ngày trả có chip nhanh (hôm nay / hôm qua / đúng hạn), nguồn tiền và
+  kỳ dạng chip, Nhiệm vụ là một trường. Ctrl+Enter xác nhận, Escape đóng khối. Trả sớm không bị chặn.
 - Sửa quy tắc dùng lại đúng form thêm (`RuleForm`, hai chế độ). Sửa số tiền **áp dụng từ kỳ sau**; kỳ đã
   ghi không bị viết lại, nên ô số tiền lúc sửa luôn kèm cảnh báo.
 - Mẫu hóa đơn chỉ điền tên/nhóm/danh mục con/icon, **không điền số tiền**.
@@ -240,7 +246,8 @@ kind `finance`. Vault tag không liên quan vì được mã hóa.
   | Thanh công cụ | 12px | `0 8px 22px rgba(4,5,12,.1)` | `.fin-period` · `.fin-list__controls` · `.fin-recurring__bar` |
   | Thẻ tổng / hero | 14px | `0 10px 28px rgba(4,5,12,.12)` | `.fin-obligation-summary` · `.fin-summary-strip` · `.fin-entry-card` |
   | Dòng danh sách | 8px | không bóng, chỉ viền 1px | `.fin-txrow` · `.fin-category-card` · `.fin-rule` |
-  | Khối mở trong dòng | 8px | không bóng | `.fin-payblock` · `.fin-bill-history` · `.fin-ruleform--edit` |
+  | Khối mở trong dòng | 8px | không bóng | `.fin-payblock` (máy tính lãi mất) · `.fin-bill-history` · `.fin-ruleform--edit` |
+  | Khối trong panel Hub | 12px | không bóng | `.fin-pay` · `.fin-hub__progbox` |
   | Empty state | 10px | viền đứt, nền `rgba(35,37,50,.45)` | `.fin-list-empty` · `.fin-rules-empty` |
 
 - Không màn nào tự đặt `max-width` riêng; mọi màn tràn hết vùng nội dung và co bằng grid bên trong.
@@ -259,6 +266,9 @@ kind `finance`. Vault tag không liên quan vì được mã hóa.
 - Hub Định kỳ & Quỹ (v6.23):
   - Desktop: Layout 2 cột — Cột trái danh sách timeline, cột phải panel chi tiết; cả hai cuộn nội bộ (Workspace pattern), không cuộn trang. Không có thanh tiêu đề trang (ẩn `fin-header` của FinancePage): tháng và nút "Thêm nguồn chi" nằm trên thẻ Lịch chi.
   - Mobile (≤768px): 1 cột; panel chi tiết thành bottom sheet (cùng component với desktop) có backdrop, nút đóng, Escape; z-index trên tab dưới và FAB QuickCapture. Không thêm FAB riêng.
+    - Đang ghi một kỳ: sheet chỉ còn đầu (tên + đóng) và `.fin-pay` (`:has(> .fin-pay)`); thân khối cuộn, chân Hủy / Xác nhận dính đáy.
+    - Lớp chồng lên sheet (hộp thoại Thêm/Sửa, sổ) trượt thẳng từ đáy (`fin-sheet-up`, .28s, cùng đường cong với sheet) — không dùng animation nảy (phóng 0.97 + overshoot) của `GenericModal`. Không form nào trong sheet/hộp thoại tự focus ô nhập trên điện thoại: bàn phím bật giữa lúc trượt làm cả sheet giật.
+    - Sheet, thân hộp thoại `overscroll-behavior: contain`; lớp tối `touch-action: none` — cuộn tới mép không kéo trang phía sau.
   - 6 ô KPI kiêm bộ lọc, 3 tầng: tên + số đếm · số chính + dòng phụ · thanh tiến độ + chú thích mono. Mobile: cuộn ngang 150px, ẩn số đếm và chú thích.
   - Panel chi tiết: đầu (icon 42px, nhãn loại mono, tên, nút Sửa) · số tiền 32px + trạng thái · nút chính/phụ · khối tiến độ (nền `--n-sink`) · biểu đồ 6 kỳ kèm trung bình · bảng khóa-giá trị.
   - Thêm và Sửa dùng chung một hộp thoại 680px (`GenericModal` + `.fin-sm*`): ô chọn 5 loại (chỉ khi thêm), mẫu điền sẵn, tên + icon, lưới 2 cột trường theo loại, chân hộp xem trước dòng sẽ hiện + nhóm sẽ rơi vào. Mobile là sheet 94dvh, loại thành chip cuộn ngang. Ctrl+Enter lưu, Escape đóng (hỏi trước nếu đang gõ dở).

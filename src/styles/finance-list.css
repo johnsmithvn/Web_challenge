@@ -1171,14 +1171,17 @@
   background: var(--nhip-bg);
   color: var(--nhip-txt);
   border-radius: 26px 26px 0 0;
-  padding: 12px 20px 28px;
+  padding: 12px 20px calc(28px + env(safe-area-inset-bottom, 0px));
   display: flex;
   flex-direction: column;
   gap: 16px;
-  max-height: 88vh;
+  /* dvh: 88vh trên iOS cao hơn phần thấy được khi thanh địa chỉ đang hiện → mép trên bị cắt.
+     Cùng chiều cao + đường trượt với sheet chi tiết của Định kỳ & Quỹ. */
+  max-height: 92dvh;
   overflow-y: auto;
+  overscroll-behavior: contain;
   box-shadow: 0 -8px 30px rgba(0, 0, 0, .35);
-  animation: finSheetSlideUp .22s ease-out;
+  animation: finSheetSlideUp .28s cubic-bezier(.16, 1, .3, 1);
 }
 
 @keyframes finSheetSlideUp {

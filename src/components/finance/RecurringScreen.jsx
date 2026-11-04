@@ -513,7 +513,7 @@ function SourceModal({ kind: startKind, fin, nav, initial, focusNote = false, on
                 </button>
               ) : <span className="fin-sm__icon is-static"><AppIcon name={meta.icon} size={22} /></span>}
               <input className="fin-sm__nameinput" aria-label={NAME_META[kind][0]} placeholder={NAME_META[kind][1]}
-                value={f.name || ''} onChange={set('name')} autoFocus={!focusNote} />
+                value={f.name || ''} onChange={set('name')} autoFocus={!focusNote && !isMobile()} />
             </div>
             {iconOpen && (
               <div className="fin-sm__icons">
@@ -793,9 +793,11 @@ function SourceModal({ kind: startKind, fin, nav, initial, focusNote = false, on
 }
 
 // ── Khối ghi một kỳ ──────────────────────────────────────────────────────────
-// Mở ngay dưới dòng, không đẩy sang màn khác và không mở modal: người dùng
-// thường trả liền ba bốn khoản, rời danh sách mỗi lần là hỏng nhịp.
-function PayBlock({ fin, tasks = [], defaultAmount, dueDay, allowSource = false, amountLabel = 'Số tiền đã trả',
+// Mở ngay trong panel chi tiết, không chồng thêm modal: người dùng thường trả liền
+// ba bốn khoản, rời danh sách mỗi lần là hỏng nhịp. Cùng khuôn với hộp thoại Sửa
+// (`fin-sm__*`): tiêu đề · trường · chân có nút chính. Trên điện thoại panel là sheet —
+// khối này chiếm cả sheet, chân dính đáy (CSS `.fin-hub__detail:has(> .fin-pay)`).
+function PayBlock({ fin, kind, title, tasks = [], defaultAmount, dueDay, allowSource = false, amountLabel = 'Số tiền đã trả',
   quickAmount = null, interestQuick = null, note = null, periods = null, periodForDate = null,
   confirmLabel = 'Xác nhận thanh toán', onPay, onCancel }) {
   const amountRef = useRef(null);
@@ -816,7 +818,13 @@ function PayBlock({ fin, tasks = [], defaultAmount, dueDay, allowSource = false,
   const autoPeriod = periods?.find(p => p.key === derived)?.done ? null : derived;
   const period = pickedPeriod || autoPeriod || periods?.find(p => !p.done)?.key || periods?.[0]?.key || null;
   const [busy, setBusy] = useState(false);
-  useEffect(() => { amountRef.current?.select(); }, []);
+  // Số gợi ý bôi đen sẵn để gõ đè. Trên điện thoại thì không: bàn phím bật lên đúng lúc
+  // sheet đang đổi nội dung làm cả sheet giật, mà đa số lần trả chỉ cần bấm Xác nhận.
+  useEffect(() => {
+    if (isMobile()) return;
+    amountRef.current?.focus();
+    amountRef.current?.select();
+  }, []);
 
   const yesterday = addDaysStr(fin.today, -1);
   const dueDate = dueDateInMonth(dueDay, fin.today);
@@ -827,7 +835,9 @@ function PayBlock({ fin, tasks = [], defaultAmount, dueDay, allowSource = false,
   ];
   const card = fin.cards.find(c => c.id === sourceCardId);
 
+  const canConfirm = !busy && parseCurrencyInput(amount) > 0;
   const confirm = async () => {
+    if (!canConfirm) return;
     setBusy(true);
     const paid = parseCurrencyInput(amount);
     const result = await onPay({ amount: paid, interest: Math.min(parseCurrencyInput(interest) || 0, paid),
@@ -835,82 +845,98 @@ function PayBlock({ fin, tasks = [], defaultAmount, dueDay, allowSource = false,
     setBusy(false);
     if (result !== false) onCancel();
   };
+  // Phím như hộp thoại Sửa. Escape chỉ đóng khối, không lọt lên sheet (listener ở window
+  // đóng cả sheet); lịch ngày tự chặn Escape của nó.
+  const onKeyDown = (e) => {
+    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); confirm(); }
+    if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); onCancel(); }
+  };
+  const meta = KIND_META[kind] || KIND_META.all;
 
   return (
-    <div className="fin-payblock">
-      <div className="fin-payblock__grid">
-        <label className="fin-field"><span>{amountLabel}</span>
-          <input ref={amountRef} className="fin-input" inputMode="numeric" pattern="[0-9.]*" autoFocus
-            placeholder="chưa có kỳ nào để gợi ý" value={groupDigits(amount)} onChange={e => setAmount(sanitizeDigits(e.target.value))} />
+    <div className="fin-pay" role="group" aria-label={title} onKeyDown={onKeyDown}
+      style={{ '--k': meta.color, '--k-soft': meta.soft }}>
+      <div className="fin-pay__head">
+        <AppIcon name="checkCircle" size={17} />
+        <strong>{title}</strong>
+      </div>
+
+      <div className="fin-pay__body">
+        <SmField label={amountLabel}>
+          <SmMoney ref={amountRef} label={amountLabel} placeholder="chưa có kỳ nào để gợi ý"
+            value={amount} onChange={setAmount} />
           {quickAmount > 0 && <button type="button" className="fin-inline-command" onClick={() => {
             setAmount(String(quickAmount));
             if (interestQuick != null) setInterest(String(interestQuick));   // trả hết = gốc còn lại + lãi
           }}>
             Trả hết · {money(quickAmount)}
-          </button>}</label>
-        <div className="fin-field"><span>Ngày đã trả thật</span>
-          <div className="fin-payblock__dates">
-            <DateField value={occurredAt} onChange={setOccurredAt} max={fin.today} />
+          </button>}
+        </SmField>
+
+        <SmField label="Ngày đã trả thật">
+          <DateField value={occurredAt} onChange={setOccurredAt} max={fin.today} ariaLabel="Ngày đã trả thật, dạng ngày/tháng/năm" />
+          <div className="fin-sm__chips">
             {quickDates.map(d => (
-              <button type="button" key={d.key} className={occurredAt === d.key ? 'is-active' : ''}
-                onClick={() => setOccurredAt(d.key)}>{d.label}</button>
+              <button type="button" key={d.key} className={occurredAt === d.key ? 'is-on' : ''}
+                aria-pressed={occurredAt === d.key} onClick={() => setOccurredAt(d.key)}>{d.label}</button>
             ))}
           </div>
-        </div>
+        </SmField>
+
+        {interestQuick != null && (
+          <SmField label="Trong đó tiền lãi"
+            hint={<>Phần lãi là <strong>thu nhập thật</strong> — ghi thành giao dịch thu Đầu tư · Lãi tiết kiệm. Phần còn lại trừ vào gốc và không tính là thu nhập. Để 0 nếu lần này họ chỉ trả gốc.</>}>
+            <SmMoney label="Trong đó tiền lãi" value={interest} onChange={setInterest} />
+            {interestQuick > 0 && <button type="button" className="fin-inline-command" onClick={() => setInterest(String(interestQuick))}>
+              Lãi nợ tới hôm nay · {money(interestQuick)}
+            </button>}
+          </SmField>
+        )}
+
+        {periods && periods.length > 1 && (
+          <SmField label="Ghi vào kỳ" hint={pickedPeriod
+            ? 'Bạn đang tự chọn kỳ — đổi ngày trả không làm nó nhảy nữa.'
+            : 'Kỳ tự chạy theo ngày trả bên trên (mốc kỳ gần ngày đó nhất), nên lùi ngày về lúc trả thật là kỳ tự đúng. Bấm một kỳ khác nếu muốn tự quyết.'}>
+            <div className="fin-sm__chips">
+              {periods.map(p => (
+                <button type="button" key={p.key} disabled={p.done}
+                  className={period === p.key ? 'is-on' : ''} aria-pressed={period === p.key}
+                  title={p.done ? 'Kỳ này đã ghi rồi' : undefined}
+                  onClick={() => setPickedPeriod(p.key)}>{p.label}</button>
+              ))}
+            </div>
+          </SmField>
+        )}
+
+        {allowSource && (
+          <SmField label="Trả bằng" hint={card
+            ? `Ghi vào sao kê ${card.name} — trả sao kê sau không bị tính là khoản chi mới.`
+            : 'Tính thẳng vào chi tiêu của ngày bạn chọn.'}>
+            <div className="fin-sm__chips">
+              <button type="button" className={!sourceCardId ? 'is-on' : ''} aria-pressed={!sourceCardId} onClick={() => setSourceCardId('')}>
+                <AppIcon name="wallet" size={14} /> Tiền có sẵn
+              </button>
+              {fin.cards.map(c => (
+                <button type="button" key={c.id} className={sourceCardId === c.id ? 'is-on' : ''}
+                  aria-pressed={sourceCardId === c.id} onClick={() => setSourceCardId(c.id)}>
+                  <AppIcon name="creditCard" size={14} /> {c.name}{c.last4 ? ` ••${c.last4}` : ''}
+                </button>
+              ))}
+            </div>
+          </SmField>
+        )}
+
+        <SmField label="Nhiệm vụ liên quan · tùy chọn">
+          <TaskPicker tasks={tasks} value={taskId} onPick={setTaskId} />
+        </SmField>
+
+        {note && <SmNote>{note}</SmNote>}
       </div>
 
-      {interestQuick != null && (
-        <label className="fin-field"><span>Trong đó tiền lãi</span>
-          <input className="fin-input" inputMode="numeric" pattern="[0-9.]*" placeholder="0"
-            value={groupDigits(interest)} onChange={e => setInterest(sanitizeDigits(e.target.value))} />
-          {interestQuick > 0 && <button type="button" className="fin-inline-command" onClick={() => setInterest(String(interestQuick))}>
-            Lãi nợ tới hôm nay · {money(interestQuick)}
-          </button>}
-          <small className="fin-field__hint">Phần lãi là <strong>thu nhập thật</strong> — ghi thành giao dịch thu Đầu tư · Lãi tiết kiệm. Phần còn lại trừ vào gốc và không tính là thu nhập. Để 0 nếu lần này họ chỉ trả gốc.</small>
-        </label>
-      )}
-
-      {periods && periods.length > 1 && (
-        <div className="fin-field"><span>Ghi vào kỳ</span>
-          <div className="fin-source-picker">
-            {periods.map(p => (
-              <button type="button" key={p.key} disabled={p.done}
-                className={period === p.key ? 'is-active' : ''}
-                title={p.done ? 'Kỳ này đã ghi rồi' : undefined}
-                onClick={() => setPickedPeriod(p.key)}>{p.label}</button>
-            ))}
-          </div>
-          <small className="fin-payblock__hint">{pickedPeriod
-            ? 'Bạn đang tự chọn kỳ — đổi ngày trả không làm nó nhảy nữa.'
-            : 'Kỳ tự chạy theo ngày trả bên trên (mốc kỳ gần ngày đó nhất), nên lùi ngày về lúc trả thật là kỳ tự đúng. Bấm một kỳ khác nếu muốn tự quyết.'}</small>
-        </div>
-      )}
-
-      {allowSource && (
-        <div className="fin-field"><span>Trả bằng</span>
-          <div className="fin-source-picker">
-            <button type="button" className={!sourceCardId ? 'is-active' : ''} onClick={() => setSourceCardId('')}>
-              <AppIcon name="wallet" size={14} /> Tiền có sẵn
-            </button>
-            {fin.cards.map(c => (
-              <button type="button" key={c.id} className={sourceCardId === c.id ? 'is-active' : ''} onClick={() => setSourceCardId(c.id)}>
-                <AppIcon name="creditCard" size={14} /> {c.name}{c.last4 ? ` ••${c.last4}` : ''}
-              </button>
-            ))}
-          </div>
-          <small className="fin-payblock__hint">{card
-            ? `Ghi vào sao kê ${card.name} — trả sao kê sau không bị tính là khoản chi mới.`
-            : 'Tính thẳng vào chi tiêu của ngày bạn chọn.'}</small>
-        </div>
-      )}
-
-      {note && <small className="fin-payblock__hint">{note}</small>}
-
-      <div className="fin-payblock__foot">
-        <TaskPicker tasks={tasks} value={taskId} onPick={setTaskId} />
-        <button type="button" className="fin-btn fin-btn--ghost fin-btn--sm" onClick={onCancel}>Hủy</button>
-        <button type="button" className="fin-btn fin-btn--primary fin-btn--sm" disabled={busy || !parseCurrencyInput(amount)} onClick={confirm}>
-          <AppIcon name="check" size={14} /> {confirmLabel}
+      <div className="fin-pay__foot">
+        <button type="button" className="fin-btn fin-btn--ghost" onClick={onCancel}>Hủy</button>
+        <button type="button" className="fin-btn fin-btn--primary" disabled={!canConfirm} onClick={confirm}>
+          <AppIcon name="check" size={15} /> {confirmLabel}
         </button>
       </div>
     </div>
@@ -1548,6 +1574,7 @@ function BillDetail({ fin, tasks, act, bill: b, payId, setPayId, onEdit, onClose
   const canPay = actionable && !isFinished && Boolean(cyc);
   const left = b.term_total ? Math.max(0, b.term_total - (b.term_done || 0)) : 0;
   const periodLabel = cyc ? `${cyc.period.slice(5)}/${cyc.period.slice(0, 4)}` : '';
+  const payLabel = b.term_total ? `Thanh toán kỳ ${(b.term_done || 0) + 1}/${b.term_total}` : `Thanh toán kỳ ${periodLabel}`;
 
   return (
     <>
@@ -1562,7 +1589,7 @@ function BillDetail({ fin, tasks, act, bill: b, payId, setPayId, onEdit, onClose
       {canPay && payId !== b.id && (
         <div className="fin-hub__detail-actions">
           <button type="button" className="fin-btn fin-btn--primary fin-hub__primary" onClick={() => setPayId(b.id)}>
-            <AppIcon name="checkCircle" size={16} /> {b.term_total ? `Thanh toán kỳ ${(b.term_done || 0) + 1}/${b.term_total}` : `Thanh toán kỳ ${periodLabel}`}
+            <AppIcon name="checkCircle" size={16} /> {payLabel}
           </button>
           <button type="button" className="fin-btn fin-btn--ghost fin-hub__secondary" onClick={() => act.skipBill(b)}>Bỏ kỳ này</button>
         </div>
@@ -1574,7 +1601,7 @@ function BillDetail({ fin, tasks, act, bill: b, payId, setPayId, onEdit, onClose
           <AppIcon name="refresh" size={13} /> Bỏ đánh dấu
         </button>
       )}
-      {payId === b.id && <PayBlock fin={fin} tasks={tasks} allowSource dueDay={b.due_day} periods={act.periodsFor(b)}
+      {payId === b.id && <PayBlock kind="bill" title={payLabel} fin={fin} tasks={tasks} allowSource dueDay={b.due_day} periods={act.periodsFor(b)}
         periodForDate={(date) => billPeriodForDate(b, date)}
         defaultAmount={estimate || ''} onCancel={() => setPayId(null)} onPay={(payload) => act.payBill(b, payload)}
         note={b.amount_mode === 'ask'
@@ -1659,7 +1686,7 @@ function CardDetail({ fin, nav, tasks, act, card: c, payId, setPayId, onEdit, on
           </button>
         </div>
       )}
-      {payId === c.id && <PayBlock fin={fin} tasks={tasks} dueDay={c.due_day} defaultAmount={billed ? owed : balance}
+      {payId === c.id && <PayBlock kind="card" title={billed ? `Trả sao kê kỳ ${periodLabel}` : 'Trả sớm dư nợ'} fin={fin} tasks={tasks} dueDay={c.due_day} defaultAmount={billed ? owed : balance}
         confirmLabel={billed ? 'Xác nhận trả sao kê' : 'Xác nhận trả sớm'} onCancel={() => setPayId(null)}
         onPay={async (payload) => {
           const tx = await fin.payCardStatement(c, { ...payload, period: cyc.period });
@@ -1739,7 +1766,8 @@ function LoanDetail({ fin, nav, tasks, act, loan: l, payId, setPayId, onEdit, on
           </button>}
         </div>
       )}
-      {payId === l.id && <PayBlock fin={fin} tasks={tasks} dueDay={l.pay_day} defaultAmount={dueAmount}
+      {payId === l.id && <PayBlock kind="loan" fin={fin} tasks={tasks} dueDay={l.pay_day} defaultAmount={dueAmount}
+        title={`${sch.kind === 'interest' ? 'Trả lãi' : 'Trả'} kỳ ${period.slice(5)}/${period.slice(0, 4)}`}
         onCancel={() => setPayId(null)} onPay={async (payload) => {
           if (sch.kind === 'interest') {
             const tx = await fin.payLoanInterest(l, { ...payload, period });
@@ -1751,7 +1779,7 @@ function LoanDetail({ fin, nav, tasks, act, loan: l, payId, setPayId, onEdit, on
           else nav.showToast('Không thể ghi kỳ vay. Kiểm tra dữ liệu Finance rồi thử lại.', { icon: 'warning' });
           return !!result;
         }} />}
-      {payId === `${l.id}:principal` && <PayBlock fin={fin} tasks={tasks} defaultAmount={sch.principalDue}
+      {payId === `${l.id}:principal` && <PayBlock kind="loan" title="Tất toán gốc" fin={fin} tasks={tasks} defaultAmount={sch.principalDue}
         confirmLabel="Xác nhận tất toán gốc" onCancel={() => setPayId(null)} onPay={async (payload) => {
           const tx = await fin.payLoanPrincipal(l, { ...payload, period });
           nav.showToast(tx ? 'Đã tất toán gốc — đứng ngoài tổng chi' : 'Không thể tất toán gốc. Kiểm tra dữ liệu Finance rồi thử lại.', { icon: tx ? 'bank' : 'warning' });
@@ -1824,7 +1852,7 @@ function LendDetail({ fin, tasks, act, lending: l, payId, setPayId, onEdit, onCl
           </button>
         </div>
       )}
-      {payId === l.id && <PayBlock fin={fin} tasks={tasks} defaultAmount=""
+      {payId === l.id && <PayBlock kind="lend" title="Ghi khoản họ trả" fin={fin} tasks={tasks} defaultAmount=""
         quickAmount={left + math.dueNow}
         interestQuick={l.rate > 0 || math.forfeited > 0 ? math.dueNow : null}
         amountLabel="Họ vừa trả bao nhiêu" confirmLabel="Ghi nhận"
