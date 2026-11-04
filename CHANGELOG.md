@@ -1,5 +1,10 @@
 # CHANGELOG
 
+## v6.35.0 — 2026-11-05
+
+### Added
+- **Finance — Lùi hẹn khoản cho vay có lịch sử (`RecurringScreen.jsx` `PostponeBlock` / `LendDetail`, `financeLogic.js` `postponeChoices` + `postponeLending`, migration `20261105000000_finance_lending_due_history_v6_35_0.sql`):** trước đây người vay xin khất thì chỉ có cách bấm Sửa đổi ngày — hẹn cũ mất, không biết đã khất mấy lần. Nay panel cho vay có nút **Lùi hẹn**: khối cùng khuôn `.fin-pay` (hẹn mới + chip +1 tuần / +2 tuần / +1 tháng tính từ ngày xa hơn giữa hẹn cũ và hôm nay, lý do tùy chọn, Ctrl+Enter / Esc). Một lệnh update đổi `due_on` và nối `{ from, to, reason, at }` vào cột mới `finance_lendings.due_history` (JSONB mảng, additive, idempotent). Dòng Hẹn trả ghi “đã lùi N lần”, mục xổ *Lịch sử lùi hẹn* dùng lại hộp `.fin-explain`. Có test. **Cần chạy migration** trước khi dùng.
+
 ## v6.34.0 — 2026-10-26
 
 ### Added

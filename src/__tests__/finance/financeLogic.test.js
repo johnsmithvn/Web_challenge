@@ -44,6 +44,8 @@ import {
   floatInterest,
   loanSchedule,
   lendingInterest,
+  postponeChoices,
+  postponeLending,
   forfeitedInterest,
   billAmountEstimate,
   fundBalance,
@@ -703,6 +705,31 @@ assert.equal(b.dueNow, b.earned + b.forfeited, 'tất toán hôm nay: lãi tới
 assert.equal(lendingInterest({ ...broke, due_on: '2026-12-16' }, [], '2026-08-17').forfeited, 3_772_603);
 assert.equal(lendingInterest(lend, [], '2026-03-01').forfeited, 0, 'không khai thì bằng 0');
 console.log('lendingInterest check: OK');
+
+/* ── 19b. Lùi hẹn cho vay ─────────────────────────────────────── */
+// Quá hẹn (31/10, hôm nay 05/11): gợi ý tính từ HÔM NAY, không từ hẹn cũ
+assert.deepEqual(postponeChoices('2026-10-31', '2026-11-05').map(c => c.date),
+  ['2026-11-12', '2026-11-19', '2026-12-05']);
+// Chưa tới hẹn: tính từ hẹn cũ
+assert.deepEqual(postponeChoices('2026-11-20', '2026-11-05').map(c => c.date),
+  ['2026-11-27', '2026-12-04', '2026-12-20']);
+assert.equal(postponeChoices('2027-01-31', '2026-11-05')[2].date, '2027-02-28', '+1 tháng từ 31/01 rơi về cuối tháng 2');
+
+const owed = { due_on: '2026-10-31', due_history: [] };
+assert.deepEqual(postponeLending(owed, { to: '2026-11-12', reason: '  chưa nhận lương ', today: '2026-11-05' }), {
+  due_on: '2026-11-12',
+  due_history: [{ from: '2026-10-31', to: '2026-11-12', reason: 'chưa nhận lương', at: '2026-11-05' }],
+});
+const twice = postponeLending({ due_on: '2026-11-12', due_history: [{ from: '2026-10-31', to: '2026-11-12', reason: null, at: '2026-11-05' }] },
+  { to: '2026-12-01', today: '2026-11-13' });
+assert.equal(twice.due_history.length, 2, 'lần lùi sau nối vào cuối, giữ lần trước');
+assert.equal(twice.due_history[1].reason, null, 'không ghi lý do thì null');
+assert.ok(postponeLending({ due_on: '2026-10-31' }, { to: '2026-12-01', today: '2026-11-05' }).due_history,
+  'khoản cũ chưa có due_history vẫn lùi được');
+assert.ok(postponeLending(owed, { to: '2026-10-31', today: '2026-11-05' }).error, 'trùng hẹn cũ không phải lùi');
+assert.ok(postponeLending(owed, { to: '2026-10-20', today: '2026-11-05' }).error, 'sớm hơn hẹn cũ thì qua nút Sửa');
+assert.ok(postponeLending({ due_on: null }, { to: '2026-12-01', today: '2026-11-05' }).error, 'chưa có hẹn thì không lùi');
+console.log('postponeLending check: OK');
 
 /* ── 20. forfeitedInterest: số điền sẵn khi đập sổ ─────────── */
 const deposit = { amount: 100_000_000, rate: 9, opened_at: '2026-03-17' };

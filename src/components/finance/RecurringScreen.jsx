@@ -4,7 +4,7 @@ import { groupDigits, parseCurrencyInput, sanitizeDecimal, sanitizeDigits } from
 import { useUserTasks } from '../../hooks/useUserTasks';
 import {
   billAmountEstimate, cardBalance, cardStatementSummary, cardCarryOver, floatInterest, loanSchedule,
-  loanCycle, lendingInterest, forfeitedInterest,
+  loanCycle, lendingInterest, forfeitedInterest, postponeChoices, postponeLending,
   dueDateInMonth, daysUntilDue, addDaysStr, daysInclusive, nextAnnualFee,
   billCycle, billSettled, billPeriods, billPeriodForDate, periodTotals, currentMonthPeriod,
   guessDepositType, maturityInterest, anGiaPlan,
@@ -944,6 +944,64 @@ function PayBlock({ fin, kind, title, tasks = [], defaultAmount, dueDay, allowSo
 }
 
 /**
+ * Lùi hẹn khoản cho vay: cùng khuôn `.fin-pay` với khối ghi kỳ (chiếm panel khi mở).
+ * Lùi qua đây thì giữ vết ở `due_history`; chữa ngày gõ nhầm thì vẫn qua hộp thoại Sửa.
+ */
+function PostponeBlock({ lending: l, today, onSave, onCancel }) {
+  const choices = postponeChoices(l.due_on, today);
+  const [to, setTo] = useState(choices[0].date);
+  const [reason, setReason] = useState('');
+  const [busy, setBusy] = useState(false);
+  const patch = postponeLending(l, { to, reason, today });
+
+  const confirm = async () => {
+    if (busy || patch.error) return;
+    setBusy(true);
+    const ok = await onSave(patch);
+    setBusy(false);
+    if (ok) onCancel();
+  };
+  const onKeyDown = (e) => {
+    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); confirm(); }
+    if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); onCancel(); }
+  };
+
+  return (
+    <div className="fin-pay" role="group" aria-label="Lùi hẹn" onKeyDown={onKeyDown}
+      style={{ '--k': KIND_META.lend.color, '--k-soft': KIND_META.lend.soft }}>
+      <div className="fin-pay__head">
+        <AppIcon name="clock" size={17} />
+        <strong>Lùi hẹn · đang hẹn {dmy(l.due_on)}</strong>
+      </div>
+
+      <div className="fin-pay__body">
+        <SmField label="Hẹn mới" hint={patch.error}>
+          <DateField value={to} onChange={setTo} ariaLabel="Ngày hẹn mới, dạng ngày/tháng/năm" />
+          <div className="fin-sm__chips">
+            {choices.map(c => (
+              <button type="button" key={c.label} className={to === c.date ? 'is-on' : ''}
+                aria-pressed={to === c.date} onClick={() => setTo(c.date)}>{c.label} · {dmy(c.date).slice(0, 5)}</button>
+            ))}
+          </div>
+        </SmField>
+
+        <SmField label="Lý do · tùy chọn">
+          <SmInput label="Lý do lùi hẹn" placeholder="Chưa nhận lương" value={reason} autoFocus={!isMobile()}
+            onChange={e => setReason(e.target.value)} />
+        </SmField>
+      </div>
+
+      <div className="fin-pay__foot">
+        <button type="button" className="fin-btn fin-btn--ghost" onClick={onCancel}>Hủy</button>
+        <button type="button" className="fin-btn fin-btn--primary" disabled={busy || Boolean(patch.error)} onClick={confirm}>
+          <AppIcon name="check" size={15} /> Lùi hẹn
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/**
  * Ghi chú của hóa đơn — chuyện của hợp đồng (số công tơ, ai đứng tên), không phải
  * của một lần trả tiền, nên nó ở đây chứ không sao chép xuống từng giao dịch.
  */
@@ -1252,6 +1310,14 @@ export default function RecurringScreen({ fin, nav }) {
       nav.showToast(interestPart > 0
         ? `Đã ghi ${money(amount)} từ ${l.name} — ${money(interestPart)} lãi tính là thu nhập, ${money(principalPart)} gốc thì không`
         : `Đã ghi ${money(amount)} thu về từ ${l.name} — không tính là thu nhập`, { icon: 'handCoins' });
+      return true;
+    },
+    postponeLending: async (l, patch) => {
+      if (!await fin.updateLending(l.id, patch)) {
+        nav.showToast(`Chưa lùi được hẹn của ${l.name}. Kiểm tra dữ liệu Finance rồi thử lại.`, { icon: 'warning' });
+        return false;
+      }
+      nav.showToast(`Đã lùi hẹn ${l.name} sang ${dmy(patch.due_on)}`, { icon: 'clock' });
       return true;
     },
     // Sổ đi theo quỹ (CASCADE), còn giao dịch góp/rút giữ RESTRICT — quỹ đã có lần
@@ -1829,6 +1895,8 @@ function LendDetail({ fin, tasks, act, lending: l, payId, setPayId, onEdit, onCl
   const days = l.due_on ? daysInclusive(fin.today, l.due_on) - 1 : null;
   const math = lendingInterest(l, repayments, fin.today);
   const overdue = days != null && days < 0;
+  const postponed = l.due_history || [];
+  const postponing = payId === `${l.id}:due`;
   const state = done ? { tone: 'paid', text: `thu xong ${dmy(repayments.at(-1)?.occurred_at)}` }
     : days == null ? { tone: 'wait', text: 'không hẹn ngày' }
     : days <= -4 ? { tone: 'over', text: `quá hẹn ${Math.abs(days)} ngày` }
@@ -1845,13 +1913,20 @@ function LendDetail({ fin, tasks, act, lending: l, payId, setPayId, onEdit, onCl
       <AmountBox caption={done ? 'Đã thu đủ gốc' : 'Còn phải thu'} value={money(done ? l.principal : left)} state={state}
         note="Cho mượn không phải chi tiêu — tiền rời ví nhưng đổi thành khoản phải thu. Khi họ trả, tiền về ví và số này giảm đúng bằng đó — không tính là thu nhập. Chỉ phần lãi, nếu có, mới là thu nhập thật. Lãi tính theo NGÀY trên gốc còn lại." />
 
-      {!done && payId !== l.id && (
+      {!done && payId !== l.id && !postponing && (
         <div className="fin-hub__detail-actions">
           <button type="button" className="fin-btn fin-btn--primary fin-hub__primary" onClick={() => setPayId(l.id)}>
             <AppIcon name="checkCircle" size={16} /> Ghi khoản họ trả
           </button>
+          {l.due_on && (
+            <button type="button" className="fin-btn fin-btn--ghost fin-hub__secondary" onClick={() => setPayId(`${l.id}:due`)}>
+              <AppIcon name="clock" size={15} /> Lùi hẹn
+            </button>
+          )}
         </div>
       )}
+      {postponing && <PostponeBlock lending={l} today={fin.today}
+        onCancel={() => setPayId(null)} onSave={(patch) => act.postponeLending(l, patch)} />}
       {payId === l.id && <PayBlock kind="lend" title="Ghi khoản họ trả" fin={fin} tasks={tasks} defaultAmount=""
         quickAmount={left + math.dueNow}
         interestQuick={l.rate > 0 || math.forfeited > 0 ? math.dueNow : null}
@@ -1862,7 +1937,7 @@ function LendDetail({ fin, tasks, act, lending: l, payId, setPayId, onEdit, onCl
         left={money(got)} right={money(l.principal)} />
 
       <KV rows={[
-        ['Hẹn trả', l.due_on ? `${dmy(l.due_on)}${days != null && days >= 0 ? ` · còn ${days} ngày` : ''}` : 'Chưa hẹn'],
+        ['Hẹn trả', l.due_on ? `${dmy(l.due_on)}${days != null && days >= 0 ? ` · còn ${days} ngày` : ''}${postponed.length ? ` · đã lùi ${postponed.length} lần` : ''}` : 'Chưa hẹn'],
         ['Lãi', l.rate > 0 ? `${l.rate}%/năm` : 'Không tính'],
         // Không hẹn ngày thì mốc là HÔM NAY — nhãn phải nói đúng thế.
         l.rate > 0 && [l.due_on && !overdue ? 'Lãi sẽ nhận' : 'Lãi tới hôm nay',
@@ -1871,6 +1946,17 @@ function LendDetail({ fin, tasks, act, lending: l, payId, setPayId, onEdit, onCl
         (l.rate > 0 || math.forfeited > 0) && [l.due_on && !overdue ? 'Tổng sẽ nhận' : 'Tổng nếu trả hôm nay', money(math.total)],
         ...repayments.map((t, i) => [`Lần trả ${i + 1} · ${dmy(t.occurred_at)}`, money(t.amount)]),
       ]} />
+
+      {postponed.length > 0 && (
+        <details className="fin-explain">
+          <summary><AppIcon name="clock" size={14} /> Lịch sử lùi hẹn ({postponed.length})</summary>
+          <ul>
+            {postponed.map((h, i) => (
+              <li key={i}><strong>{dmy(h.from)} → {dmy(h.to)}</strong>{h.reason && ` · ${h.reason}`} · ghi {dmy(h.at)}</li>
+            ))}
+          </ul>
+        </details>
+      )}
 
       <div className="fin-hub__detail-tools">
         <button type="button" className="fin-btn fin-btn--ghost fin-btn--sm fin-hub__danger" onClick={() => act.removeLending(l, repayments.length)}>

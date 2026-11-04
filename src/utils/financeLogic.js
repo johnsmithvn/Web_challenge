@@ -604,6 +604,35 @@ export function lendingInterest(lending, repayments = [], refStr) {
 }
 
 /**
+ * Ngày gợi ý khi lùi hẹn cho vay. Mốc là ngày xa hơn giữa hẹn cũ và hôm nay: quá hẹn
+ * 4 ngày mà "+1 tuần" tính từ hẹn cũ thì chỉ còn 3 ngày, lùi xong gần như quá hẹn lại.
+ * "+1 tháng" giữ ngày trong tháng, tháng ngắn thì rơi về ngày cuối (31/01 → 28/02).
+ */
+export function postponeChoices(dueOn, today) {
+  const base = dueOn && dueOn > today ? dueOn : today;
+  return [
+    { label: '+1 tuần', date: addDaysStr(base, 7) },
+    { label: '+2 tuần', date: addDaysStr(base, 14) },
+    { label: '+1 tháng', date: dueDateInMonth(Number(base.slice(8)), shiftMonth(base, 1)) },
+  ];
+}
+
+/**
+ * Lùi hẹn một khoản cho vay và giữ vết: trả patch `{ due_on, due_history }` cho
+ * `updateLending`, hoặc `{ error }`. Chỉ cho LÙI (sau hẹn cũ) — chữa ngày gõ nhầm
+ * thì qua hộp thoại Sửa, không ghi vết.
+ */
+export function postponeLending(lending, { to, reason = '', today }) {
+  if (!lending.due_on) return { error: 'Khoản này chưa có ngày hẹn — đặt hẹn ở nút Sửa.' };
+  if (!to || to <= lending.due_on) return { error: 'Ngày hẹn mới phải sau ngày hẹn cũ.' };
+  return {
+    due_on: to,
+    due_history: [...(lending.due_history || []),
+      { from: lending.due_on, to, reason: reason.trim() || null, at: today }],
+  };
+}
+
+/**
  * Lãi bị mất khi đập một khoản gửi trước hạn = TOÀN BỘ lãi đã tích từ ngày gửi tới
  * ngày rút. Rút trước hạn thì ngân hàng trả lại theo lãi không kỳ hạn (~0,1%/năm),
  * coi như bằng 0 — số này là mức trần để điền sẵn, giấy rút của ngân hàng mới là số
