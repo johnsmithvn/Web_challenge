@@ -193,14 +193,11 @@ export default function AddScreen({ fin, nav }) {
     if (total > 0) setAmount(String(total));
   };
 
+  // Giữ ngày / nhóm / danh mục con / thẻ / phân loại để ghi tiếp nhiều khoản; reload mới về mặc định.
   const reset = () => {
     setAmount('');
     setNote('');
-    setSubId('');
-    setNecessity('');
-    setSourceCardId('');
     setTaskId(null);
-    setOccurredAt(fin.today);
     setMerchant('');
     setDescription('');
     setDraftItems([]);
