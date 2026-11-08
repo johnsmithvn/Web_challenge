@@ -1661,6 +1661,8 @@ span.kb-tag-chip { cursor: default; }
   transition: color 0.15s;
 }
 .kb-tabbar__item.is-active { color: var(--kb-accent); font-weight: 600; }
+/* 6 kiểu xem + Home: máy 360px mỗi tab ~52px — chữ dài thì cắt, không đè tab bên cạnh */
+.kb-tabbar__item > span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
 .kb-tabbar__item--home { margin: 14px 0; border-right: 1px solid var(--kb-line); color: var(--kb-dim); }
 
 /* ── Responsive ────────────────────────────────────────────── */
