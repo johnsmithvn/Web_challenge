@@ -250,11 +250,14 @@ Giao diện "Cực quang" trên nền trời đêm dùng chung với Nhiệm v�
 - **Tìm kiếm** không cần dấu, nhiều từ, trong cả ghi chú và tên chủ đề; `#thẻ`.
 - **Trang đọc:** mục lục, `[[liên kết]]` + backlink, khung **Xung quanh** (cùng chủ đề / cùng nguồn / lưu gần thời
   điểm), sơ đồ nhỏ, ghi chú cá nhân, nhiệm vụ liên kết, chế độ tập trung (`F`).
+- **Sổ lệnh** (kiểu xem thứ 6, `G` `S`): lệnh / đoạn code đặt tên theo việc cần làm. Hàng gọn một dòng có nút Copy, bấm hàng
+  mở cả lệnh + ghi chú + cảnh báo; nhóm tự đặt (thu gọn được), chip lọc công cụ, mục Hay dùng (5 lệnh copy nhiều nhất). Ô tìm
+  của cột trái tìm trong tên, lệnh, ghi chú; nút ＋ / phím `N` mở form Thêm lệnh ngay trên trang (`Ctrl+Enter` lưu).
 - **Thùng rác:** Xoá = bỏ vào thùng rác (hoàn tác bằng toast / `⌘Z`, bài về nguyên vẹn). Mục Thùng rác ở cột trái (chỉ hiện
   khi có bài): Khôi phục, Xoá vĩnh viễn, Dọn sạch. Không có trạng thái đọc hay nút tạo task (nối bài với task từ Nhiệm vụ).
 
-**Data:** `collections` (+ `topic_id`), `collection_topics`, `collection_notes`, `collection_tags`, `task_collections`.
-**Local:** `vl_kb_recent` (Gần đây), `kb_editor_mode`, `kb_canvas_nodes`, `kb_canvas_edges`.
+**Data:** `collections` (+ `topic_id`), `collection_topics`, `collection_notes`, `collection_tags`, `task_collections`, `snippets`.
+**Local:** `vl_kb_recent` (Gần đây), `vl_kb_snippet_closed` (nhóm Sổ lệnh đang thu gọn), `kb_editor_mode`, `kb_canvas_nodes`, `kb_canvas_edges`.
 
 ## 6. Tags và Cài đặt (`/settings`)
 

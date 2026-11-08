@@ -53,6 +53,7 @@ auth.users
 | `xp_logs` | Event XP | amount giới hạn; app có thể xóa event khi bỏ hoàn thành Task |
 | `user_tasks` | Task cá nhân | priority, recurrence JSON, recurrence parent, completion/timestamps. Thời gian (v6.21.0) = 2 mốc tuỳ chọn: Hạn `due_date` (NULL = task không ngày) + `due_time` (NULL = không giờ) và Bắt đầu `start_date` + `start_time`; CHECK có giờ thì phải có ngày, Bắt đầu không sau Hạn. `started_at` = lúc bắt đầu làm thật (app ghi khi sang Doing lần đầu). `end_time` (v6.17.0) đã xoá ở v6.21.0. `parent_task_id` (v6.19.0) ≠ NULL = **subtask** — chỉ hiện bên trong task cha, app loại khỏi mọi danh sách/lịch; FK composite `(parent_task_id, user_id) → (id, user_id)` (cần UNIQUE `user_tasks_id_user_key`) ép cùng chủ, `ON DELETE CASCADE` (v6.20.0); CHECK không tự trỏ; 1 cấp do app quản lý. `sort_order` (v6.20.0) = thứ tự kéo thả subtask, NULL xếp sau theo `created_at`. `subtasks` JSONB (v6.18.0) **không còn dùng** từ v6.20.0 (checklist cũ) — giữ cột, chưa xoá |
 | `collections` | Bài Knowledge (Inbox cũ đã chuyển sang Tasks) | type/status được CHECK (app chỉ ghi `type` note/quote/podcast, `status` read); `topic_id` (v6.32.0) FK hai cột `(user_id, topic_id) → collection_topics (user_id, id) ON DELETE SET NULL (topic_id)`; updated-at trigger |
+| `snippets` | Sổ lệnh Knowledge (v6.36.0): lệnh / code theo việc cần làm | own-row RLS 4 policy; grant chỉ `authenticated`; `group_name`, `tool` là chữ tự do (không bảng nhóm); `copy_count` xếp mục Hay dùng; CHECK độ dài từng cột |
 | `collection_topics` | Chủ đề Knowledge (v6.32.0) | own-row RLS; tên duy nhất theo user (không phân biệt hoa thường); trigger tối đa 8 chủ đề/user; `UNIQUE (user_id, id)` làm đích FK |
 | `task_collections` | Task ↔ Knowledge M:N | FK hai phía, cascade, RLS hai phía |
 | `activity_logs` | Field diff + note của Task | FK `task_id` cascade; chỉ note được update |
@@ -249,6 +250,7 @@ Snapshot đã tồn tại là bất biến. Schema change mới phải dùng mig
 22. `supabase/migrations/20261009000000_body_exercise_videos_v6_22_0.sql`
 23. `supabase/migrations/20261025000000_knowledge_topics_v6_32_0.sql` (cần Postgres 15+)
 24. `supabase/migrations/20261105000000_finance_lending_due_history_v6_35_0.sql`
+25. `supabase/migrations/20261108000000_knowledge_snippets_v6_36_0.sql`
 
 Dọn dẹp bảng cũ (tùy chọn):
 - `data/drop_incubator_tables.sql` (gỡ bỏ các bảng `intention_*` của phân hệ Ươm mầm đã ngưng phát triển).

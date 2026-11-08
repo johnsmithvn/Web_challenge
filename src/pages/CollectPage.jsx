@@ -26,6 +26,7 @@ import KBTagModal from '../components/kb/KBTagModal';
 import KBTopicModal from '../components/kb/KBTopicModal';
 import KBOverview from '../components/kb/KBOverview';
 import KBTrashView from '../components/kb/KBTrashView';
+import KBSnippetsView from '../components/kb/KBSnippetsView';
 
 import { filterArticles, pushRecent, deriveGraph, groupArticles } from '../utils/kbDeriveUtils';
 
@@ -59,7 +60,13 @@ export default function CollectPage() {
   const { showToast } = useToast();
 
   // Navigation & View state
-  const [view, setView] = useState('overview'); // LIBRARY_VIEWS | 'reader' | 'editor' | 'trash'
+  const [view, setView] = useState('overview'); // LIBRARY_VIEWS | 'snippets' | 'reader' | 'editor' | 'trash'
+  // Sổ lệnh: form Thêm lệnh mở từ nút ＋ của cột trái / phím N; rời Sổ lệnh thì đóng
+  const [snipAdding, setSnipAdding] = useState(false);
+  const changeView = useCallback((v) => {
+    setView(v);
+    setSnipAdding(false);
+  }, []);
   // Only the id is kept; the bài itself always comes from live data (see selectedArticle below),
   // so topic / status / notes / link changes show in the reader without manual syncing.
   const [selectedId, setSelectedId] = useState(null);
@@ -210,7 +217,7 @@ export default function CollectPage() {
   const chooseTopic = useCallback((topicId) => {
     setTopicFilter(topicId);
     setCursor(0);
-    if (view === 'overview' || view === 'trash') setView('list');
+    if (view === 'overview' || view === 'trash' || view === 'snippets') setView('list');
   }, [view]);
 
   const openTrash = useCallback(() => {
@@ -471,8 +478,8 @@ export default function CollectPage() {
           goLibrary();
           return;
         }
-        if (view === 'graph' || view === 'canvas' || view === 'trash') {
-          setView('overview');
+        if (view === 'graph' || view === 'canvas' || view === 'trash' || view === 'snippets') {
+          changeView('overview');
           return;
         }
         if (bulk) {
@@ -496,11 +503,8 @@ export default function CollectPage() {
       if (gSeqRef.current === 'g') {
         gSeqRef.current = '';
         clearTimeout(gTimeoutRef.current);
-        if (k === 't') { setView('overview'); return; }
-        if (k === 'l') { setView('list'); return; }
-        if (k === 'g') { setView('graph'); return; }
-        if (k === 'c') { setView('canvas'); return; }
-        if (k === 'q') { setView('gallery'); return; }
+        const target = { t: 'overview', l: 'list', g: 'graph', c: 'canvas', q: 'gallery', s: 'snippets' }[k];
+        if (target) { changeView(target); return; }
       }
       if (k === 'g') {
         gSeqRef.current = 'g';
@@ -511,6 +515,12 @@ export default function CollectPage() {
 
       // Single-key shortcuts
       if (k === '?') { e.preventDefault(); setKeysOpen(true); return; }
+
+      // Sổ lệnh: N thêm lệnh; phím của bài (J/K, E, V, ⌫…) không chạy ở đây
+      if (view === 'snippets') {
+        if (k === 'n') { e.preventDefault(); setSnipAdding(true); }
+        return;
+      }
       if (k === 'n') { e.preventDefault(); openEditor(null); return; }
       if (k === 'v') { setBulk(b => !b); setPicked([]); return; }
 
@@ -565,7 +575,7 @@ export default function CollectPage() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [keysOpen, linkOpen, tagsOpen, topicsOpen, view, bulk, hasFilter, lastTrashed, cursor, filteredArticles, selectedArticle, openEditor, openReader, goLibrary, handleDeleteArticle, handleUndo, clearFilters]);
+  }, [keysOpen, linkOpen, tagsOpen, topicsOpen, view, bulk, hasFilter, lastTrashed, cursor, filteredArticles, selectedArticle, openEditor, openReader, goLibrary, handleDeleteArticle, handleUndo, clearFilters, changeView]);
 
   if (!user) {
     return (
@@ -590,12 +600,12 @@ export default function CollectPage() {
         <KBSidebar
           isMobile={isMobile}
           view={view}
-          onViewChange={setView}
+          onViewChange={changeView}
           search={search}
           onSearchChange={q => { setSearch(q); setCursor(0); }}
           articleCount={topicCounts.all}
           linkCount={wikiEdges.length}
-          onNewArticle={() => openEditor(null)}
+          onNewArticle={view === 'snippets' ? () => setSnipAdding(true) : () => openEditor(null)}
           topics={topics}
           topicFilter={topicFilter}
           onTopicFilter={chooseTopic}
@@ -609,7 +619,10 @@ export default function CollectPage() {
 
       {/* Content views */}
       <main className="kb-content">
-        {isLoading ? (
+        {view === 'snippets' ? (
+          // Bảng riêng, không chờ bài Knowledge tải xong
+          <KBSnippetsView search={search} adding={snipAdding} onAddingChange={setSnipAdding} />
+        ) : isLoading ? (
           <SkeletonList rows={6} gap="6px" label="Đang tải kho kiến thức" />
         ) : view === 'trash' ? (
           <KBTrashView

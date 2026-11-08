@@ -6,7 +6,7 @@
 ## Mục lục
 
 1. [Tổng quan](#1-tổng-quan) · 2. [Quy chuẩn phân loại](#2-quy-chuẩn-phân-loại) · 3. [Dữ liệu](#3-dữ-liệu) ·
-4. [Màn hình](#4-màn-hình) · 5. [Tìm lại và gợi lại](#5-tìm-lại-và-gợi-lại) · 6. [Media](#6-media) ·
+4. [Màn hình](#4-màn-hình) (§4.11 Sổ lệnh) · 5. [Tìm lại và gợi lại](#5-tìm-lại-và-gợi-lại) · 6. [Media](#6-media) ·
 7. [Ghi chú cá nhân](#7-ghi-chú-cá-nhân) · 8. [Thẻ](#8-thẻ) · 9. [Liên kết module khác](#9-liên-kết-module-khác) ·
 10. [Logic thuần và test](#10-logic-thuần-và-test) · 11. [Quyết định thiết kế](#11-quyết-định-thiết-kế) ·
 12. [Nợ đã biết](#12-nợ-đã-biết) · 13. [Để sau](#13-để-sau) · 14. [Checklist test tay](#14-checklist-test-tay)
@@ -34,6 +34,7 @@
 | Danh sách | `src/components/kb/KBListView.jsx` |
 | Gallery / Sơ đồ / Canvas | `KBGalleryView.jsx`, `KBGraphView.jsx`, `KBCanvasView.jsx` |
 | Trang đọc | `src/components/kb/KBReaderView.jsx` |
+| Sổ lệnh | `src/components/kb/KBSnippetsView.jsx` + `src/hooks/useSnippets.js` + `src/utils/snippetUtils.js` |
 | Trình soạn thảo | `src/components/kb/KBEditorView.jsx` (+ `TiptapEditor.jsx`, `SlashCommand.jsx`, `extensions/MediaNode.jsx`) |
 | Chọn chủ đề / Quản lý chủ đề | `KBTopicPicker.jsx`, `KBTopicModal.jsx` |
 | Nối `[[ ]]`, quản lý thẻ, phím tắt | `KBLinkModal.jsx`, `KBTagModal.jsx`, `KBShortcutsModal.jsx` |
@@ -216,8 +217,8 @@ Chưa có chủ đề nào → "Dùng bộ 7 chủ đề gợi ý".
 
 ### 4.8. Phím tắt
 
-`/` tìm · `N` bài mới · `V` chọn nhiều · `J`/`K` di chuyển · `Enter` mở · `E` sửa · `F` đọc tập trung · `Backspace` xoá · `⌘Z` hoàn tác xoá
-(không chạy khi đang gõ) · `G` rồi `T`/`L`/`G`/`C`/`Q` = Tổng quan / Danh sách / Sơ đồ / Canvas / Gallery · `?` bảng phím
+`/` tìm · `N` bài mới (ở Sổ lệnh: thêm lệnh) · `V` chọn nhiều · `J`/`K` di chuyển · `Enter` mở · `E` sửa · `F` đọc tập trung · `Backspace` xoá · `⌘Z` hoàn tác xoá
+(không chạy khi đang gõ) · `G` rồi `T`/`L`/`G`/`C`/`Q`/`S` = Tổng quan / Danh sách / Sơ đồ / Canvas / Gallery / Sổ lệnh · `?` bảng phím
 tắt · `Esc` lùi từng lớp (Sơ đồ, Canvas, Thùng rác → Tổng quan) · Tổng quan: `1`–`8` xếp bài vào chủ đề, `→` để sau.
 Phím tắt trang không chạy khi đang mở hộp thoại.
 
@@ -243,6 +244,30 @@ Phím tắt trang không chạy khi đang mở hộp thoại.
 **769–860px** (máy tính bảng hẹp, còn sidebar của app): cột trái thành thanh trên — ô tìm + Viết bài mới,
 rồi hai hàng viên cuộn ngang (kiểu xem, chủ đề). Tổng quan, Xếp nhanh, hai khối cuối xuống một cột; dưới 1000px trang đọc
 đưa cột phải xuống dưới, Sơ đồ đưa cột phải xuống dưới.
+
+### 4.11. Sổ lệnh (`KBSnippetsView`)
+
+Nơi cất lệnh / đoạn code ngắn ("muốn làm A thì chạy lệnh này"): một trang, gõ tìm, bấm Copy. Không phải bài viết — bảng
+riêng `snippets`, không chủ đề, không thẻ, không `[[ ]]`.
+
+- **Vào:** kiểu xem thứ 6 ở cột trái (`G` `S`); tab "Lệnh" trên điện thoại. Chọn chủ đề ở cột trái thì sang Danh sách.
+- **Một lệnh:** tên theo việc cần làm (bắt buộc) · lệnh (bắt buộc, giữ thụt lề) · nhóm · công cụ (viết thường) · ghi chú
+  (nhiều dòng, giữ xuống dòng khi hiện — vd liệt kê chỗ cần sửa) · cảnh báo. Giải thích từng dòng của lệnh thì viết comment
+  ngay trong code (`REM`, `#`, `'`), không có UI chú thích riêng. Nhóm và công cụ là **chữ tự do** có gợi ý (`<datalist>` các giá trị đã dùng): gõ tên mới là có nhóm mới, không
+  có màn quản lý nhóm. Đổi tên nhóm = sửa từng lệnh.
+- **Hàng gọn** (~48px): ⚠ nếu có cảnh báo · tên · dòng đầu của lệnh (mono, cắt bớt, "+N dòng") · nhóm (khi tìm / Hay dùng) ·
+  công cụ · **Copy** (đổi thành "Đã copy" 1,2 giây; copy hỏng → toast). Bấm hàng mở tại chỗ: cả lệnh (cuộn khi quá 420px),
+  ghi chú, cảnh báo đỏ, Sửa (form tại chỗ) và Xoá (hỏi xác nhận, xoá hẳn).
+- **Không tìm:** đầu trang "Sổ lệnh · N lệnh" + chip công cụ (đếm trên cả sổ, nên chip không nhảy) · **Hay dùng** (5 lệnh
+  `copy_count` cao nhất, ẩn khi lọc công cụ) · các nhóm theo tên, "Chưa xếp" cuối, bấm tiêu đề để thu gọn (nhớ ở
+  `vl_kb_snippet_closed`). **Đang tìm** (ô tìm của cột trái, placeholder đổi sang "Tìm lệnh…"): kết quả phẳng kèm tên nhóm.
+- **Thêm:** nút ＋ của cột trái / thanh trên điện thoại (đổi chữ thành "Thêm lệnh") hoặc `N` mở form trên đầu trang; điền sẵn
+  nhóm + công cụ của lệnh vừa lưu (hoặc công cụ đang lọc). `Ctrl+Enter` lưu, `Esc` đóng. Rời Sổ lệnh thì form đóng.
+- Phím của bài (`J`/`K`, `E`, `V`, `⌫`, `Enter`) không chạy ở Sổ lệnh. `Esc` về Tổng quan.
+- **Dữ liệu:** `useSnippets` tải một lần khi mở Sổ lệnh (không chờ bài Knowledge). Sửa / xoá optimistic, lỗi thì trả lại;
+  mỗi lần Copy tăng `copy_count` (lỗi chỉ trả số cũ). Logic thuần `snippetUtils.js` (`cleanSnippet`, `filterSnippets`,
+  `groupSnippets`, `topSnippets`, `countTools`), test `src/__tests__/core/snippetUtils.test.js`.
+- Migration `20261108000000_knowledge_snippets_v6_36_0.sql` (user tự chạy).
 
 ---
 
@@ -369,6 +394,10 @@ Contract test thẻ / ghi chú: `src/__tests__/core/tagsAndKnowledgeContract.tes
 ## 14. Checklist test tay
 
 Cần đăng nhập.
+
+- [ ] Sổ lệnh (sau khi chạy migration v6.36.0): thêm lệnh bằng ＋ và `N`, `Ctrl+Enter` / `Esc`; lệnh nhiều dòng giữ thụt lề;
+  Copy dán ra đúng; copy vài lần → lên Hay dùng; nhóm mới gõ tay hiện thành nhóm, thu gọn nhóm rồi F5 vẫn nhớ; tìm "doi duoi"
+  ra lệnh; chip công cụ lọc; Sửa / Xoá; điện thoại: tab "Lệnh", nút Copy chỉ còn icon.
 
 - [ ] Soạn Markdown / Visual, media YouTube / Drive, `[[ ]]`, backlink, Sơ đồ, Canvas, Gallery, chọn nhiều, thẻ, J/K, ⌘Z.
 - [ ] Bài mới dán link GitHub, tiêu đề trống → tự `owner/repo`; chọn chủ đề và Kiểu; bỏ trống chủ đề → Chưa xếp.

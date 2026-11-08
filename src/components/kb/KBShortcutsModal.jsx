@@ -14,6 +14,7 @@ const GROUPS = [
       ['G rồi G', 'Sơ đồ liên kết'],
       ['G rồi C', 'Canvas'],
       ['G rồi Q', 'Gallery'],
+      ['G rồi S', 'Sổ lệnh'],
     ],
   },
   {
@@ -26,7 +27,7 @@ const GROUPS = [
   {
     title: 'Thao tác',
     items: [
-      ['N', 'Bài mới'],
+      ['N', 'Bài mới (ở Sổ lệnh: thêm lệnh)'],
       ['E', 'Sửa bài đang mở'],
       ['X', 'Chọn / bỏ chọn (chế độ chọn nhiều)'],
       ['V', 'Bật chế độ chọn nhiều'],

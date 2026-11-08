@@ -1,5 +1,10 @@
 # CHANGELOG
 
+## v6.36.0 — 2026-11-08
+
+### Added
+- **Knowledge — Sổ lệnh (`KBSnippetsView.jsx`, `useSnippets.js`, `snippetUtils.js`, `KBSidebar.jsx`, `CollectPage.jsx`, `collect.css`, migration `20261108000000_knowledge_snippets_v6_36_0.sql`):** nơi cất lệnh / đoạn code theo việc cần làm ("Đổi đuôi hàng loạt file" → `ren *.png *.jpg`), thay cho file `.txt` rải rác. Kiểu xem thứ 6 của Knowledge (`G` `S`, tab "Lệnh" trên điện thoại): hàng gọn một dòng có nút Copy, bấm hàng mở cả lệnh + ghi chú nhiều dòng (liệt kê chỗ cần sửa) + cảnh báo; nhóm tự đặt (chữ tự do, thu gọn được), chip lọc công cụ, mục Hay dùng theo số lần copy. Ô tìm của cột trái tìm không dấu trong tên / lệnh / ghi chú; nút ＋ và `N` mở form Thêm lệnh tại chỗ. Bảng mới `snippets` (RLS own-row, grant chỉ `authenticated`), không đụng bảng cũ. Có test. **Cần chạy migration** trước khi dùng.
+
 ## v6.35.0 — 2026-11-05
 
 ### Added

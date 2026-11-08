@@ -463,6 +463,99 @@ span.kb-tag-chip { cursor: default; }
 .kb-row:hover .kb-row__actions,
 .kb-row:focus-within .kb-row__actions { opacity: 1; }
 
+/* ── Sổ lệnh (KBSnippetsView) ──────────────────────────────────
+   Hàng gọn một dòng (tên · dòng đầu của lệnh · công cụ · Copy); bấm hàng mới mở cả lệnh. */
+.kb-snips > .kb-list-toolbar__result { margin: 0 0 10px; }
+.kb-snip-list { display: flex; flex-direction: column; gap: 6px; }
+.kb-snip {
+  border: 1px solid var(--kb-line);
+  border-radius: 12px;
+  background: var(--kb-p1);
+  transition: border-color 0.15s;
+}
+.kb-snip:hover,
+.kb-snip.is-open { border-color: color-mix(in srgb, var(--kb-accent) 35%, var(--kb-line)); }
+.kb-snip__head { display: flex; align-items: center; gap: 10px; min-height: 48px; padding: 4px 8px 4px 4px; }
+.kb-snip__main {
+  flex: 1; min-width: 0;
+  display: grid; grid-template-columns: minmax(0, 280px) minmax(0, 1fr); align-items: center; gap: 16px;
+  padding: 6px 10px;
+  border: none; border-radius: 8px;
+  background: none;
+  color: inherit; text-align: left;
+  cursor: pointer;
+}
+.kb-snip__title {
+  min-width: 0;
+  font: 600 14.5px/1.4 var(--kb-font);
+  color: var(--kb-tx);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.kb-snip__warn-icon { margin-right: 6px; vertical-align: -2px; color: var(--kb-red); }
+.kb-snip__preview {
+  min-width: 0;
+  font: 13px/1.5 var(--kb-mono);
+  color: var(--kb-dim);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.kb-snip__more { color: var(--kb-faint); }
+.kb-snip__tool {
+  flex: none;
+  padding: 2px 8px;
+  border-radius: 6px;
+  background: var(--kb-p2);
+  font: 12px/1.5 var(--kb-mono);
+  color: var(--kb-dim);
+}
+.kb-snip__copy { flex: none; min-width: 92px; }
+.kb-snip__copy.is-copied,
+.kb-snip__copy.is-copied:hover { border-color: var(--kb-accent); background: var(--kb-accent-soft); color: var(--kb-accent); }
+.kb-snip__body { padding: 0 14px 12px; }
+.kb-snip__code {
+  margin: 0;
+  max-height: 420px;
+  overflow: auto;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: var(--kb-p2);
+  font: 13px/1.6 var(--kb-mono);
+  color: var(--kb-tx);
+  white-space: pre;
+  tab-size: 2;
+}
+.kb-snip__note { margin: 8px 0 0; font-size: 13.5px; line-height: 1.55; color: var(--kb-dim); white-space: pre-line; }
+.kb-snip__warning { display: flex; align-items: center; gap: 6px; margin: 8px 0 0; font-size: 13.5px; color: var(--kb-red); }
+.kb-snip__actions { display: flex; align-items: center; justify-content: flex-end; gap: 6px; margin-top: 10px; }
+.kb-snip-chip { font-family: var(--kb-mono); }
+.kb-snip-top { margin-top: 0; cursor: default; }
+.kb-snip-top svg { color: var(--kb-gold); }
+
+.kb-snip-form {
+  display: flex; flex-direction: column; gap: 8px;
+  margin-bottom: 14px;
+  padding: 14px;
+  border: 1px dashed color-mix(in srgb, var(--kb-accent) 55%, var(--kb-line));
+  border-radius: 12px;
+  background: var(--kb-p1);
+}
+.kb-snip-list > .kb-snip-form { margin-bottom: 0; }
+.kb-snip-form .kb-input { width: 100%; }
+.kb-snip-form__title { height: 40px; font-size: 15px; }
+.kb-snip-form__row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 180px); gap: 8px; }
+.kb-snip-form__code { height: auto; padding: 10px 12px; font: 13px/1.6 var(--kb-mono); resize: vertical; }
+.kb-snip-form__note { height: auto; padding: 8px 12px; line-height: 1.55; resize: vertical; }
+.kb-snip-form__foot { display: flex; align-items: center; gap: 8px; }
+.kb-snip-form__error { font-size: 13px; color: var(--kb-red); }
+
+@media (max-width: 640px) {
+  .kb-snip__main { grid-template-columns: minmax(0, 1fr); gap: 2px; }
+  .kb-snip__head > .kb-pill,
+  .kb-snip__tool { display: none; }
+  .kb-snip__copy { min-width: 44px; height: 40px; padding: 0 12px; }
+  .kb-snip__copy span { display: none; }
+  .kb-snip-form__row { grid-template-columns: minmax(0, 1fr); }
+}
+
 /* Thanh chọn nhiều — dính đáy vùng cuộn */
 .kb-bulk {
   position: sticky;
@@ -1547,7 +1640,7 @@ span.kb-tag-chip { cursor: default; }
 .kb-tabbar {
   order: 1;
   display: grid;
-  grid-template-columns: 44px repeat(5, minmax(0, 1fr));
+  grid-template-columns: 44px repeat(6, minmax(0, 1fr));
   height: calc(62px + env(safe-area-inset-bottom, 0px));
   padding-bottom: env(safe-area-inset-bottom, 0px);
   border-top: 1px solid var(--kb-line);

@@ -5,7 +5,7 @@ import { KBTopicSelect } from './KBTopicPicker';
 
 /**
  * KBSidebar — cột trái của Knowledge: tìm, viết bài, chế độ xem, chủ đề.
- * Chủ đề lọc mọi kiểu xem. Máy tính bảng hẹp (≤860px): CSS biến cột thành thanh trên + hàng cuộn ngang.
+ * Chủ đề lọc mọi kiểu xem trừ Sổ lệnh (lệnh không có chủ đề; ô tìm và nút ＋ đổi sang tìm / thêm lệnh). Máy tính bảng hẹp (≤860px): CSS biến cột thành thanh trên + hàng cuộn ngang.
  * Điện thoại (isMobile, ≤768px): một hàng trên trong suốt (tìm · viên chủ đề · viết) + tab đáy riêng
  * (Home · 5 kiểu xem) như Finance; thanh Life Hub + tab đáy chung của app ẩn ở /collect.
  */
@@ -16,6 +16,7 @@ const VIEW_ITEMS = [
   { key: 'gallery',  label: 'Gallery',   icon: 'squares',     keys: 'G Q' },
   { key: 'graph',    label: 'Sơ đồ',     icon: 'moonStars',   keys: 'G G' },
   { key: 'canvas',   label: 'Canvas',    icon: 'kanban',      keys: 'G C' },
+  { key: 'snippets', label: 'Sổ lệnh',   icon: 'code',        keys: 'G S', short: 'Lệnh' },
 ];
 
 function NavItem({ active, onClick, dot, label, count, title, dim = false, className = '' }) {
@@ -33,7 +34,7 @@ function NavItem({ active, onClick, dot, label, count, title, dim = false, class
   );
 }
 
-function SearchBox({ inputRef, search, onSearchChange }) {
+function SearchBox({ inputRef, search, onSearchChange, placeholder }) {
   return (
     <label className="kb-search">
       <AppIcon name="search" size={15} />
@@ -41,10 +42,10 @@ function SearchBox({ inputRef, search, onSearchChange }) {
         ref={inputRef}
         type="text"
         className="kb-search__input"
-        placeholder="Tìm bài, #thẻ…"
+        placeholder={placeholder}
         value={search}
         onChange={e => onSearchChange(e.target.value)}
-        aria-label="Tìm bài viết"
+        aria-label={placeholder}
       />
       {search
         ? <button className="kb-search__clear" onClick={() => onSearchChange('')} aria-label="Xoá tìm kiếm">✕</button>
@@ -60,6 +61,12 @@ export default function KBSidebar({ isMobile,
   trashCount, trashOpen, onOpenTrash, onManageTopics,
 }) {
   const searchRef = useRef(null);
+  const inSnippets = view === 'snippets';
+  const newLabel = inSnippets ? 'Thêm lệnh' : 'Viết bài mới';
+  const searchProps = {
+    inputRef: searchRef, search, onSearchChange,
+    placeholder: inSnippets ? 'Tìm lệnh: đổi đuôi, ghép audio…' : 'Tìm bài, #thẻ…',
+  };
 
   // "/" nhảy vào ô tìm
   useEffect(() => {
@@ -79,7 +86,7 @@ export default function KBSidebar({ isMobile,
     return (
       <>
         <header className="kb-mbar">
-          <SearchBox inputRef={searchRef} search={search} onSearchChange={onSearchChange} />
+          <SearchBox {...searchProps} />
           {/* 'all' = Tất cả bài (topicFilter ''), 'none' = Chưa xếp, 'trash' = Thùng rác */}
           <KBTopicSelect
             options={[
@@ -92,7 +99,7 @@ export default function KBSidebar({ isMobile,
             onChange={v => (v === 'trash' ? onOpenTrash() : onTopicFilter(v === 'all' ? '' : v))}
             ariaLabel="Chủ đề"
           />
-          <button className="kb-btn-primary kb-mbar__new" onClick={onNewArticle} title="Viết bài mới" aria-label="Viết bài mới">
+          <button className="kb-btn-primary kb-mbar__new" onClick={onNewArticle} title={newLabel} aria-label={newLabel}>
             <AppIcon name="plus" size={18} weight="bold" />
           </button>
         </header>
@@ -109,7 +116,7 @@ export default function KBSidebar({ isMobile,
               aria-pressed={view === v.key}
             >
               <AppIcon name={v.icon} size={20} weight={view === v.key ? 'fill' : 'regular'} />
-              <span>{v.label}</span>
+              <span>{v.short || v.label}</span>
             </button>
           ))}
         </nav>
@@ -125,10 +132,10 @@ export default function KBSidebar({ isMobile,
       </div>
 
       <div className="kb-side__actions">
-        <SearchBox inputRef={searchRef} search={search} onSearchChange={onSearchChange} />
+        <SearchBox {...searchProps} />
         <button className="kb-btn-primary kb-side__new" onClick={onNewArticle}>
           <AppIcon name="plus" size={15} weight="bold" />
-          <span>Viết bài mới</span>
+          <span>{newLabel}</span>
         </button>
       </div>
 

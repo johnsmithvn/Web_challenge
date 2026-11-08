@@ -186,6 +186,7 @@ instance; đây không phải quota phân tán toàn hệ thống.
 | `kb_editor_mode` | Markdown/Tiptap visual preference |
 | `kb_canvas_nodes`, `kb_canvas_edges` | vị trí node / cạnh của Canvas Knowledge |
 | `vl_kb_recent` | id 10 bài Knowledge mở gần nhất (khối "Mở gần đây") |
+| `vl_kb_snippet_closed` | tên các nhóm đang thu gọn ở Sổ lệnh Knowledge |
 | `lh_usd_rate`, `lh_auto_k` | preference nhập/đổi tiền |
 | `lh_finance_saving_as_expense` | preference báo cáo Finance |
 | `lh_fin_hidden_seed_shortcuts` | shortcut mẫu đã ẩn ở màn Nhập nhanh |
