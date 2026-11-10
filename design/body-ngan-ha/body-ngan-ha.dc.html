@@ -1,0 +1,911 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/regular/style.css">
+<link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/fill/style.css">
+<script src="./body-kit.js"></script>
+<style>
+  body { margin:0; background:#E7E6EE; -webkit-font-smoothing:antialiased; }
+  a { color:#5A55E0; text-decoration:none; }
+  a:hover { color:#3F3AC0; text-decoration:underline; }
+  .sc-interp { display:contents; }
+  [data-gx] ::-webkit-scrollbar { width:6px; height:6px; }
+  [data-gx] ::-webkit-scrollbar-thumb { background:rgba(140,140,190,.25); border-radius:3px; }
+  @keyframes twinkle { 0%,100% { opacity:.15; } 50% { opacity:.95; } }
+  @keyframes shoot { 0% { transform:translate3d(0,0,0) rotate(-28deg); opacity:0; } 1.5% { opacity:1; } 8% { transform:translate3d(-560px,298px,0) rotate(-28deg); opacity:0; } 100% { transform:translate3d(-560px,298px,0) rotate(-28deg); opacity:0; } }
+  @keyframes neb { 0% { transform:translate3d(0,0,0) scale(1); } 100% { transform:translate3d(46px,-30px,0) scale(1.14); } }
+  @keyframes sparkle { 0%,100% { transform:scale(.2) rotate(45deg); opacity:0; } 50% { transform:scale(1) rotate(45deg); opacity:.85; } }
+  @keyframes rise { 0% { transform:translate3d(0,0,0); opacity:0; } 15% { opacity:.8; } 100% { transform:translate3d(var(--dx),-260px,0); opacity:0; } }
+  @keyframes spin { to { transform:rotate(360deg); } }
+  @keyframes pulse { 0%,100% { transform:scale(1); opacity:.28; } 50% { transform:scale(1.6); opacity:.04; } }
+  @keyframes burst { 0% { transform:translate(-50%,-50%) translate(0,0) scale(1); opacity:1; } 100% { transform:translate(-50%,-50%) translate(var(--dx),var(--dy)) scale(.2); opacity:0; } }
+  @keyframes floaty { 0%,100% { transform:translateY(0); } 50% { transform:translateY(-10px); } }
+</style>
+</helmet>
+
+<section style="padding:56px 64px 110px;font-family:'Be Vietnam Pro',sans-serif;display:flex;flex-direction:column;gap:40px;box-sizing:border-box">
+  <div style="max-width:1000px;display:flex;flex-direction:column;gap:14px">
+    <span style="font:500 11px/1 'JetBrains Mono',monospace;letter-spacing:.16em;color:#8A8A94">BODY · PHONG CÁCH 1 / 3</span>
+    <h1 style="margin:0;font:600 30px/1.15 'Space Grotesk',sans-serif;color:#15161A;letter-spacing:-.02em">Body · Ngân hà</h1>
+    <p style="margin:0;font:400 14.5px/1.6 'Be Vietnam Pro',sans-serif;color:#5F606A;text-wrap:pretty">Cả module gom vào một khung: thanh trái chuyển 7 trang Tổng quan, Lộ trình, Tiến bộ, Cơ thể, Dinh dưỡng, Bản đồ cơ, Thư viện bài. Mỗi buổi tập thắp một ngôi sao trong chòm sao tuần. Nút Bắt đầu buổi tập mở chế độ tập: chỉnh rep, bấm Xong set, nghỉ đếm ngược, xong thì sao T3 sáng lên. Bản tối và bản sáng chạy độc lập.</p>
+    <div style="display:flex;flex-wrap:wrap;gap:8px">
+      <span style="height:30px;padding:0 12px;border-radius:9px;display:inline-flex;align-items:center;gap:7px;background:#15161A;color:#fff;font:600 12.5px/1 'Be Vietnam Pro',sans-serif"><i class="ph-fill ph-planet" style="font-size:14px"></i>1 · Ngân hà</span>
+      <a href="Body - Sân chơi.dc.html" style="height:30px;padding:0 12px;border-radius:9px;display:inline-flex;align-items:center;gap:7px;background:#fff;border:1px solid #DDDCE6;color:#3F4150;font:500 12.5px/1 'Be Vietnam Pro',sans-serif;box-sizing:border-box;white-space:nowrap"><i class="ph ph-game-controller" style="font-size:14px"></i>2 · Sân chơi</a>
+      <a href="Body - Đường chạy.dc.html" style="height:30px;padding:0 12px;border-radius:9px;display:inline-flex;align-items:center;gap:7px;background:#fff;border:1px solid #DDDCE6;color:#3F4150;font:500 12.5px/1 'Be Vietnam Pro',sans-serif;box-sizing:border-box;white-space:nowrap"><i class="ph ph-sneaker-move" style="font-size:14px"></i>3 · Đường chạy</a>
+    </div>
+  </div>
+
+  <sc-for list="{{ frames }}" as="f" hint-placeholder-count="2">
+  <div id="{{ f.id }}" style="display:flex;flex-direction:column;gap:16px">
+    <div style="display:flex;align-items:center;gap:12px;max-width:1440px">
+      <span style="flex:none;height:26px;padding:0 10px;border-radius:8px;background:#15161A;color:#fff;display:inline-flex;align-items:center;font:600 13px/1 'JetBrains Mono',monospace">{{ f.id }}</span>
+      <span style="flex:none;font:600 18px/1.2 'Be Vietnam Pro',sans-serif;color:#15161A">{{ f.t.name }}</span>
+      <span style="font:400 14px/1.5 'Be Vietnam Pro',sans-serif;color:#5F606A;text-wrap:pretty">{{ f.t.desc }}</span>
+    </div>
+
+    <div data-gx="1" data-screen-label="{{ f.label }}" style="position:relative;flex:none;width:1440px;height:900px;border-radius:22px;overflow:hidden;background:{{ f.t.bg }};display:flex;box-shadow:{{ f.t.frameSh }};font-family:'Be Vietnam Pro',sans-serif">
+      <div style="position:absolute;inset:0;pointer-events:none;overflow:hidden">{{ f.fx }}</div>
+
+      <div style="position:relative;z-index:2;flex:none;width:88px;display:flex;flex-direction:column;align-items:center;gap:4px;padding:20px 0 18px;box-sizing:border-box;border-right:1px solid {{ f.t.bd }};background:{{ f.t.rail }};backdrop-filter:blur(12px)">
+        <span style="width:44px;height:44px;margin-bottom:14px;border-radius:15px;display:grid;place-items:center;background:{{ f.t.btn }};color:{{ f.t.btnInk }};box-shadow:{{ f.t.btnSh }}"><i class="ph-fill ph-planet" style="font-size:22px"></i></span>
+        <sc-for list="{{ f.nav }}" as="n" hint-placeholder-count="7">
+          <div onClick="{{ n.go }}" title="{{ n.n }}" style="width:74px;height:60px;box-sizing:border-box;border-radius:16px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;cursor:pointer;color:{{ n.fg }};background:{{ n.bg }};border:1px solid {{ n.bd }};box-shadow:{{ n.sh }};transition:all .2s">
+            <i class="{{ n.icc }}" style="font-size:20px"></i>
+            <span style="font:{{ n.fw }} 10.5px/1 'Be Vietnam Pro',sans-serif;white-space:nowrap">{{ n.n }}</span>
+          </div>
+        </sc-for>
+        <span style="margin-top:auto;width:38px;height:38px;border-radius:50%;display:grid;place-items:center;background:{{ f.t.panel2 }};border:1px solid {{ f.t.bd }};font:600 13px/1 'Space Grotesk',sans-serif;color:{{ f.t.ink2 }}">M</span>
+      </div>
+
+      <div style="position:relative;z-index:1;flex:1;min-width:0;display:flex;flex-direction:column;gap:18px;padding:24px 30px 24px">
+        <div style="flex:none;display:flex;align-items:flex-end;justify-content:space-between;gap:20px">
+          <div style="display:flex;flex-direction:column;gap:9px">
+            <span style="font:500 11px/1 'JetBrains Mono',monospace;letter-spacing:.18em;color:{{ f.t.ink3 }}">BODY · {{ f.page.no }} / 07</span>
+            <span style="font:600 32px/1 'Space Grotesk',sans-serif;letter-spacing:-.02em;color:{{ f.t.ink }}">{{ f.page.n }}</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px">
+            <span style="height:40px;padding:0 14px;box-sizing:border-box;border-radius:13px;display:flex;align-items:center;gap:8px;background:{{ f.t.panel }};border:1px solid {{ f.t.bd }};font:500 13px/1 'Be Vietnam Pro',sans-serif;color:{{ f.t.ink2 }};white-space:nowrap"><i class="ph ph-moon-stars" style="font-size:16px;color:{{ f.t.a4 }}"></i>{{ f.date }} · {{ f.weekNo }}</span>
+            <span onClick="{{ f.start }}" style="height:42px;padding:0 18px 0 16px;box-sizing:border-box;border-radius:14px;display:flex;align-items:center;gap:8px;background:{{ f.t.btn }};color:{{ f.t.btnInk }};box-shadow:{{ f.t.btnSh }};opacity:{{ f.startOp }};font:600 13.5px/1 'Be Vietnam Pro',sans-serif;white-space:nowrap;cursor:pointer" style-hover="filter:brightness(1.08)"><i class="{{ f.startIc }}" style="font-size:15px"></i>{{ f.startL }}</span>
+          </div>
+        </div>
+
+        <div style="flex:1;min-height:0;position:relative">
+
+          <sc-if value="{{ f.pg.home }}" hint-placeholder-val="{{ true }}">
+          <div style="position:absolute;inset:0;display:grid;grid-template-columns:minmax(0,1fr) 392px;gap:18px">
+            <div style="display:flex;flex-direction:column;gap:18px;min-height:0;min-width:0">
+              <div style="position:relative;flex:none;height:402px;box-sizing:border-box;border-radius:26px;overflow:hidden;background:{{ f.t.hero }};border:1px solid {{ f.t.bd }};box-shadow:{{ f.t.shadow }};backdrop-filter:{{ f.t.blur }};padding:28px 30px;display:flex;flex-direction:column;gap:18px">
+                <div style="position:absolute;right:-30px;top:-40px;width:330px;height:330px;pointer-events:none;animation:floaty 7s ease-in-out infinite">
+                  <div style="position:absolute;left:-100px;top:120px;width:530px;height:100px;border-radius:50%;border-top:2px solid {{ f.t.ringC }};transform:rotate(-14deg)"></div>
+                  <div style="position:absolute;inset:44px;border-radius:50%;background:{{ f.t.planet }};box-shadow:{{ f.t.planetSh }}"></div>
+                  <div style="position:absolute;left:-100px;top:120px;width:530px;height:100px;border-radius:50%;border-bottom:2.5px solid {{ f.t.ringC }};transform:rotate(-14deg)"></div>
+                  <div style="position:absolute;inset:6px;animation:spin 18s linear infinite"><span style="position:absolute;left:50%;top:0;width:14px;height:14px;margin-left:-7px;border-radius:50%;background:{{ f.t.a3 }};box-shadow:0 0 18px {{ f.t.a3 }}"></span></div>
+                </div>
+                <div style="position:relative;display:flex;align-items:center;gap:8px">
+                  <span style="height:28px;padding:0 11px;box-sizing:border-box;border-radius:999px;white-space:nowrap;display:inline-flex;align-items:center;gap:6px;background:{{ f.t.chip }};border:1px solid {{ f.t.bd }};font:600 11.5px/1 'JetBrains Mono',monospace;letter-spacing:.06em;color:{{ f.t.a2 }}"><i class="ph-fill ph-lightning" style="font-size:13px"></i>{{ f.home.tag }} · HÔM NAY</span>
+                  <span style="height:28px;padding:0 11px;box-sizing:border-box;border-radius:999px;white-space:nowrap;display:inline-flex;align-items:center;gap:6px;background:{{ f.t.chip }};border:1px solid {{ f.t.bd }};font:500 12px/1 'Be Vietnam Pro',sans-serif;color:{{ f.t.ink2 }}"><i class="ph ph-timer" style="font-size:13px"></i>~{{ f.home.mins }} phút · {{ f.home.nEx }} bài · {{ f.home.nSets }} set</span>
+                </div>
+                <div style="position:relative;display:flex;flex-direction:column;gap:10px;max-width:560px">
+                  <span style="font:600 48px/1.02 'Space Grotesk',sans-serif;letter-spacing:-.03em;color:{{ f.t.ink }}">{{ f.home.focus }}</span>
+                  <span style="font:400 14px/1.55 'Be Vietnam Pro',sans-serif;color:{{ f.t.ink2 }};text-wrap:pretty">Tuần 2/4 của lịch A/B 5 ngày. Xô và bụng đã hồi đủ, đùi và mông còn mỏi nhẹ sau buổi tự do.</span>
+                </div>
+                <div style="position:relative;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;max-width:640px">
+                  <sc-for list="{{ f.home.list }}" as="e" hint-placeholder-count="4">
+                    <div style="display:flex;align-items:center;gap:12px;padding:11px 14px;border-radius:16px;background:{{ f.t.panel2 }};border:1px solid {{ f.t.bd }};min-width:0">
+                      <span style="font:600 13px/1 'JetBrains Mono',monospace;color:{{ f.t.a2 }}">{{ e.no }}</span>
+                      <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:4px">
+                        <span style="font:600 13.5px/1.2 'Be Vietnam Pro',sans-serif;color:{{ f.t.ink }};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ e.n }}</span>
+                        <span style="font:400 11.5px/1.2 'Be Vietnam Pro',sans-serif;color:{{ f.t.ink3 }};white-space:nowrap">{{ e.en }}</span>
+                      </div>
+                      <span style="flex:none;font:500 12px/1 'JetBrains Mono',monospace;color:{{ f.t.ink2 }};white-space:nowrap">{{ e.sx }}</span>
+                    </div>
+                  </sc-for>
+                </div>
+                <div style="position:relative;margin-top:auto;display:flex;gap:10px">
+                  <span onClick="{{ f.start }}" style="height:46px;padding:0 22px 0 18px;box-sizing:border-box;border-radius:15px;display:flex;align-items:center;gap:9px;background:{{ f.t.btn }};color:{{ f.t.btnInk }};box-shadow:{{ f.t.btnSh }};opacity:{{ f.startOp }};font:600 14px/1 'Be Vietnam Pro',sans-serif;cursor:pointer;white-space:nowrap" style-hover="filter:brightness(1.08)"><i class="ph-fill ph-rocket-launch" style="font-size:17px"></i>{{ f.startL }}</span>
+                  <span onClick="{{ f.home.goPlan }}" style="height:46px;padding:0 18px;box-sizing:border-box;border-radius:15px;display:flex;align-items:center;gap:8px;background:{{ f.t.btn2 }};border:1px solid {{ f.t.btn2Bd }};color:{{ f.t.btn2Ink }};font:500 13.5px/1 'Be Vietnam Pro',sans-serif;cursor:pointer;white-space:nowrap"><i class="ph ph-path" style="font-size:16px"></i>Xem lộ trình tuần</span>
+                </div>
+              </div>
+
+              <div style="flex:1;min-height:0;position:relative;box-sizing:border-box;border-radius:26px;background:{{ f.t.panel }};border:1px solid {{ f.t.bd }};box-shadow:{{ f.t.shadow }};backdrop-filter:{{ f.t.blur }};padding:22px 24px 18px;display:flex;flex-direction:column;gap:6px">
+                <div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px">
+                  <div style="display:flex;align-items:baseline;gap:10px">
+                    <span style="font:600 17px/1 'Space Grotesk',sans-serif;color:{{ f.t.ink }}">Chòm sao tuần này</span>
+                    <span style="font:400 12.5px/1 'Be Vietnam Pro',sans-serif;color:{{ f.t.ink3 }}">12 – 18/10 · mỗi buổi tập thắp một ngôi sao</span>
+                  </div>
+                  <span style="font:600 12.5px/1 'JetBrains Mono',monospace;color:{{ f.t.a3 }}">{{ f.home.doneN }} / 5 SAO</span>
+                </div>
+                <div style="position:relative;flex:1;min-height:0">
+                  <svg width="834" height="190" viewBox="0 0 834 190" style="position:absolute;left:0;top:0;overflow:visible">
+                    <sc-for list="{{ f.cons.segs }}" as="s" hint-placeholder-count="6">
+                      <line x1="{{ s.x1 }}" y1="{{ s.y1 }}" x2="{{ s.x2 }}" y2="{{ s.y2 }}" stroke="{{ s.c }}" stroke-width="{{ s.w }}" stroke-dasharray="{{ s.da }}" opacity="{{ s.op }}" stroke-linecap="round"></line>
+                    </sc-for>
+                    <sc-for list="{{ f.cons.pts }}" as="p" hint-placeholder-count="7">
+                      <g>
+                        <circle cx="{{ p.x }}" cy="{{ p.y }}" r="{{ p.halo }}" fill="{{ p.c }}" opacity="{{ p.hop }}" style="transform-box:fill-box;transform-origin:center;animation:{{ p.anim }}"></circle>
+                        <circle cx="{{ p.x }}" cy="{{ p.y }}" r="{{ p.r }}" fill="{{ p.fill }}" stroke="{{ p.c }}" stroke-width="2" style="filter:{{ p.glow }}"></circle>
+                      </g>
+                    </sc-for>
+                  </svg>
+                  <sc-for list="{{ f.cons.pts }}" as="p" hint-placeholder-count="7">
+                    <div style="position:absolute;left:{{ p.x }}px;top:{{ p.ly }}px;transform:translateX(-50%);width:116px;display:flex;flex-direction:column;align-items:center;gap:5px;text-align:center">
+                      <span style="font:600 11.5px/1 'JetBrains Mono',monospace;color:{{ p.sc }};white-space:nowrap">{{ p.s }} · {{ p.n }}</span>
+                      <span style="font:500 11.5px/1.3 'Be Vietnam Pro',sans-serif;color:{{ p.fc }};text-wrap:balance">{{ p.focus }}</span>
+                    </div>
+                  </sc-for>
+                </div>
+                <div style="display:flex;gap:16px;font:500 11.5px/1 'Be Vietnam Pro',sans-serif;color:{{ f.t.ink3 }}">
+                  <span style="display:flex;align-items:center;gap:6px"><span style="width:8px;height:8px;border-radius:50%;background:{{ f.t.a3 }};box-shadow:0 0 8px {{ f.t.a3 }}"></span>Đã tập</span>
+                  <span style="display:flex;align-items:center;gap:6px"><span style="width:8px;height:8px;border-radius:50%;background:{{ f.t.acc }}"></span>Hôm nay</span>
+                  <span style="display:flex;align-items:center;gap:6px"><span style="width:8px;height:8px;border-radius:50%;box-sizing:border-box;border:1.5px solid {{ f.t.ink3 }}"></span>Sắp tới</span>
+                </div>
+              </div>
+            </div>
+
+            <div style="display:flex;flex-direction:column;gap:18px;min-height:0">
+              <div style="flex:none;box-sizing:border-box;border-radius:24px;background:{{ f.t.panel }};border:1px solid {{ f.t.bd }};box-shadow:{{ f.t.shadow }};backdrop-filter:{{ f.t.blur }};padding:20px 22px;display:flex;flex-direction:column;gap:14px">
+                <div style="display:flex;justify-content:space-between;align-items:baseline">
+                  <span style="font:600 16px/1 'Space Grotesk',sans-serif;color:{{ f.t.ink }}">Quỹ đạo hôm nay</span>
+                  <span onClick="{{ f.home.goFood }}" style="font:500 12px/1 'Be Vietnam Pro',sans-serif;color:{{ f.t.acc }};cursor:pointer">Dinh dưỡng</span>
+                </div>
+                <div style="display:flex;align-items:center;gap:18px">
+                  <div style="position:relative;width:176px;height:176px;flex:none">
+                    <svg width="176" height="176" viewBox="0 0 176 176" style="display:block;transform:rotate(-90deg)">
+                      <circle cx="88" cy="88" r="80" fill="none" stroke="{{ f.t.track }}" stroke-width="11"></circle>
+                      <circle cx="88" cy="88" r="80" fill="none" stroke="{{ f.t.acc }}" stroke-width="11" stroke-linecap="round" stroke-dasharray="{{ f.home.kR.r80 }}" style="filter:drop-shadow(0 0 6px {{ f.t.acc }});transition:stroke-dasharray .5s"></circle>
+                      <circle cx="88" cy="88" r="62" fill="none" stroke="{{ f.t.track }}" stroke-width="11"></circle>
+                      <circle cx="88" cy="88" r="62" fill="none" stroke="{{ f.t.a4 }}" stroke-width="11" stroke-linecap="round" stroke-dasharray="{{ f.home.pR.r62 }}" style="filter:drop-shadow(0 0 6px {{ f.t.a4 }})"></circle>
+                      <circle cx="88" cy="88" r="44" fill="none" stroke="{{ f.t.track }}" stroke-width="11"></circle>
+                      <circle cx="88" cy="88" r="44" fill="none" stroke="{{ f.t.a2 }}" stroke-width="11" stroke-linecap="round" stroke-dasharray="{{ f.home.wR.r44 }}" style="filter:drop-shadow(0 0 6px {{ f.t.a2 }});transition:stroke-dasharray .5s"></circle>
+                    </svg>
+                    <div style="position:absolute;inset:0;display:grid;place-items:center"><i class="ph-fill ph-sparkle" style="font-size:20px;color:{{ f.t.a3 }}"></i></div>
+                  </div>
+                  <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:14px">
+                    <div style="display:flex;flex-direction:column;gap:5px">
+                      <span style="display:flex;align-items:center;gap:7px;font:500 12px/1 'Be Vietnam Pro',sans-serif;color:{{ f.t.ink3 }}"><span style="width:8px;height:8px;border-radius:50%;background:{{ f.t.acc }}"></span>Năng lượng</span>
+                      <span style="font:600 19px/1 'Space Grotesk',sans-serif;color:{{ f.t.ink }}">{{ f.home.kcal }}<span style="font:500 12px/1 'Be Vietnam Pro',sans-serif;color:{{ f.t.ink3 }}"> / {{ f.home.kcalT }} kcal</span></span>
+                    </div>
+                    <div style="display:flex;flex-direction:column;gap:5px">
+                      <span style="display:flex;align-items:center;gap:7px;font:500 12px/1 'Be Vietnam Pro',sans-serif;color:{{ f.t.ink3 }}"><span style="width:8px;height:8px;border-radius:50%;background:{{ f.t.a4 }}"></span>Đạm</span>
+                      <span style="font:600 19px/1 'Space Grotesk',sans-serif;color:{{ f.t.ink }}">{{ f.home.p }}<span style="font:500 12px/1 'Be Vietnam Pro',sans-serif;color:{{ f.t.ink3 }}"> / {{ f.home.pT }} g</span></span>
+                    </div>
+                    <div onClick="{{ f.food.addCup }}" title="Thêm một cốc" style="display:flex;flex-direction:column;gap:5px;cursor:pointer">
+                      <span style="display:flex;align-items:center;gap:7px;font:500 12px/1 'Be Vietnam Pro',sans-serif;color:{{ f.t.ink3 }}"><span style="width:8px;height:8px;border-radius:50%;background:{{ f.t.a2 }}"></span>Nước<i class="ph ph-plus-circle" style="font-size:13px;color:{{ f.t.a2 }}"></i></span>
+                      <span style="font:600 19px/1 'Space Grotesk',sans-serif;color:{{ f.t.ink }}">{{ f.home.water }}<span style="font:500 12px/1 'Be Vietnam Pro',sans-serif;color:{{ f.t.ink3 }}"> / {{ f.home.waterT }} cốc</span></span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div style="flex:none;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px">
+                <div onClick="{{ f.home.goBody }}" style="box-sizing:border-box;border-radius:22px;background:{{ f.t.panel }};border:1px solid {{ f.t.bd }};box-shadow:{{ f.t.shadow }};backdrop-filter:{{ f.t.blur }};padding:16px 16px 12px;display:flex;flex-direction:column;gap:8px;cursor:pointer;min-width:0">
+                  <span style="font:500 12px/1 'Be Vietnam Pro',sans-serif;color:{{ f.t.ink3 }}">Cân nặng</span>
+                  <span style="font:600 24px/1 'Space Grotesk',sans-serif;color:{{ f.t.ink }}">{{ f.home.w }}<span style="font:500 12px/1 'Be Vietnam Pro',sans-serif;color:{{ f.t.ink3 }}"> kg</span></span>
+                  <span style="font:500 11.5px/1 'JetBrains Mono',monospace;color:{{ f.t.a3 }}">{{ f.home.wD }} · 30 ngày</span>
+                  <svg width="150" height="40" viewBox="{{ f.home.spark.vb }}" style="display:block;overflow:visible;margin-top:2px">
+                    <path d="{{ f.home.spark.line }}" fill="none" stroke="{{ f.t.acc }}" stroke-width="2" stroke-linecap="round" style="filter:drop-shadow(0 0 4px {{ f.t.acc }})"></path>
+                    <circle cx="{{ f.home.spark.lx }}" cy="{{ f.home.spark.ly }}" r="3.5" fill="{{ f.t.acc }}"></circle>
+                  </svg>
+                </div>
+                <div style="box-sizing:border-box;border-radius:22px;background:{{ f.t.panel }};border:1px solid {{ f.t.bd }};box-shadow:{{ f.t.shadow }};backdrop-filter:{{ f.t.blur }};padding:16px;display:flex;flex-direction:column;gap:8px;min-width:0">
+                  <span style="display:flex;align-items:center;gap:6px;font:500 12px/1 'Be Vietnam Pro',sans-serif;color:{{ f.t.ink3 }}"><i class="ph ph-clipboard-text" style="font-size:14px;color:{{ f.t.a4 }}"></i>Check-in tuần</span>
+                  <span style="font:600 24px/1 'Space Grotesk',sans-serif;color:{{ f.t.ink }}">{{ f.home.check }}</span>
+                  <span style="font:500 11.5px/1 'JetBrains Mono',monospace;color:{{ f.t.a4 }}">{{ f.home.checkLeft }}</span>
+                  <span style="font:400 11.5px/1.35 'Be Vietnam Pro',sans-serif;color:{{ f.t.ink2 }};margin-top:auto">{{ f.home.checkMeta }}</span>
+                </div>
+              </div>
+
+              <div onClick="{{ f.home.goMap }}" style="flex:1;min-height:0;box-sizing:border-box;border-radius:24px;background:{{ f.t.panel }};border:1px solid {{ f.t.bd }};box-shadow:{{ f.t.shadow }};backdrop-filter:{{ f.t.blur }};padding:20px 22px;display:flex;flex-direction:column;gap:14px;cursor:pointer">
+                <div style="display:flex;justify-content:space-between;align-items:baseline">
+                  <span style="font:600 16px/1 'Space Grotesk',sans-serif;color:{{ f.t.ink }}">Phục hồi cơ</span>
+                  <span style="font:500 12px/1 'Be Vietnam Pro',sans-serif;color:{{ f.t.acc }}">Bản đồ cơ</span>
+                </div>
+                <div style="flex:1;min-height:60px;display:flex;align-items:flex-end;gap:5px">
+                  <sc-for list="{{ f.home.recBars }}" as="b" hint-placeholder-count="14">
+                    <div title="{{ b.n }}" style="flex:1;height:{{ b.h }};border-radius:5px 5px 2px 2px;background:linear-gradient(180deg,{{ b.c }},transparent);box-shadow:0 -2px 10px -3px {{ b.c }}"></div>
+                  </sc-for>
+                </div>
+                <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px">
+                  <div style="display:flex;flex-direction:column;gap:5px"><span style="font:600 20px/1 'Space Grotesk',sans-serif;color:{{ f.t.bad }}">{{ f.home.recLow }}</span><span style="font:500 11.5px/1 'Be Vietnam Pro',sans-serif;color:{{ f.t.ink3 }}">Cần nghỉ</span></div>
+                  <div style="display:flex;flex-direction:column;gap:5px"><span style="font:600 20px/1 'Space Grotesk',sans-serif;color:{{ f.t.a3 }}">{{ f.home.recMid }}</span><span style="font:500 11.5px/1 'Be Vietnam Pro',sans-serif;color:{{ f.t.ink3 }}">Đang hồi</span></div>
+                  <div style="display:flex;flex-direction:column;gap:5px"><span style="font:600 20px/1 'Space Grotesk',sans-serif;color:{{ f.t.good }}">{{ f.home.recReady }}</span><span style="font:500 11.5px/1 'Be Vietnam Pro',sans-serif;color:{{ f.t.ink3 }}">Sẵn sàng</span></div>
+                </div>
+                <span style="font:400 12px/1.4 'Be Vietnam Pro',sans-serif;color:{{ f.t.ink2 }}">Tránh {{ f.home.recLowN }} hôm nay.</span>
+              </div>
+            </div>
+          </div>
+          </sc-if>
+
+          <sc-if value="{{ f.pg.plan }}" hint-placeholder-val="{{ false }}">
+          <div style="position:absolute;inset:0;display:grid;grid-template-columns:372px minmax(0,1fr);gap:18px">
+            <div style="box-sizing:border-box;border-radius:26px;background:{{ f.t.panel }};border:1px solid {{ f.t.bd }};box-shadow:{{ f.t.shadow }};backdrop-filter:{{ f.t.blur }};padding:22px 18px;display:flex;flex-direction:column;gap:16px;min-height:0">
+              <div style="display:flex;flex-direction:column;gap:10px;padding:0 4px">
+                <div style="display:flex;justify-content:space-between;align-items:baseline">
+                  <span style="font:600 18px/1 'Space Grotesk',sans-serif;color:{{ f.t.ink }}">{{ f.plan.weekNo }}</span>
+                  <span style="font:500 12px/1 'JetBrains Mono',monospace;color:{{ f.t.ink3 }}">{{ f.plan.range }}</span>
+                </div>
+                <div style="height:6px;border-radius:3px;background:{{ f.t.track }};overflow:hidden"><div style="height:100%;width:{{ f.plan.pct }};border-radius:3px;background:{{ f.t.btn }};transition:width .4s"></div></div>
+                <span style="font:400 12px/1 'Be Vietnam Pro',sans-serif;color:{{ f.t.ink3 }}">{{ f.plan.doneN }} / {{ f.plan.planN }} buổi đã xong</span>
+              </div>
+              <div style="position:relative;flex:1;min-height:0;display:flex;flex-direction:column;gap:6px">
+                <div style="position:absolute;left:34px;top:24px;bottom:24px;width:0;border-left:1.5px dashed {{ f.t.line }}"></div>
+                <sc-for list="{{ f.plan.days }}" as="d" hint-placeholder-count="7">
+                  <div onClick="{{ d.pick }}" style="position:relative;display:flex;align-items:center;gap:14px;padding:9px 12px;box-sizing:border-box;border-radius:17px;background:{{ d.sel.rbg }};border:1px solid {{ d.sel.rbd }};box-shadow:{{ d.sel.rsh }};cursor:pointer;transition:all .2s">
+                    <span style="flex:none;width:44px;height:44px;box-sizing:border-box;border-radius:50%;display:grid;place-items:center;background:{{ d.soft }};border:2px solid {{ d.c }};font:600 15px/1 'Space Grotesk',sans-serif;color:{{ f.t.ink }}">{{ d.n }}</span>
+                    <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:5px">
+                      <span style="font:600 14px/1.2 'Be Vietnam Pro',sans-serif;color:{{ f.t.ink }};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ d.focus }}</span>
+                      <span style="display:flex;gap:6px;font:400 12px/1 'Be Vietnam Pro',sans-serif;color:{{ f.t.ink3 }};white-space:nowrap"><span>{{ d.s }} · {{ d.typeL }}</span><span>{{ d.mins }}</span></span>
+                    </div>
+                    <span style="flex:none;display:flex;align-items:center;gap:5px;font:600 11.5px/1 'Be Vietnam Pro',sans-serif;color:{{ d.stC }};white-space:nowrap"><i class="{{ d.ic }}" style="font-size:14px"></i>{{ d.lbl }}</span>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+
+            <div style="display:flex;flex-direction:column;gap:18px;min-height:0;min-width:0">
+              <div style="position:relative;flex:1;min-height:0;box-sizing:border-box;border-radius:26px;overflow:hidden;background:{{ f.t.hero }};border:1px solid {{ f.t.bd }};box-shadow:{{ f.t.shadow }};backdrop-filter:{{ f.t.blur }};padding:26px 28px;display:flex;flex-direction:column;gap:20px">
+                <div style="position:absolute;right:-70px;top:-70px;width:280px;height:280px;border-radius:50%;border:1.5px dashed {{ f.plan.cur.c }};opacity:.5;animation:spin 40s linear infinite;pointer-events:none"><span style="position:absolute;left:50%;bottom:-8px;width:16px;height:16px;margin-left:-8px;border-radius:50%;background:{{ f.plan.cur.c }};box-shadow:0 0 18px {{ f.plan.cur.c }}"></span></div>
+                <div style="position:absolute;right:30px;top:30px;width:90px;height:90px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#FFFFFF 0%,{{ f.plan.cur.c }} 45%,transparent 75%);opacity:.55;filter:blur(1px);pointer-events:none"></div>
+                <div style="position:relative;display:flex;flex-direction:column;gap:12px">
+                  <div style="display:flex;align-items:center;gap:8px">
+                    <span style="height:28px;padding:0 11px;box-sizing:border-box;border-radius:999px;white-space:nowrap;display:inline-flex;align-items:center;gap:6px;background:{{ f.plan.cur.soft }};border:1px solid {{ f.plan.cur.c }};font:600 12px/1 'Be Vietnam Pro',sans-serif;color:{{ f.t.ink }}">{{ f.plan.cur.typeL }}</span>
+                    <span style="font:500 12.5px/1 'JetBrains Mono',monospace;color:{{ f.t.ink3 }}">{{ f.plan.cur.full }} · {{ f.plan.cur.d }}</span>
+                    <span style="display:flex;align-items:center;gap:5px;font:600 12px/1 'Be Vietnam Pro',sans-serif;color:{{ f.plan.cur.stC }}"><i class="{{ f.plan.cur.ic }}" style="font-size:14px"></i>{{ f.plan.cur.lbl }}</span>
+                  </div>
+                  <span style="font:600 40px/1.05 'Space Grotesk',sans-serif;letter-spacing:-.025em;color:{{ f.t.ink }};max-width:600px">{{ f.plan.cur.focus }}</span>
+                </div>
+                <sc-if value="{{ f.plan.cur.hasEx }}" hint-placeholder-val="{{ true }}">
+                  <div style="position:relative;display:flex;gap:22px;font:500 13px/1 'Be Vietnam Pro',sans-serif;color:{{ f.t.ink2 }}">
+                    <span style="display:flex;align-items:center;gap:7px;white-space:nowrap"><i class="ph ph-timer" style="font-size:16px;color:{{ f.t.a2 }}"></i>{{ f.plan.cur.mins }}</span>
+                    <span style="display:flex;align-items:center;gap:7px;white-space:nowrap"><i class="ph ph-barbell" style="font-size:16px;color:{{ f.t.a2 }}"></i>{{ f.plan.cur.nEx }} bài</span>
+                    <span style="display:flex;align-items:center;gap:7px;white-space:nowrap"><i class="ph ph-stack" style="font-size:16px;color:{{ f.t.a2 }}"></i>{{ f.plan.cur.nSets }} set</span>
+                  </div>
+                  <div style="position:relative;display:flex;flex-direction:column;gap:10px">
+                    <sc-for list="{{ f.plan.cur.list }}" as="e" hint-placeholder-count="4">
+                      <div style="display:grid;grid-template-columns:44px minmax(0,1fr) 120px 170px;align-items:center;gap:16px;padding:14px 18px;box-sizing:border-box;border-radius:18px;background:{{ f.t.panel2 }};border:1px solid {{ f.t.bd }}">
+                        <span style="font:600 22px/1 'Space Grotesk',sans-serif;color:{{ f.plan.cur.c }}">{{ e.no }}</span>
+                        <div style="min-width:0;display:flex;flex-direction:column;gap:5px">
+                          <span style="font:600 15px/1.2 'Be Vietnam Pro',sans-serif;color:{{ f.t.ink }};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ e.n }}</span>
+                          <span style="font:400 12px/1 'Be Vietnam Pro',sans-serif;color:{{ f.t.ink3 }}">{{ e.en }} · {{ e.grp }}</span>
+                        </div>
+                        <div style="display:flex;gap:6px">
+                          <sc-for list="{{ e.dots }}" as="o" hint-placeholder-count="3">
+                            <span style="width:22px;height:22px;box-sizing:border-box;border-radius:50%;border:1.5px solid {{ f.plan.cur.c }};background:{{ f.plan.cur.soft }}"></span>
+                          </sc-for>
+                        </div>
+                        <span style="font:600 14px/1 'JetBrains Mono',monospace;color:{{ f.t.ink }};text-align:right;white-space:nowrap">{{ e.sx }}</span>
+                      </div>
+                    </sc-for>
+                  </div>
+                  <sc-if value="{{ f.plan.cur.canStart }}" hint-placeholder-val="{{ false }}">
+                    <span onClick="{{ f.plan.cur.start }}" style="position:relative;align-self:flex-start;margin-top:auto;height:46px;padding:0 22px 0 18px;box-sizing:border-box;border-radius:15px;display:flex;align-items:center;gap:9px;background:{{ f.t.btn }};color:{{ f.t.btnInk }};box-shadow:{{ f.t.btnSh }};font:600 14px/1 'Be Vietnam Pro',sans-serif;cursor:pointer"><i class="ph-fill ph-rocket-launch" style="font-size:17px"></i>Bắt đầu buổi này</span>
+                  </sc-if>
+                </sc-if>
+                <sc-if value="{{ f.plan.cur.isRest }}" hint-placeholder-val="{{ false }}">
+                  <div style="position:relative;flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;text-align:center">
+                    <span style="width:84px;height:84px;border-radius:50%;display:grid;place-items:center;background:{{ f.plan.cur.soft }};border:1.5px solid {{ f.plan.cur.c }};color:{{ f.plan.cur.c }}"><i class="ph {{ f.plan.cur.ricon }}" style="font-size:36px"></i></span>
+                    <span style="font:600 20px/1.2 'Space Grotesk',sans-serif;color:{{ f.t.ink }}">{{ f.plan.cur.restTxt }}</span>
+                    <span style="font:400 14px/1.4 'Be Vietnam Pro',sans-serif;color:{{ f.t.ink2 }}">{{ f.plan.cur.meta }}</span>
+                  </div>
+                </sc-if>
+              </div>
+
+              <div style="flex:none;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px">
+                <sc-for list="{{ f.plan.mine }}" as="m" hint-placeholder-count="2">
+                  <div style="box-sizing:border-box;border-radius:20px;background:{{ f.t.panel }};border:1px solid {{ f.t.bd }};backdrop-filter:{{ f.t.blur }};padding:14px 15px;display:flex;flex-direction:column;gap:8px;min-width:0">
+                    <span style="display:flex;align-items:center;gap:5px;font:600 11px/1 'JetBrains Mono',monospace;letter-spacing:.06em;color:{{ m.c }}"><i class="{{ m.ic }}" style="font-size:13px"></i>{{ m.lbl }}</span>
+                    <span style="font:600 13.5px/1.25 'Be Vietnam Pro',sans-serif;color:{{ f.t.ink }};text-wrap:pretty">{{ m.n }}</span>
+                    <span style="font:400 11.5px/1.3 'Be Vietnam Pro',sans-serif;color:{{ f.t.ink3 }}">{{ m.m }}</span>
+                  </div>
+                </sc-for>
+                <sc-for list="{{ f.plan.tpls }}" as="m" hint-placeholder-count="3">
+                  <div style="box-sizing:border-box;border-radius:20px;border:1px dashed {{ f.t.bd }};padding:14px 15px;display:flex;flex-direction:column;gap:8px;min-width:0;cursor:pointer" style-hover="background:rgba(127,127,200,.06)">
+                    <span style="display:flex;align-items:center;gap:5px;font:600 11px/1 'JetBrains Mono',monospace;letter-spacing:.06em;color:{{ f.t.a2 }}"><i class="ph ph-plus-circle" style="font-size:13px"></i>MẪU · {{ m.lv }}</span>
+                    <span style="font:600 13.5px/1.25 'Be Vietnam Pro',sans-serif;color:{{ f.t.ink }};text-wrap:pretty">{{ m.n }}</span>
+                    <span style="font:400 11.5px/1.3 'Be Vietnam Pro',sans-serif;color:{{ f.t.ink3 }}">{{ m.m }}</span>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+          </div>
+          </sc-if>
+
+          <sc-if value="{{ f.pg.prog }}" hint-placeholder-val="{{ false }}">
+          <div style="position:absolute;inset:0;display:grid;grid-template-columns:minmax(0,1fr) 336px;gap:18px">
+            <div style="display:flex;flex-direction:column;gap:16px;min-height:0;min-width:0">
+              <div style="flex:none;display:flex;flex-wrap:wrap;gap:8px">
+                <sc-for list="{{ f.prog.chips }}" as="c" hint-placeholder-count="6">
+                  <span onClick="{{ c.pick }}" style="height:36px;padding:0 15px;box-sizing:border-box;border-radius:12px;display:flex;align-items:center;font:{{ c.fw }} 13px/1 'Be Vietnam Pro',sans-serif;color:{{ c.fg }};background:{{ c.bg }};border:1px solid {{ c.bd }};box-shadow:{{ c.sh }};cursor:pointer;white-space:nowrap;transition:all .2s">{{ c.l }}</span>
+                </sc-for>
+              </div>
+              <div style="flex:1;min-height:0;box-sizing:border-box;border-radius:26px;background:{{ f.t.panel }};border:1px solid {{ f.t.bd }};box-shadow:{{ f.t.shadow }};backdrop-filter:{{ f.t.blur }};padding:22px 24px;display:flex;flex-direction:column;gap:16px">
+                <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:20px">
+                  <div style="display:flex;flex-direction:column;gap:7px">
+                    <span style="font:600 24px/1 'Space Grotesk',sans-serif;color:{{ f.t.ink }}">{{ f.prog.vi }}</span>
+                    <span style="font:500 12px/1 'JetBrains Mono',monospace;color:{{ f.t.ink3 }}">{{ f.prog.en }} · set tốt nhất mỗi buổi</span>
+                  </div>
+                  <div style="display:flex;gap:26px">
+                    <div style="display:flex;flex-direction:column;gap:6px"><span style="font:500 11.5px/1 'Be Vietnam Pro',sans-serif;color:{{ f.t.ink3 }}">Cao nhất</span><span style="font:600 22px/1 'Space Grotesk',sans-serif;color:{{ f.t.a3 }}">{{ f.prog.best }}<span style="font:500 12px/1 'Be Vietnam Pro',sans-serif;color:{{ f.t.ink3 }}"> {{ f.prog.ul }}</span></span></div>
+                    <div style="display:flex;flex-direction:column;gap:6px"><span style="font:500 11.5px/1 'Be Vietnam Pro',sans-serif;color:{{ f.t.ink3 }}">Mục tiêu</span><span style="font:600 22px/1 'Space Grotesk',sans-serif;color:{{ f.t.a2 }}">{{ f.prog.tg }}<span style="font:500 12px/1 'Be Vietnam Pro',sans-serif;color:{{ f.t.ink3 }}"> {{ f.prog.ul }} × 3</span></span></div>
+                    <div style="display:flex;flex-direction:column;gap:6px"><span style="font:500 11.5px/1 'Be Vietnam Pro',sans-serif;color:{{ f.t.ink3 }}">Số buổi</span><span style="font:600 22px/1 'Space Grotesk',sans-serif;color:{{ f.t.ink }}">{{ f.prog.nS }}</span></div>
+                    <div style="display:flex;flex-direction:column;gap:6px"><span style="font:500 11.5px/1 'Be Vietnam Pro',sans-serif;color:{{ f.t.ink3 }}">So với buổi đầu</span><span style="font:600 22px/1 'Space Grotesk',sans-serif;color:{{ f.t.good }}">{{ f.prog.vs }}<span style="font:500 12px/1 'Be Vietnam Pro',sans-serif;color:{{ f.t.ink3 }}"> {{ f.prog.ul }}</span></span></div>
+                  </div>
+                </div>
+                <div style="position:relative;flex:1;min-height:200px">
+                  <div style="position:absolute;left:0;top:26px;bottom:24px;width:34px;display:flex;flex-direction:column;justify-content:space-between;font:500 10.5px/1 'JetBrains Mono',monospace;color:{{ f.t.ink3 }}"><span>{{ f.prog.yTop }}</span><span>{{ f.prog.yMid }}</span><span>0</span></div>
+                  <div style="position:absolute;left:42px;right:0;top:26px;bottom:24px">
+                    <div style="position:absolute;left:0;right:0;top:0;border-top:1px dashed {{ f.t.line }}"></div>
+                    <div style="position:absolute;left:0;right:0;top:50%;border-top:1px dashed {{ f.t.line }}"></div>
+                    <div style="position:absolute;left:0;right:0;bottom:0;border-top:1px solid {{ f.t.line }}"></div>
+                    <div style="position:absolute;left:0;right:0;bottom:{{ f.prog.tgPct }};border-top:1.5px dashed {{ f.t.a2 }};transition:bottom .4s"><span style="position:absolute;left:-44px;top:-10px;width:36px;height:18px;border-radius:6px;display:grid;place-items:center;background:{{ f.t.a2 }};font:600 10.5px/1 'JetBrains Mono',monospace;color:{{ f.t.btnInk }}">{{ f.prog.tg }}</span></div>
+                    <div style="position:absolute;inset:0;display:flex">
+                      <sc-for list="{{ f.prog.groups }}" as="g" hint-placeholder-count="8">
+                        <div style="position:relative;flex:1;min-width:0">
+                          <div style="position:absolute;inset:0;display:flex;align-items:flex-end;justify-content:center;gap:4px">
+                            <sc-for list="{{ g.bars }}" as="b" hint-placeholder-count="3">
+                              <div style="width:13px;height:{{ b.h }};border-radius:7px 7px 2px 2px;background:linear-gradient(180deg,{{ b.c }} 0%,transparent 115%);opacity:{{ b.op }};box-shadow:0 -4px 14px -4px {{ b.c }};transition:height .45s cubic-bezier(.2,.8,.2,1)"></div>
+                            </sc-for>
+                          </div>
+                          <div style="position:absolute;left:0;right:0;bottom:{{ g.top }};margin-bottom:8px;display:flex;flex-direction:column;align-items:center;gap:3px;transition:bottom .45s">
+                            <sc-if value="{{ g.top1 }}" hint-placeholder-val="{{ false }}"><i class="ph-fill ph-star-four" style="font-size:14px;color:{{ f.t.a3 }};filter:drop-shadow(0 0 6px {{ f.t.a3 }})"></i></sc-if>
+                            <span style="font:600 11px/1 'JetBrains Mono',monospace;color:{{ f.t.ink2 }}">{{ g.best }}</span>
+                          </div>
+                        </div>
+                      </sc-for>
+                    </div>
+                  </div>
+                  <div style="position:absolute;left:42px;right:0;bottom:0;height:14px;display:flex">
+                    <sc-for list="{{ f.prog.groups }}" as="g" hint-placeholder-count="8">
+                      <span style="flex:1;text-align:center;font:500 10.5px/1 'JetBrains Mono',monospace;color:{{ f.t.ink3 }}">{{ g.d }}</span>
+                    </sc-for>
+                  </div>
+                </div>
+                <div style="display:flex;flex-direction:column">
+                  <div style="display:grid;grid-template-columns:70px minmax(0,1fr) 80px 70px 140px;gap:12px;padding:0 4px 8px;font:500 10.5px/1 'JetBrains Mono',monospace;letter-spacing:.1em;color:{{ f.t.ink3 }}"><span>NGÀY</span><span>CÁC SET</span><span>TỐT NHẤT</span><span>SO TRƯỚC</span><span style="text-align:right">ĐÁNH GIÁ</span></div>
+                  <sc-for list="{{ f.prog.rows }}" as="r" hint-placeholder-count="4">
+                    <div style="display:grid;grid-template-columns:70px minmax(0,1fr) 80px 70px 140px;gap:12px;align-items:center;padding:9px 4px;border-top:1px solid {{ f.t.line }}">
+                      <span style="font:600 12.5px/1 'JetBrains Mono',monospace;color:{{ f.t.ink }}">{{ r.d }}</span>
+                      <div style="display:flex;gap:5px"><sc-for list="{{ r.sets }}" as="s" hint-placeholder-count="3"><span style="min-width:32px;height:22px;padding:0 6px;box-sizing:border-box;border-radius:7px;display:grid;place-items:center;background:{{ s.bg }};font:600 11.5px/1 'JetBrains Mono',monospace;color:{{ s.c }}">{{ s.v }}</span></sc-for></div>
+                      <span style="font:600 12.5px/1 'JetBrains Mono',monospace;color:{{ f.t.ink }}">{{ r.best }}</span>
+                      <span style="font:600 12.5px/1 'JetBrains Mono',monospace;color:{{ r.dc }}">{{ r.delta }}</span>
+                      <span style="justify-self:end;display:flex;align-items:center;gap:5px;font:600 12px/1 'Be Vietnam Pro',sans-serif;color:{{ r.bc }};white-space:nowrap"><i class="{{ r.bic }}" style="font-size:14px"></i>{{ r.badge }}</span>
+                    </div>
+                  </sc-for>
+                </div>
+              </div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:18px;min-height:0">
+              <div style="flex:none;box-sizing:border-box;border-radius:26px;background:{{ f.t.panel }};border:1px solid {{ f.t.bd }};box-shadow:{{ f.t.shadow }};backdrop-filter:{{ f.t.blur }};padding:20px;display:flex;flex-direction:column;gap:12px">
+                <span style="font:600 16px/1 'Space Grotesk',sans-serif;color:{{ f.t.ink }}">{{ f.prog.month }}</span>
+                <div style="display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px">
+                  <sc-for list="{{ f.prog.wk }}" as="w" hint-placeholder-count="7"><span style="text-align:center;padding-bottom:4px;font:500 10.5px/1 'JetBrains Mono',monospace;color:{{ f.t.ink3 }}">{{ w }}</span></sc-for>
+                  <sc-for list="{{ f.prog.cal }}" as="c" hint-placeholder-count="35">
+                    <div style="height:38px;box-sizing:border-box;border-radius:11px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;background:{{ c.bg }};border:1.5px solid {{ c.bd }}">
+                      <span style="font:500 12.5px/1 'Space Grotesk',sans-serif;color:{{ c.fg }}">{{ c.n }}</span>
+                      <span style="width:5px;height:5px;border-radius:50%;background:{{ c.dot }};box-shadow:0 0 6px {{ c.dot }}"></span>
+                    </div>
+                  </sc-for>
+                </div>
+                <div style="display:flex;flex-direction:column;gap:7px;padding-top:4px">
+                  <sc-for list="{{ f.prog.legend }}" as="l" hint-placeholder-count="3"><span style="display:flex;align-items:center;gap:8px;font:500 12px/1 'Be Vietnam Pro',sans-serif;color:{{ f.t.ink2 }}"><span style="width:8px;height:8px;border-radius:50%;background:{{ l.c }}"></span>{{ l.l }}</span></sc-for>
+                </div>
+              </div>
+              <div style="flex:1;min-height:0;position:relative;overflow:hidden;box-sizing:border-box;border-radius:26px;background:{{ f.t.hero }};border:1px solid {{ f.t.bd }};box-shadow:{{ f.t.shadow }};padding:20px;display:flex;flex-direction:column;gap:10px">
+                <i class="ph-fill ph-star-four" style="position:absolute;right:18px;top:16px;font-size:64px;color:{{ f.t.a3 }};opacity:.9;filter:drop-shadow(0 0 18px {{ f.t.a3 }});animation:floaty 5s ease-in-out infinite"></i>
+                <span style="font:500 11px/1 'JetBrains Mono',monospace;letter-spacing:.14em;color:{{ f.t.ink3 }}">KỶ LỤC CÁ NHÂN</span>
+                <span style="font:600 54px/1 'Space Grotesk',sans-serif;letter-spacing:-.03em;color:{{ f.t.ink }}">{{ f.prog.best }}<span style="font:500 18px/1 'Space Grotesk',sans-serif;color:{{ f.t.ink3 }}"> {{ f.prog.ul }}</span></span>
+                <span style="font:400 12.5px/1.4 'Be Vietnam Pro',sans-serif;color:{{ f.t.ink2 }}">Đạt ngày {{ f.prog.bestD }}. Mục tiêu hiện tại {{ f.prog.tgL }}.</span>
+                <div style="margin-top:auto;display:flex;flex-direction:column;gap:7px">
+                  <div style="display:flex;justify-content:space-between;font:500 11.5px/1 'Be Vietnam Pro',sans-serif;color:{{ f.t.ink3 }}"><span>Kỷ lục so với mục tiêu</span><span style="font-family:'JetBrains Mono',monospace;color:{{ f.t.a3 }}">{{ f.prog.bestPct }}</span></div>
+                  <div style="height:8px;border-radius:4px;background:{{ f.t.track }};overflow:hidden"><div style="height:100%;width:{{ f.prog.bestPct }};border-radius:4px;background:{{ f.t.a3 }};box-shadow:0 0 12px {{ f.t.a3 }};transition:width .4s"></div></div>
+                </div>
+              </div>
+            </div>
+          </div>
+          </sc-if>
+
+          <sc-if value="{{ f.pg.body }}" hint-placeholder-val="{{ false }}">
+          <div style="position:absolute;inset:0;display:grid;grid-template-columns:376px minmax(0,1fr);gap:18px">
+            <div style="display:flex;flex-direction:column;gap:18px;min-height:0">
+              <div style="flex:none;box-sizing:border-box;border-radius:26px;background:{{ f.t.panel }};border:1px solid {{ f.t.bd }};box-shadow:{{ f.t.shadow }};backdrop-filter:{{ f.t.blur }};padding:20px 22px;display:flex;flex-direction:column;gap:12px">
+                <div style="display:flex;justify-content:space-between;align-items:baseline">
+                  <span style="font:600 16px/1 'Space Grotesk',sans-serif;color:{{ f.t.ink }}">Lần đo gần nhất</span>
+                  <span style="font:500 11.5px/1 'JetBrains Mono',monospace;color:{{ f.t.ink3 }}">{{ f.body.when }}</span>
+                </div>
+                <div style="position:relative;width:300px;height:176px;align-self:center">
+                  <svg width="300" height="176" viewBox="0 0 300 176" style="display:block;overflow:visible">
+                    <path d="{{ f.body.g.track }}" fill="none" stroke="{{ f.t.track }}" stroke-width="22"></path>
+                    <sc-for list="{{ f.body.g.segs }}" as="s" hint-placeholder-count="4"><path d="{{ s.d }}" fill="none" stroke="{{ s.c }}" stroke-width="12" style="filter:drop-shadow(0 0 5px {{ s.c }})"></path></sc-for>
+                    <circle cx="{{ f.body.g.mx }}" cy="{{ f.body.g.my }}" r="11" fill="{{ f.t.bg0 }}" stroke="{{ f.body.g.mc }}" stroke-width="4" style="filter:drop-shadow(0 0 8px {{ f.body.g.mc }})"></circle>
+                  </svg>
+                  <sc-for list="{{ f.body.g.ticks }}" as="t" hint-placeholder-count="5"><span style="position:absolute;left:{{ t.x }}px;top:{{ t.y }}px;transform:translate(-50%,-50%);font:500 10px/1 'JetBrains Mono',monospace;color:{{ f.t.ink3 }}">{{ t.t }}</span></sc-for>
+                  <div style="position:absolute;left:0;right:0;top:80px;display:flex;flex-direction:column;align-items:center;gap:5px">
+                    <span style="font:600 46px/1 'Space Grotesk',sans-serif;letter-spacing:-.03em;color:{{ f.t.ink }}">{{ f.body.w }}<span style="font:500 15px/1 'Space Grotesk',sans-serif;color:{{ f.t.ink3 }}"> kg</span></span>
+                    <span style="font:500 12px/1 'Be Vietnam Pro',sans-serif;color:{{ f.t.ink3 }}">Cân nặng</span>
+                  </div>
+                </div>
+                <div style="display:flex;justify-content:center;gap:8px">
+                  <span style="height:28px;padding:0 12px;box-sizing:border-box;border-radius:999px;white-space:nowrap;display:flex;align-items:center;gap:6px;background:{{ f.t.chip }};border:1px solid {{ f.t.good }};font:600 12.5px/1 'Be Vietnam Pro',sans-serif;color:{{ f.t.good }};white-space:nowrap"><span style="font-family:'JetBrains Mono',monospace">BMI {{ f.body.bmi }}</span>· {{ f.body.bmiL }}</span>
+                  <span style="height:28px;padding:0 10px;box-sizing:border-box;border-radius:999px;white-space:nowrap;display:flex;align-items:center;background:{{ f.t.chip }};font:500 11.5px/1 'Be Vietnam Pro',sans-serif;color:{{ f.t.ink2 }};white-space:nowrap">{{ f.body.std }}</span>
+                </div>
+                <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:4px;padding-top:10px;border-top:1px solid {{ f.t.line }}">
+                  <sc-for list="{{ f.body.g.legend }}" as="l" hint-placeholder-count="4">
+                    <div style="display:flex;flex-direction:column;align-items:center;gap:5px"><span style="display:flex;align-items:center;gap:5px;font:500 11px/1 'Be Vietnam Pro',sans-serif;color:{{ f.t.ink2 }};white-space:nowrap"><span style="width:7px;height:7px;border-radius:50%;background:{{ l.c }}"></span>{{ l.l }}</span><span style="font:500 10px/1 'JetBrains Mono',monospace;color:{{ f.t.ink3 }}">{{ l.r }}</span></div>
+                  </sc-for>
+                </div>
+              </div>
+              <div style="flex:1;min-height:0;box-sizing:border-box;border-radius:26px;background:{{ f.t.panel }};border:1px solid {{ f.t.bd }};box-shadow:{{ f.t.shadow }};backdrop-filter:{{ f.t.blur }};padding:20px 22px;display:flex;flex-direction:column;gap:14px">
+                <span style="font:600 16px/1 'Space Grotesk',sans-serif;color:{{ f.t.ink }}">Thành phần cơ thể</span>
+                <div style="display:flex;align-items:center;gap:18px">
+                  <div style="position:relative;width:150px;height:150px;flex:none">
+                    <svg width="150" height="150" viewBox="0 0 180 180" style="display:block;transform:rotate(-90deg)">
+                      <sc-for list="{{ f.body.comp }}" as="c" hint-placeholder-count="4"><circle cx="90" cy="90" r="74" fill="none" stroke="{{ c.c }}" stroke-width="20" stroke-dasharray="{{ c.da }}" stroke-dashoffset="{{ c.off }}" style="filter:drop-shadow(0 0 4px {{ c.c }})"></circle></sc-for>
+                    </svg>
+                    <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px"><span style="font:600 22px/1 'Space Grotesk',sans-serif;color:{{ f.t.ink }}">{{ f.body.w }}</span><span style="font:500 10.5px/1 'Be Vietnam Pro',sans-serif;color:{{ f.t.ink3 }}">kg tổng</span></div>
+                  </div>
+                  <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:12px">
+                    <sc-for list="{{ f.body.comp }}" as="c" hint-placeholder-count="4">
+                      <div style="display:flex;flex-direction:column;gap:4px">
+                        <span style="display:flex;align-items:center;gap:7px;font:500 12px/1 'Be Vietnam Pro',sans-serif;color:{{ f.t.ink2 }}"><span style="width:8px;height:8px;border-radius:3px;background:{{ c.c }}"></span>{{ c.l }}</span>
+                        <span style="font:600 13px/1 'JetBrains Mono',monospace;color:{{ f.t.ink }}">{{ c.kg }} <span style="color:{{ f.t.ink3 }};font-weight:500">· {{ c.pct }}</span></span>
+                      </div>
+                    </sc-for>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:18px;min-height:0;min-width:0">
+              <div style="flex:none;box-sizing:border-box;border-radius:26px;background:{{ f.t.panel }};border:1px solid {{ f.t.bd }};box-shadow:{{ f.t.shadow }};backdrop-filter:{{ f.t.blur }};padding:20px 24px 16px;display:flex;flex-direction:column;gap:14px">
+                <div style="display:flex;justify-content:space-between;align-items:center;gap:16px">
+                  <div style="display:flex;align-items:baseline;gap:10px"><span style="font:600 16px/1 'Space Grotesk',sans-serif;color:{{ f.t.ink }}">Xu hướng</span><span style="font:400 12px/1 'Be Vietnam Pro',sans-serif;color:{{ f.t.ink3 }}">{{ f.body.tr.sub }} · trung bình ngày</span></div>
+                  <div style="display:flex;gap:4px">
+                    <sc-for list="{{ f.body.ranges }}" as="r" hint-placeholder-count="4"><span onClick="{{ r.pick }}" style="height:30px;padding:0 12px;box-sizing:border-box;border-radius:10px;display:flex;align-items:center;font:{{ r.fw }} 12px/1 'Be Vietnam Pro',sans-serif;color:{{ r.fg }};background:{{ r.bg }};border:1px solid {{ r.bd }};box-shadow:{{ r.sh }};cursor:pointer;white-space:nowrap">{{ r.l }}</span></sc-for>
+                  </div>
+                </div>
+                <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px">
+                  <sc-for list="{{ f.body.tiles }}" as="t" hint-placeholder-count="3">
+                    <div onClick="{{ t.pick }}" style="padding:12px 14px;box-sizing:border-box;border-radius:16px;border:1.5px solid {{ t.rbd }};background:{{ t.rbg }};box-shadow:{{ t.rsh }};display:flex;flex-direction:column;gap:8px;cursor:pointer;transition:all .2s">
+                      <span style="display:flex;align-items:center;gap:6px;font:500 12px/1 'Be Vietnam Pro',sans-serif;color:{{ f.t.ink2 }}"><span style="width:8px;height:8px;border-radius:50%;background:{{ t.c }};box-shadow:0 0 6px {{ t.c }}"></span>{{ t.l }}</span>
+                      <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px"><span style="font:600 21px/1 'Space Grotesk',sans-serif;color:{{ f.t.ink }};white-space:nowrap">{{ t.v }}<span style="font:500 12px/1 'Be Vietnam Pro',sans-serif;color:{{ f.t.ink3 }}"> {{ t.u }}</span></span><span style="font:600 12px/1 'JetBrains Mono',monospace;color:{{ t.dc }}">{{ t.d }}</span></div>
+                    </div>
+                  </sc-for>
+                </div>
+                <div style="position:relative;height:214px">
+                  <svg width="{{ f.body.tr.W }}" height="{{ f.body.tr.H }}" viewBox="{{ f.body.tr.vb }}" style="display:block;overflow:visible">
+                    <defs><linearGradient id="{{ f.gid }}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="{{ f.body.tr.c }}" stop-opacity=".32"></stop><stop offset="1" stop-color="{{ f.body.tr.c }}" stop-opacity="0"></stop></linearGradient></defs>
+                    <sc-for list="{{ f.body.tr.grid }}" as="g" hint-placeholder-count="4"><line x1="{{ g.x1 }}" x2="{{ g.x2 }}" y1="{{ g.y }}" y2="{{ g.y }}" stroke="{{ f.t.line }}" stroke-dasharray="3 5"></line></sc-for>
+                    <path d="{{ f.body.tr.area }}" fill="url(#{{ f.gid }})"></path>
+                    <path d="{{ f.body.tr.line }}" fill="none" stroke="{{ f.body.tr.c }}" stroke-width="2.5" stroke-linecap="round" style="filter:drop-shadow(0 0 6px {{ f.body.tr.c }})"></path>
+                    <sc-for list="{{ f.body.tr.pts }}" as="p" hint-placeholder-count="8"><circle cx="{{ p.x }}" cy="{{ p.y }}" r="{{ p.r }}" fill="{{ f.t.bg0 }}" stroke="{{ f.body.tr.c }}" stroke-width="2"></circle></sc-for>
+                  </svg>
+                  <sc-for list="{{ f.body.tr.labels }}" as="l" hint-placeholder-count="10"><span style="position:absolute;left:{{ l.x }}px;top:{{ l.y }}px;transform:{{ l.tf }};font:500 10.5px/1 'JetBrains Mono',monospace;color:{{ f.t.ink3 }};white-space:nowrap">{{ l.t }}</span></sc-for>
+                  <span style="position:absolute;left:{{ f.body.tr.last.x }}px;top:{{ f.body.tr.last.y }}px;transform:translate(calc(-100% + 10px),calc(-100% - 12px));height:24px;padding:0 9px;border-radius:8px;background:{{ f.body.tr.c }};color:{{ f.t.btnInk }};display:flex;align-items:center;font:600 11.5px/1 'JetBrains Mono',monospace;white-space:nowrap">{{ f.body.tr.last.t }}</span>
+                </div>
+                <sc-if value="{{ f.body.tr.hasGoal }}" hint-placeholder-val="{{ true }}">
+                  <div style="display:flex;align-items:center;gap:8px;padding-top:10px;border-top:1px solid {{ f.t.line }};font:500 12px/1.3 'Be Vietnam Pro',sans-serif;color:{{ f.t.ink2 }}"><i class="ph ph-flag-pennant" style="font-size:15px;color:{{ f.t.good }}"></i><span>Mục tiêu 70,0 kg · còn {{ f.body.tr.goal }} nữa. {{ f.body.tr.goalTxt }}</span></div>
+                </sc-if>
+              </div>
+              <div style="flex:1;min-height:0;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));grid-auto-rows:minmax(0,1fr);gap:14px">
+                <sc-for list="{{ f.body.metrics }}" as="m" hint-placeholder-count="6">
+                  <div style="box-sizing:border-box;border-radius:20px;background:{{ f.t.panel }};border:1px solid {{ f.t.bd }};backdrop-filter:{{ f.t.blur }};padding:14px 16px;display:flex;flex-direction:column;justify-content:space-between;gap:8px;min-width:0">
+                    <div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><span style="font:600 12.5px/1.2 'Be Vietnam Pro',sans-serif;color:{{ f.t.ink2 }};white-space:nowrap">{{ m.l }}</span><span style="font:600 10px/1 'JetBrains Mono',monospace;letter-spacing:.06em;color:{{ m.srcC }};white-space:nowrap">{{ m.src }}</span></div>
+                    <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px"><span style="font:600 24px/1 'Space Grotesk',sans-serif;color:{{ f.t.ink }};white-space:nowrap">{{ m.v }}<span style="font:500 12px/1 'Be Vietnam Pro',sans-serif;color:{{ f.t.ink3 }}"> {{ m.u }}</span></span><span style="font:600 11.5px/1 'JetBrains Mono',monospace;color:{{ m.dc }}">{{ m.d }}</span></div>
+                    <div style="position:relative;height:10px;display:flex;align-items:center;gap:2px;opacity:{{ m.bop }}">
+                      <span style="height:4px;border-radius:2px;background:{{ f.t.a2 }};opacity:.6;flex:{{ m.f1 }}"></span><span style="height:4px;border-radius:2px;background:{{ f.t.good }};opacity:.8;flex:{{ m.f2 }}"></span><span style="height:4px;border-radius:2px;background:{{ f.t.a3 }};opacity:.6;flex:{{ m.f3 }}"></span>
+                      <span style="position:absolute;left:{{ m.pos }};top:0;width:10px;height:10px;margin-left:-5px;border-radius:50%;box-sizing:border-box;background:{{ f.t.bg0 }};border:2.5px solid {{ f.t.ink }}"></span>
+                    </div>
+                    <div style="display:flex;justify-content:space-between;gap:8px"><span style="font:600 11.5px/1.2 'Be Vietnam Pro',sans-serif;color:{{ m.stc }};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ m.st }}</span><span style="font:500 10.5px/1 'JetBrains Mono',monospace;color:{{ f.t.ink3 }};white-space:nowrap">{{ m.rg }}</span></div>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+          </div>
+          </sc-if>
+
+          <sc-if value="{{ f.pg.food }}" hint-placeholder-val="{{ false }}">
+          <div style="position:absolute;inset:0;display:grid;grid-template-columns:350px minmax(0,1fr) 318px;gap:18px">
+            <div style="box-sizing:border-box;border-radius:26px;background:{{ f.t.panel }};border:1px solid {{ f.t.bd }};box-shadow:{{ f.t.shadow }};backdrop-filter:{{ f.t.blur }};padding:22px;display:flex;flex-direction:column;gap:18px;min-height:0">
+              <div style="display:flex;justify-content:space-between;align-items:baseline"><span style="font:600 16px/1 'Space Grotesk',sans-serif;color:{{ f.t.ink }}">Năng lượng hôm nay</span><span style="font:500 11.5px/1 'JetBrains Mono',monospace;color:{{ f.t.ink3 }}">{{ f.food.kPct }}</span></div>
+              <div style="position:relative;width:240px;height:240px;align-self:center">
+                <svg width="240" height="240" viewBox="0 0 240 240" style="display:block;transform:rotate(-90deg)">
+                  <circle cx="120" cy="120" r="110" fill="none" stroke="{{ f.t.track }}" stroke-width="14"></circle>
+                  <circle cx="120" cy="120" r="110" fill="none" stroke="{{ f.t.acc }}" stroke-width="14" stroke-linecap="round" stroke-dasharray="{{ f.food.kR.r110 }}" style="filter:drop-shadow(0 0 8px {{ f.t.acc }})"></circle>
+                  <circle cx="120" cy="120" r="90" fill="none" stroke="{{ f.t.line }}" stroke-width="1" stroke-dasharray="2 6"></circle>
+                </svg>
+                <div style="position:absolute;inset:18px;animation:spin 30s linear infinite"><span style="position:absolute;left:50%;top:0;width:10px;height:10px;margin-left:-5px;border-radius:50%;background:{{ f.t.a3 }};box-shadow:0 0 14px {{ f.t.a3 }}"></span></div>
+                <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px">
+                  <span style="font:600 44px/1 'Space Grotesk',sans-serif;letter-spacing:-.03em;color:{{ f.t.ink }}">{{ f.food.kcal }}</span>
+                  <span style="font:500 12.5px/1 'Be Vietnam Pro',sans-serif;color:{{ f.t.ink3 }}">/ {{ f.food.kcalT }} kcal</span>
+                  <span style="margin-top:4px;height:24px;padding:0 10px;border-radius:999px;white-space:nowrap;display:flex;align-items:center;background:{{ f.t.chip }};font:600 11.5px/1 'Be Vietnam Pro',sans-serif;color:{{ f.t.good }}">Còn {{ f.food.left }} kcal</span>
+                </div>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:14px;margin-top:auto">
+                <sc-for list="{{ f.food.macros }}" as="m" hint-placeholder-count="3">
+                  <div style="display:flex;flex-direction:column;gap:7px">
+                    <div style="display:flex;justify-content:space-between;align-items:baseline"><span style="display:flex;align-items:center;gap:7px;font:500 13px/1 'Be Vietnam Pro',sans-serif;color:{{ f.t.ink2 }}"><span style="width:8px;height:8px;border-radius:50%;background:{{ m.c }}"></span>{{ m.l }}</span><span style="font:600 12.5px/1 'JetBrains Mono',monospace;color:{{ f.t.ink }}">{{ m.v }} <span style="color:{{ f.t.ink3 }};font-weight:500">/ {{ m.t }}</span></span></div>
+                    <div style="height:8px;border-radius:4px;background:{{ f.t.track }};overflow:hidden"><div style="height:100%;width:{{ m.pct }};border-radius:4px;background:{{ m.c }};box-shadow:0 0 10px {{ m.c }}"></div></div>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+            <div style="box-sizing:border-box;border-radius:26px;background:{{ f.t.panel }};border:1px solid {{ f.t.bd }};box-shadow:{{ f.t.shadow }};backdrop-filter:{{ f.t.blur }};padding:22px;display:flex;flex-direction:column;gap:14px;min-height:0;min-width:0">
+              <div style="display:flex;justify-content:space-between;align-items:baseline"><span style="font:600 16px/1 'Space Grotesk',sans-serif;color:{{ f.t.ink }}">Bữa ăn hôm nay</span><span style="font:400 12px/1 'Be Vietnam Pro',sans-serif;color:{{ f.t.ink3 }}">Bấm bữa để xem món</span></div>
+              <div style="flex:1;min-height:0;overflow-y:auto;display:flex;flex-direction:column;gap:10px;padding-right:4px">
+                <sc-for list="{{ f.food.meals }}" as="m" hint-placeholder-count="4">
+                  <div style="flex:none;box-sizing:border-box;border-radius:18px;background:{{ f.t.panel2 }};border:1px solid {{ f.t.bd }};overflow:hidden">
+                    <div onClick="{{ m.toggle }}" style="display:flex;align-items:center;gap:14px;padding:13px 16px;cursor:pointer">
+                      <span style="flex:none;width:42px;height:42px;border-radius:50%;display:grid;place-items:center;background:{{ f.t.chip }};border:1px solid {{ f.t.bd }};color:{{ f.t.a3 }}"><i class="{{ m.ic }}" style="font-size:19px"></i></span>
+                      <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:5px"><span style="font:600 14.5px/1.2 'Be Vietnam Pro',sans-serif;color:{{ f.t.ink }}">{{ m.n }}</span><span style="font:400 12px/1 'Be Vietnam Pro',sans-serif;color:{{ f.t.ink3 }}">{{ m.t }} · {{ m.nIt }}</span></div>
+                      <div style="width:120px;height:6px;border-radius:3px;background:{{ f.t.track }};overflow:hidden"><div style="height:100%;width:{{ m.pct }};background:{{ f.t.acc }};border-radius:3px"></div></div>
+                      <span style="width:70px;text-align:right;font:600 13px/1 'JetBrains Mono',monospace;color:{{ f.t.ink }}">{{ m.kcal }}</span>
+                      <i class="ph {{ m.chev }}" style="font-size:16px;color:{{ f.t.ink3 }}"></i>
+                    </div>
+                    <sc-if value="{{ m.on }}" hint-placeholder-val="{{ false }}">
+                      <div style="display:flex;flex-direction:column;padding:0 16px 10px 72px">
+                        <sc-for list="{{ m.items }}" as="it" hint-placeholder-count="3">
+                          <div style="display:grid;grid-template-columns:minmax(0,1fr) 80px 150px 60px;gap:10px;align-items:center;padding:9px 0;border-top:1px solid {{ f.t.line }}">
+                            <span style="font:500 13px/1.2 'Be Vietnam Pro',sans-serif;color:{{ f.t.ink }};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ it.n }}</span>
+                            <span style="font:400 12px/1 'Be Vietnam Pro',sans-serif;color:{{ f.t.ink3 }}">{{ it.q }}</span>
+                            <span style="font:500 11.5px/1 'JetBrains Mono',monospace;color:{{ f.t.ink3 }}">Đ {{ it.p }} · B {{ it.c }} · M {{ it.f }}</span>
+                            <span style="text-align:right;font:600 12px/1 'JetBrains Mono',monospace;color:{{ f.t.ink2 }}">{{ it.k }}</span>
+                          </div>
+                        </sc-for>
+                      </div>
+                    </sc-if>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:18px;min-height:0">
+              <div style="flex:none;box-sizing:border-box;border-radius:26px;background:{{ f.t.panel }};border:1px solid {{ f.t.bd }};box-shadow:{{ f.t.shadow }};backdrop-filter:{{ f.t.blur }};padding:20px;display:flex;flex-direction:column;gap:14px">
+                <div style="display:flex;justify-content:space-between;align-items:baseline"><span style="font:600 16px/1 'Space Grotesk',sans-serif;color:{{ f.t.ink }}">Nước</span><span style="font:600 13px/1 'JetBrains Mono',monospace;color:{{ f.t.a2 }}">{{ f.food.water }} / {{ f.food.waterT }} cốc</span></div>
+                <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px">
+                  <sc-for list="{{ f.food.cups }}" as="c" hint-placeholder-count="8">
+                    <div onClick="{{ c.pick }}" style="position:relative;height:62px;box-sizing:border-box;border-radius:10px 10px 18px 18px;border:1.5px solid {{ f.t.bd }};background:{{ f.t.chip }};overflow:hidden;cursor:pointer">
+                      <sc-if value="{{ c.full }}" hint-placeholder-val="{{ false }}"><div style="position:absolute;left:0;right:0;bottom:0;height:78%;background:linear-gradient(180deg,{{ f.t.a2 }},transparent 140%);box-shadow:0 -2px 12px {{ f.t.a2 }}"></div></sc-if>
+                    </div>
+                  </sc-for>
+                </div>
+                <span style="font:400 12px/1.4 'Be Vietnam Pro',sans-serif;color:{{ f.t.ink3 }}">Bấm cốc để đổ đầy hoặc rót bớt · {{ f.food.wL }}</span>
+              </div>
+              <div style="flex:1;min-height:0;box-sizing:border-box;border-radius:26px;background:{{ f.t.panel }};border:1px solid {{ f.t.bd }};box-shadow:{{ f.t.shadow }};backdrop-filter:{{ f.t.blur }};padding:20px;display:flex;flex-direction:column;gap:12px">
+                <div style="display:flex;justify-content:space-between;align-items:baseline"><span style="font:600 16px/1 'Space Grotesk',sans-serif;color:{{ f.t.ink }}">7 ngày qua</span><span style="font:400 12px/1 'Be Vietnam Pro',sans-serif;color:{{ f.t.ink3 }}">TB {{ f.food.avg }} kcal</span></div>
+                <div style="position:relative;flex:1;min-height:120px">
+                  <div style="position:absolute;left:0;right:0;top:0;bottom:22px">
+                    <div style="position:absolute;left:0;right:0;bottom:{{ f.food.tgPct }};border-top:1.5px dashed {{ f.t.a2 }};opacity:.7"></div>
+                    <div style="position:absolute;inset:0;display:flex;align-items:flex-end;gap:10px">
+                      <sc-for list="{{ f.food.week }}" as="w" hint-placeholder-count="7"><div title="{{ w.v }} kcal" style="flex:1;height:{{ w.h }};border-radius:8px 8px 3px 3px;background:linear-gradient(180deg,{{ w.c }},transparent 130%);box-shadow:0 -3px 12px -4px {{ w.c }}"></div></sc-for>
+                    </div>
+                  </div>
+                  <div style="position:absolute;left:0;right:0;bottom:0;display:flex;gap:10px"><sc-for list="{{ f.food.week }}" as="w" hint-placeholder-count="7"><span style="flex:1;text-align:center;font:500 10.5px/1 'JetBrains Mono',monospace;color:{{ w.fg }}">{{ w.s }}</span></sc-for></div>
+                </div>
+                <span style="font:400 12px/1.4 'Be Vietnam Pro',sans-serif;color:{{ f.t.ink3 }}">{{ f.food.hitN }} / 7 ngày đạt mục tiêu 2.050 kcal</span>
+              </div>
+            </div>
+          </div>
+          </sc-if>
+
+          <sc-if value="{{ f.pg.map }}" hint-placeholder-val="{{ false }}">
+          <div style="position:absolute;inset:0;display:grid;grid-template-columns:288px minmax(0,1fr) 336px;gap:18px">
+            <div style="box-sizing:border-box;border-radius:26px;background:{{ f.t.panel }};border:1px solid {{ f.t.bd }};box-shadow:{{ f.t.shadow }};backdrop-filter:{{ f.t.blur }};padding:20px;display:flex;flex-direction:column;gap:18px;min-height:0;overflow-y:auto">
+              <sc-for list="{{ f.map.groups }}" as="g" hint-placeholder-count="3">
+                <div style="display:flex;flex-direction:column;gap:10px">
+                  <div style="display:flex;align-items:center;justify-content:space-between"><span style="display:flex;align-items:center;gap:8px;font:600 13.5px/1 'Be Vietnam Pro',sans-serif;color:{{ f.t.ink }}"><span style="width:9px;height:9px;border-radius:50%;background:{{ g.c }};box-shadow:0 0 8px {{ g.c }}"></span>{{ g.l }}</span><span style="font:600 12px/1 'JetBrains Mono',monospace;color:{{ g.c }}">{{ g.n }}</span></div>
+                  <div style="display:flex;flex-wrap:wrap;gap:6px">
+                    <sc-for list="{{ g.items }}" as="m" hint-placeholder-count="4"><span onClick="{{ m.pick }}" style="height:32px;padding:0 12px;box-sizing:border-box;border-radius:11px;display:flex;align-items:center;gap:7px;font:{{ m.fw }} 12.5px/1 'Be Vietnam Pro',sans-serif;color:{{ m.fg }};background:{{ m.bg }};border:1px solid {{ m.bd }};box-shadow:{{ m.sh }};cursor:pointer;white-space:nowrap">{{ m.n }}<span style="font:500 10.5px/1 'JetBrains Mono',monospace;opacity:.75">{{ m.pct }}</span></span></sc-for>
+                  </div>
+                </div>
+              </sc-for>
+            </div>
+            <div style="position:relative;box-sizing:border-box;border-radius:28px;overflow:hidden;background:{{ f.t.stage }};border:1px solid {{ f.t.bd }}">
+              <div style="position:absolute;left:50%;bottom:28px;width:420px;height:90px;margin-left:-210px;border-radius:50%;background:{{ f.t.platform }}"></div>
+              <div style="position:absolute;left:50%;bottom:44px;width:300px;height:60px;margin-left:-150px;border-radius:50%;border:1.5px solid {{ f.t.ringC }};animation:pulse 3.4s ease-in-out infinite"></div>
+              <x-import component-from-global-scope="muscle-body" from="./muscle-body.js" channel="{{ f.key }}" selected="{{ f.map.sel }}" mode="rec" recovery="{{ f.map.recStr }}" style="position:absolute;inset:0" hint-size="100%,100%"></x-import>
+              <div style="position:absolute;left:18px;top:16px;display:flex;align-items:center;gap:7px;height:30px;padding:0 12px;border-radius:999px;background:{{ f.t.panel2 }};border:1px solid {{ f.t.bd }};font:500 12px/1 'Be Vietnam Pro',sans-serif;color:{{ f.t.ink2 }};pointer-events:none"><i class="ph ph-hand-pointing" style="font-size:14px"></i>Kéo để xoay · bấm vào nhóm cơ</div>
+              <div style="position:absolute;left:0;right:0;bottom:16px;display:flex;justify-content:center;gap:16px;pointer-events:none">
+                <sc-for list="{{ f.map.legend }}" as="l" hint-placeholder-count="3"><span style="display:flex;align-items:center;gap:6px;font:500 12px/1 'Be Vietnam Pro',sans-serif;color:{{ f.t.ink2 }}"><span style="width:9px;height:9px;border-radius:50%;background:{{ l.c }}"></span>{{ l.l }}</span></sc-for>
+              </div>
+            </div>
+            <div style="box-sizing:border-box;border-radius:26px;background:{{ f.t.panel }};border:1px solid {{ f.t.bd }};box-shadow:{{ f.t.shadow }};backdrop-filter:{{ f.t.blur }};padding:22px;display:flex;flex-direction:column;gap:16px;min-height:0">
+              <div style="display:flex;align-items:center;gap:16px">
+                <div style="position:relative;width:96px;height:96px;flex:none">
+                  <svg width="96" height="96" viewBox="0 0 96 96" style="display:block;transform:rotate(-90deg)"><circle cx="48" cy="48" r="40" fill="none" stroke="{{ f.t.track }}" stroke-width="8"></circle><circle cx="48" cy="48" r="40" fill="none" stroke="{{ f.map.cur.c }}" stroke-width="8" stroke-linecap="round" stroke-dasharray="{{ f.map.cur.R.r40 }}" style="filter:drop-shadow(0 0 6px {{ f.map.cur.c }});transition:stroke-dasharray .5s"></circle></svg>
+                  <span style="position:absolute;inset:0;display:grid;place-items:center;font:600 20px/1 'Space Grotesk',sans-serif;color:{{ f.t.ink }}">{{ f.map.cur.pct }}</span>
+                </div>
+                <div style="display:flex;flex-direction:column;gap:7px;min-width:0">
+                  <span style="font:600 28px/1 'Space Grotesk',sans-serif;color:{{ f.t.ink }}">{{ f.map.cur.n }}</span>
+                  <span style="font:500 12px/1 'JetBrains Mono',monospace;color:{{ f.t.ink3 }}">{{ f.map.cur.en }}</span>
+                  <span style="align-self:flex-start;height:24px;padding:0 10px;border-radius:999px;white-space:nowrap;display:flex;align-items:center;gap:6px;background:{{ f.t.chip }};border:1px solid {{ f.map.cur.c }};font:600 11.5px/1 'Be Vietnam Pro',sans-serif;color:{{ f.map.cur.c }}">{{ f.map.cur.st }}</span>
+                </div>
+              </div>
+              <div style="display:flex;flex-direction:column">
+                <div style="display:flex;justify-content:space-between;gap:12px;padding:11px 0;border-top:1px solid {{ f.t.line }};font:400 12.5px/1.3 'Be Vietnam Pro',sans-serif;color:{{ f.t.ink3 }}"><span>Lần tập cuối</span><span style="color:{{ f.t.ink }};font-weight:500">{{ f.map.cur.last }}</span></div>
+                <div style="display:flex;justify-content:space-between;gap:12px;padding:11px 0;border-top:1px solid {{ f.t.line }};font:400 12.5px/1.3 'Be Vietnam Pro',sans-serif;color:{{ f.t.ink3 }}"><span>Gợi ý</span><span style="color:{{ f.t.ink }};font-weight:500;text-align:right">{{ f.map.cur.eta }}</span></div>
+                <div style="display:flex;justify-content:space-between;gap:12px;padding:11px 0;border-top:1px solid {{ f.t.line }};font:400 12.5px/1.3 'Be Vietnam Pro',sans-serif;color:{{ f.t.ink3 }}"><span>Hôm nay</span><span style="color:{{ f.t.ink }};font-weight:500">{{ f.map.cur.todayTxt }}</span></div>
+              </div>
+              <span style="font:500 11px/1 'JetBrains Mono',monospace;letter-spacing:.14em;color:{{ f.t.ink3 }}">BÀI CHO NHÓM NÀY</span>
+              <div style="display:flex;flex-direction:column;gap:8px;min-height:0;overflow-y:auto">
+                <sc-for list="{{ f.map.cur.exs }}" as="x" hint-placeholder-count="3">
+                  <div onClick="{{ x.go }}" style="display:flex;align-items:center;gap:12px;padding:11px 14px;box-sizing:border-box;border-radius:15px;background:{{ f.t.panel2 }};border:1px solid {{ f.t.bd }};cursor:pointer" style-hover="filter:brightness(1.1)">
+                    <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:4px"><span style="font:600 13px/1.2 'Be Vietnam Pro',sans-serif;color:{{ f.t.ink }};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ x.a }}</span><span style="font:400 11.5px/1 'Be Vietnam Pro',sans-serif;color:{{ f.t.ink3 }}">{{ x.sets }} · {{ x.lv }}</span></div>
+                    <i class="ph ph-arrow-up-right" style="font-size:15px;color:{{ f.t.acc }}"></i>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+          </div>
+          </sc-if>
+
+          <sc-if value="{{ f.pg.lib }}" hint-placeholder-val="{{ false }}">
+          <div style="position:absolute;inset:0;display:grid;grid-template-columns:minmax(0,1fr) 456px;gap:18px">
+            <div style="display:flex;flex-direction:column;gap:14px;min-height:0;min-width:0">
+              <div style="flex:none;display:flex;flex-wrap:wrap;gap:8px">
+                <sc-for list="{{ f.lib.regs }}" as="r" hint-placeholder-count="8"><span onClick="{{ r.pick }}" style="height:36px;padding:0 14px;box-sizing:border-box;border-radius:12px;display:flex;align-items:center;gap:7px;font:{{ r.fw }} 13px/1 'Be Vietnam Pro',sans-serif;color:{{ r.fg }};background:{{ r.bg }};border:1px solid {{ r.bd }};box-shadow:{{ r.sh }};cursor:pointer;white-space:nowrap">{{ r.l }}<span style="font:500 11px/1 'JetBrains Mono',monospace;opacity:.7">{{ r.n }}</span></span></sc-for>
+              </div>
+              <div style="flex:1;min-height:0;overflow-y:auto;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));grid-auto-rows:max-content;gap:10px;padding-right:4px">
+                <sc-for list="{{ f.lib.list }}" as="x" hint-placeholder-count="10">
+                  <div onClick="{{ x.pick }}" style="box-sizing:border-box;border-radius:18px;padding:14px 16px;background:{{ x.rbg }};border:1px solid {{ x.rbd }};box-shadow:{{ x.rsh }};display:flex;flex-direction:column;gap:9px;cursor:pointer;transition:all .2s;min-width:0" style-hover="filter:brightness(1.06)">
+                    <div style="display:flex;align-items:center;gap:12px">
+                      <span style="font:600 13px/1 'JetBrains Mono',monospace;color:{{ f.t.a2 }}">{{ x.no }}</span>
+                      <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:4px"><span style="font:600 14px/1.2 'Be Vietnam Pro',sans-serif;color:{{ f.t.ink }};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ x.a }}</span><span style="font:400 12px/1 'Be Vietnam Pro',sans-serif;color:{{ f.t.ink3 }};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ x.b }}</span></div>
+                      <div style="display:flex;gap:2px"><sc-for list="{{ x.stars }}" as="s" hint-placeholder-count="3"><i class="ph-fill ph-star-four" style="font-size:11px;color:{{ s.c }}"></i></sc-for></div>
+                    </div>
+                    <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;font:500 11.5px/1 'Be Vietnam Pro',sans-serif;color:{{ f.t.ink2 }}">
+                      <span style="height:22px;padding:0 8px;border-radius:7px;display:flex;align-items:center;background:{{ f.t.chip }}">{{ x.reg }}</span>
+                      <span style="height:22px;padding:0 8px;border-radius:7px;display:flex;align-items:center;background:{{ f.t.chip }}">{{ x.eq }}</span>
+                      <span style="margin-left:auto;font:500 11.5px/1 'JetBrains Mono',monospace;color:{{ f.t.ink3 }}">{{ x.sets }}</span>
+                    </div>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+            <div style="position:relative;overflow:hidden;box-sizing:border-box;border-radius:26px;background:{{ f.t.hero }};border:1px solid {{ f.t.bd }};box-shadow:{{ f.t.shadow }};backdrop-filter:{{ f.t.blur }};padding:24px;display:flex;flex-direction:column;gap:16px;min-height:0">
+              <div style="display:flex;flex-direction:column;gap:8px">
+                <div style="display:flex;align-items:center;gap:6px"><sc-for list="{{ f.lib.cur.stars }}" as="s" hint-placeholder-count="3"><i class="ph-fill ph-star-four" style="font-size:14px;color:{{ s.c }}"></i></sc-for><span style="margin-left:4px;font:500 12px/1 'Be Vietnam Pro',sans-serif;color:{{ f.t.ink3 }}">{{ f.lib.cur.lv }} · {{ f.lib.cur.eq }} · {{ f.lib.cur.reg }}</span></div>
+                <span style="font:600 30px/1.05 'Space Grotesk',sans-serif;letter-spacing:-.02em;color:{{ f.t.ink }}">{{ f.lib.cur.a }}</span>
+                <span style="font:400 13px/1 'Be Vietnam Pro',sans-serif;color:{{ f.t.ink3 }}">{{ f.lib.cur.b }} · gợi ý {{ f.lib.cur.sets }}</span>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:9px">
+                <sc-for list="{{ f.lib.cur.mus }}" as="m" hint-placeholder-count="3">
+                  <div style="display:grid;grid-template-columns:90px minmax(0,1fr) 70px;gap:10px;align-items:center">
+                    <span style="font:500 12.5px/1 'Be Vietnam Pro',sans-serif;color:{{ f.t.ink }}">{{ m.n }}</span>
+                    <div style="height:8px;border-radius:4px;background:{{ f.t.track }};overflow:hidden"><div style="height:100%;width:{{ m.p }};border-radius:4px;background:{{ m.c }};box-shadow:0 0 10px {{ m.c }};transition:width .4s"></div></div>
+                    <span style="text-align:right;font:500 11.5px/1 'Be Vietnam Pro',sans-serif;color:{{ f.t.ink3 }}">{{ m.role }}</span>
+                  </div>
+                </sc-for>
+              </div>
+              <div style="flex:1;min-height:0;overflow-y:auto;display:flex;flex-direction:column;gap:10px">
+                <sc-for list="{{ f.lib.cur.steps }}" as="s" hint-placeholder-count="3">
+                  <div style="display:flex;gap:12px">
+                    <span style="flex:none;width:26px;height:26px;border-radius:50%;display:grid;place-items:center;background:{{ f.t.chip }};border:1px solid {{ f.t.bd }};font:600 12px/1 'Space Grotesk',sans-serif;color:{{ f.t.a2 }}">{{ s.i }}</span>
+                    <span style="font:400 13.5px/1.5 'Be Vietnam Pro',sans-serif;color:{{ f.t.ink2 }};text-wrap:pretty">{{ s.t }}</span>
+                  </div>
+                </sc-for>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:8px">
+                <div style="display:flex;gap:10px;padding:12px 14px;border-radius:15px;background:{{ f.t.tip }};border:1px solid {{ f.t.tipBd }}"><i class="ph ph-warning-diamond" style="flex:none;font-size:17px;color:{{ f.t.a3 }}"></i><span style="font:400 12.5px/1.45 'Be Vietnam Pro',sans-serif;color:{{ f.t.ink2 }};text-wrap:pretty"><b style="font-weight:600;color:{{ f.t.ink }}">Lỗi hay gặp:</b> {{ f.lib.cur.tip }}</span></div>
+                <sc-if value="{{ f.lib.cur.hasWarn }}" hint-placeholder-val="{{ false }}"><span style="display:flex;align-items:center;gap:7px;font:500 12px/1 'Be Vietnam Pro',sans-serif;color:{{ f.t.bad }}"><i class="ph ph-first-aid" style="font-size:15px"></i>Chú ý {{ f.lib.cur.warn }}</span></sc-if>
+              </div>
+            </div>
+          </div>
+          </sc-if>
+        </div>
+      </div>
+
+      <sc-if value="{{ f.wk.on }}" hint-placeholder-val="{{ false }}">
+      <div style="position:absolute;inset:0;z-index:40;background:{{ f.t.ov }};backdrop-filter:blur(12px);display:flex;flex-direction:column;padding:28px 40px 34px;box-sizing:border-box;gap:24px">
+        <div style="position:absolute;inset:0;pointer-events:none;overflow:hidden">{{ f.burst }}</div>
+        <div style="position:relative;display:flex;align-items:center;justify-content:space-between;gap:20px">
+          <div style="display:flex;flex-direction:column;gap:7px"><span style="font:500 11px/1 'JetBrains Mono',monospace;letter-spacing:.18em;color:{{ f.t.ink3 }}">CHẾ ĐỘ TẬP</span><span style="font:600 22px/1 'Space Grotesk',sans-serif;color:{{ f.t.ink }}">{{ f.wk.title }}</span></div>
+          <div style="display:flex;align-items:center;gap:10px">
+            <span style="height:40px;padding:0 14px;box-sizing:border-box;border-radius:13px;display:flex;align-items:center;gap:8px;background:{{ f.t.panel }};border:1px solid {{ f.t.bd }};font:600 15px/1 'JetBrains Mono',monospace;color:{{ f.t.ink }}"><i class="ph ph-timer" style="font-size:16px;color:{{ f.t.a2 }}"></i>{{ f.wk.el }}</span>
+            <span onClick="{{ f.wk.close }}" title="Thoát" style="width:40px;height:40px;box-sizing:border-box;border-radius:13px;display:grid;place-items:center;background:{{ f.t.panel }};border:1px solid {{ f.t.bd }};color:{{ f.t.ink2 }};cursor:pointer"><i class="ph ph-x" style="font-size:17px"></i></span>
+          </div>
+        </div>
+        <div style="position:relative;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px">
+          <sc-for list="{{ f.wk.segs }}" as="s" hint-placeholder-count="4">
+            <div style="display:flex;flex-direction:column;gap:8px;min-width:0">
+              <div style="height:6px;border-radius:3px;background:{{ f.t.track }};overflow:hidden"><div style="height:100%;width:{{ s.fill }};border-radius:3px;background:{{ s.c }};box-shadow:0 0 10px {{ s.c }};transition:width .4s"></div></div>
+              <span style="font:500 12px/1.2 'Be Vietnam Pro',sans-serif;color:{{ s.fg }};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ s.no }} · {{ s.n }}</span>
+            </div>
+          </sc-for>
+        </div>
+
+        <sc-if value="{{ f.wk.isWork }}" hint-placeholder-val="{{ false }}">
+          <div style="position:relative;flex:1;min-height:0;display:grid;grid-template-columns:420px minmax(0,1fr);gap:56px;align-items:center;padding:0 40px">
+            <div style="position:relative;width:400px;height:400px;justify-self:center">
+              <svg width="400" height="400" viewBox="0 0 400 400" style="display:block;transform:rotate(-90deg)">
+                <circle cx="200" cy="200" r="130" fill="none" stroke="{{ f.t.track }}" stroke-width="16" transform="scale(1.4) translate(-57,-57)"></circle>
+                <circle cx="200" cy="200" r="130" fill="none" stroke="{{ f.t.acc }}" stroke-width="16" stroke-linecap="round" stroke-dasharray="{{ f.wk.exR.r130 }}" transform="scale(1.4) translate(-57,-57)" style="filter:drop-shadow(0 0 10px {{ f.t.acc }});transition:stroke-dasharray .5s"></circle>
+              </svg>
+              <div style="position:absolute;inset:30px;border-radius:50%;border:1px dashed {{ f.t.line }};animation:spin 60s linear infinite"></div>
+              <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px">
+                <span style="font:500 12px/1 'JetBrains Mono',monospace;letter-spacing:.16em;color:{{ f.t.ink3 }}">MỤC TIÊU {{ f.wk.tgt }} {{ f.wk.ul }}</span>
+                <span style="font:600 132px/1 'Space Grotesk',sans-serif;letter-spacing:-.05em;color:{{ f.t.ink }}">{{ f.wk.reps }}</span>
+                <div style="display:flex;align-items:center;gap:14px">
+                  <span onClick="{{ f.wk.minus }}" style="width:44px;height:44px;box-sizing:border-box;border-radius:50%;display:grid;place-items:center;background:{{ f.t.panel2 }};border:1px solid {{ f.t.bd }};color:{{ f.t.ink }};cursor:pointer"><i class="ph ph-minus" style="font-size:18px"></i></span>
+                  <span style="font:500 14px/1 'Be Vietnam Pro',sans-serif;color:{{ f.t.ink2 }}">{{ f.wk.ul }}</span>
+                  <span onClick="{{ f.wk.plus }}" style="width:44px;height:44px;box-sizing:border-box;border-radius:50%;display:grid;place-items:center;background:{{ f.t.panel2 }};border:1px solid {{ f.t.bd }};color:{{ f.t.ink }};cursor:pointer"><i class="ph ph-plus" style="font-size:18px"></i></span>
+                </div>
+              </div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:18px;min-width:0">
+              <span style="font:500 12px/1 'JetBrains Mono',monospace;letter-spacing:.16em;color:{{ f.t.a2 }}">BÀI {{ f.wk.i }} / {{ f.wk.nEx }} · {{ f.wk.grp }}</span>
+              <span style="font:600 60px/1.02 'Space Grotesk',sans-serif;letter-spacing:-.035em;color:{{ f.t.ink }};text-wrap:balance">{{ f.wk.n }}</span>
+              <span style="font:400 15px/1 'Be Vietnam Pro',sans-serif;color:{{ f.t.ink3 }}">{{ f.wk.en }} · {{ f.wk.sx }}</span>
+              <div style="display:flex;align-items:center;gap:12px;padding:6px 0">
+                <sc-for list="{{ f.wk.dots }}" as="o" hint-placeholder-count="3"><span style="width:{{ o.sz }};height:{{ o.sz }};border-radius:50%;background:{{ o.c }};box-shadow:0 0 12px {{ o.c }};transition:all .3s"></span></sc-for>
+                <span style="font:600 14px/1 'JetBrains Mono',monospace;color:{{ f.t.ink2 }}">SET {{ f.wk.setNo }} / {{ f.wk.sets }}</span>
+              </div>
+              <div style="display:flex;gap:12px;margin-top:8px">
+                <span onClick="{{ f.wk.doneSet }}" style="height:60px;padding:0 30px 0 26px;box-sizing:border-box;border-radius:20px;white-space:nowrap;display:flex;align-items:center;gap:10px;background:{{ f.t.btn }};color:{{ f.t.btnInk }};box-shadow:{{ f.t.btnSh }};font:600 17px/1 'Be Vietnam Pro',sans-serif;cursor:pointer" style-hover="filter:brightness(1.08)" style-active="transform:scale(.97)"><i class="ph-fill ph-check-circle" style="font-size:21px"></i>Xong set</span>
+                <span onClick="{{ f.wk.skipEx }}" style="height:60px;padding:0 22px;box-sizing:border-box;border-radius:20px;white-space:nowrap;display:flex;align-items:center;gap:8px;background:{{ f.t.btn2 }};border:1px solid {{ f.t.btn2Bd }};color:{{ f.t.btn2Ink }};font:500 15px/1 'Be Vietnam Pro',sans-serif;cursor:pointer"><i class="ph ph-skip-forward" style="font-size:18px"></i>Bỏ qua bài</span>
+              </div>
+              <span style="font:400 13px/1 'Be Vietnam Pro',sans-serif;color:{{ f.t.ink3 }}">Đã xong {{ f.wk.doneSets }} / {{ f.wk.totalSets }} set · sau bài này: {{ f.wk.upNext }}</span>
+            </div>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ f.wk.isRest }}" hint-placeholder-val="{{ false }}">
+          <div style="position:relative;flex:1;min-height:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:26px">
+            <div style="position:relative;width:340px;height:340px">
+              <svg width="340" height="340" viewBox="0 0 340 340" style="display:block;transform:rotate(-90deg)">
+                <circle cx="170" cy="170" r="130" fill="none" stroke="{{ f.t.track }}" stroke-width="12"></circle>
+                <circle cx="170" cy="170" r="130" fill="none" stroke="{{ f.t.a2 }}" stroke-width="12" stroke-linecap="round" stroke-dasharray="{{ f.wk.restR.r130 }}" style="filter:drop-shadow(0 0 10px {{ f.t.a2 }});transition:stroke-dasharray 1s linear"></circle>
+              </svg>
+              <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px">
+                <span style="font:500 12px/1 'JetBrains Mono',monospace;letter-spacing:.18em;color:{{ f.t.ink3 }}">NGHỈ</span>
+                <span style="font:600 84px/1 'Space Grotesk',sans-serif;letter-spacing:-.04em;color:{{ f.t.ink }}">{{ f.wk.rest }}</span>
+              </div>
+            </div>
+            <div style="display:flex;flex-direction:column;align-items:center;gap:8px"><span style="font:500 13px/1 'Be Vietnam Pro',sans-serif;color:{{ f.t.ink3 }}">Tiếp theo · {{ f.wk.nextSet }}</span><span style="font:600 26px/1.1 'Space Grotesk',sans-serif;color:{{ f.t.ink }}">{{ f.wk.next }} · {{ f.wk.nextSx }}</span></div>
+            <div style="display:flex;gap:12px">
+              <span onClick="{{ f.wk.addRest }}" style="height:50px;padding:0 22px;box-sizing:border-box;border-radius:17px;white-space:nowrap;display:flex;align-items:center;gap:8px;background:{{ f.t.btn2 }};border:1px solid {{ f.t.btn2Bd }};color:{{ f.t.btn2Ink }};font:500 14.5px/1 'Be Vietnam Pro',sans-serif;cursor:pointer"><i class="ph ph-plus" style="font-size:16px"></i>15 giây</span>
+              <span onClick="{{ f.wk.skipRest }}" style="height:50px;padding:0 24px;box-sizing:border-box;border-radius:17px;white-space:nowrap;display:flex;align-items:center;gap:8px;background:{{ f.t.btn }};color:{{ f.t.btnInk }};box-shadow:{{ f.t.btnSh }};font:600 14.5px/1 'Be Vietnam Pro',sans-serif;cursor:pointer"><i class="ph-fill ph-fast-forward" style="font-size:16px"></i>Tập tiếp</span>
+            </div>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ f.wk.isDone }}" hint-placeholder-val="{{ false }}">
+          <div style="position:relative;flex:1;min-height:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:22px;text-align:center">
+            <i class="ph-fill ph-star-four" style="font-size:96px;color:{{ f.t.a3 }};filter:drop-shadow(0 0 30px {{ f.t.a3 }});animation:floaty 3s ease-in-out infinite"></i>
+            <span style="font:600 64px/1 'Space Grotesk',sans-serif;letter-spacing:-.04em;color:{{ f.t.ink }}">Sao T3 đã sáng</span>
+            <span style="font:400 16px/1.5 'Be Vietnam Pro',sans-serif;color:{{ f.t.ink2 }}">Xong buổi B · Lưng xô &amp; Chân. Chòm sao tuần này có thêm một ngôi sao.</span>
+            <div style="display:grid;grid-template-columns:repeat(4,150px);gap:12px;margin-top:6px">
+              <div style="padding:16px;border-radius:18px;background:{{ f.t.panel }};border:1px solid {{ f.t.bd }};display:flex;flex-direction:column;gap:8px"><span style="font:600 32px/1 'Space Grotesk',sans-serif;color:{{ f.t.ink }}">{{ f.wk.nEx }}</span><span style="font:500 12px/1 'Be Vietnam Pro',sans-serif;color:{{ f.t.ink3 }}">bài</span></div>
+              <div style="padding:16px;border-radius:18px;background:{{ f.t.panel }};border:1px solid {{ f.t.bd }};display:flex;flex-direction:column;gap:8px"><span style="font:600 32px/1 'Space Grotesk',sans-serif;color:{{ f.t.ink }}">{{ f.wk.totalSets }}</span><span style="font:500 12px/1 'Be Vietnam Pro',sans-serif;color:{{ f.t.ink3 }}">set</span></div>
+              <div style="padding:16px;border-radius:18px;background:{{ f.t.panel }};border:1px solid {{ f.t.bd }};display:flex;flex-direction:column;gap:8px"><span style="font:600 32px/1 'Space Grotesk',sans-serif;color:{{ f.t.ink }}">{{ f.wk.el }}</span><span style="font:500 12px/1 'Be Vietnam Pro',sans-serif;color:{{ f.t.ink3 }}">thời gian</span></div>
+              <div style="padding:16px;border-radius:18px;background:{{ f.t.panel }};border:1px solid {{ f.t.bd }};display:flex;flex-direction:column;gap:8px"><span style="font:600 32px/1 'Space Grotesk',sans-serif;color:{{ f.t.ink }}">{{ f.wk.logReps }}</span><span style="font:500 12px/1 'Be Vietnam Pro',sans-serif;color:{{ f.t.ink3 }}">tổng rep · giây</span></div>
+            </div>
+            <span onClick="{{ f.wk.finish }}" style="margin-top:8px;height:54px;padding:0 28px;box-sizing:border-box;border-radius:18px;white-space:nowrap;display:flex;align-items:center;gap:9px;background:{{ f.t.btn }};color:{{ f.t.btnInk }};box-shadow:{{ f.t.btnSh }};font:600 15.5px/1 'Be Vietnam Pro',sans-serif;cursor:pointer"><i class="ph-fill ph-planet" style="font-size:19px"></i>Về Tổng quan</span>
+          </div>
+        </sc-if>
+      </div>
+      </sc-if>
+    </div>
+  </div>
+  </sc-for>
+</section>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+const E = React.createElement;
+const TH = {
+  d: {
+    name: 'Tối · Ngân hà', desc: 'Nền sao lấp lánh, sao băng và tinh vân trôi chậm. Thẻ kính mờ, viền phát sáng theo màu chỉ số.',
+    bg: 'radial-gradient(50% 45% at 0% 100%,rgba(139,92,246,.22),transparent 70%),radial-gradient(45% 40% at 100% 0%,rgba(79,216,240,.12),transparent 70%),linear-gradient(180deg,#0B1330 0%,#070C22 45%,#04060E 100%)',
+    bg0: '#080D24', ink: '#EEF1FF', ink2: '#A6AECB', ink3: '#6A7291', acc: '#8F96FF', a2: '#4FD8F0', a3: '#FFC857', a4: '#F57FD0', good: '#5EF2C2', bad: '#FF6B8A',
+    panel: 'rgba(255,255,255,.035)', panel2: 'rgba(255,255,255,.055)', bd: 'rgba(255,255,255,.08)', line: 'rgba(255,255,255,.08)', chip: 'rgba(255,255,255,.05)', track: 'rgba(255,255,255,.09)',
+    shadow: 'inset 0 1px 0 rgba(255,255,255,.05)', blur: 'blur(14px)', rail: 'rgba(4,6,16,.5)',
+    btn: 'linear-gradient(135deg,#8F96FF 0%,#5EF2C2 100%)', btnInk: '#050816', btnSh: '0 10px 30px -10px rgba(143,150,255,.75)',
+    btn2: 'rgba(255,255,255,.05)', btn2Ink: '#E6EAFF', btn2Bd: 'rgba(255,255,255,.12)',
+    on: { fg: '#FFFFFF', bg: 'rgba(143,150,255,.18)', bd: 'rgba(143,150,255,.55)', sh: '0 0 20px -6px rgba(143,150,255,.7)', fw: 600 },
+    off: { fg: '#A6AECB', bg: 'rgba(255,255,255,.03)', bd: 'rgba(255,255,255,.08)', sh: 'none', fw: 500 },
+    navOn: { fg: '#FFFFFF', bg: 'rgba(143,150,255,.15)', bd: 'rgba(143,150,255,.38)', sh: '0 0 24px -8px rgba(143,150,255,.85)', fw: 600 },
+    navOff: { fg: '#6A7291', bg: 'transparent', bd: 'transparent', sh: 'none', fw: 500 },
+    rowOn: { bg: 'rgba(143,150,255,.12)', bd: 'rgba(143,150,255,.42)', sh: '0 0 26px -10px rgba(143,150,255,.85)' },
+    rowOff: { bg: 'transparent', bd: 'transparent', sh: 'none' },
+    planet: 'radial-gradient(circle at 34% 30%,#D7D9FF 0%,#8F96FF 26%,#4148B8 58%,#161A4A 100%)', planetSh: '0 0 80px -10px rgba(143,150,255,.6), inset -30px -40px 60px rgba(4,6,20,.6)',
+    ringC: 'rgba(200,205,255,.38)', hero: 'linear-gradient(135deg,rgba(143,150,255,.13),rgba(79,216,240,.04) 60%,rgba(255,255,255,.02))',
+    ov: 'rgba(4,6,16,.84)', stage: 'radial-gradient(50% 45% at 50% 52%,rgba(143,150,255,.22),transparent 72%),rgba(255,255,255,.02)', platform: 'radial-gradient(50% 50% at 50% 50%,rgba(94,242,194,.32),rgba(94,242,194,0) 70%)',
+    frameSh: '0 1px 2px rgba(16,17,20,.08),0 30px 70px -20px rgba(16,17,20,.5)', tip: 'rgba(255,200,87,.07)', tipBd: 'rgba(255,200,87,.24)'
+  },
+  l: {
+    name: 'Sáng · Bình minh', desc: 'Cùng bố cục trên nền bình minh pastel: cực quang hồng và xanh, hạt sáng lấp lánh, kính mờ trắng, nút tím chuyển hồng.',
+    bg: 'radial-gradient(55% 50% at 100% 0%,#FFE1F1 0%,rgba(255,225,241,0) 70%),radial-gradient(50% 50% at 0% 100%,#D6F1FF 0%,rgba(214,241,255,0) 70%),linear-gradient(180deg,#F5F3FF 0%,#EEEBFC 100%)',
+    bg0: '#F7F5FF', ink: '#1D1A3D', ink2: '#4F4B74', ink3: '#8683A6', acc: '#5A55E0', a2: '#0A8FB3', a3: '#C27C00', a4: '#CF4199', good: '#0E9170', bad: '#DC3B4A',
+    panel: 'rgba(255,255,255,.62)', panel2: 'rgba(255,255,255,.86)', bd: 'rgba(90,85,224,.13)', line: 'rgba(90,85,224,.11)', chip: 'rgba(90,85,224,.06)', track: 'rgba(90,85,224,.11)',
+    shadow: '0 1px 0 rgba(255,255,255,.9) inset,0 14px 34px -22px rgba(60,50,150,.45)', blur: 'blur(14px)', rail: 'rgba(255,255,255,.45)',
+    btn: 'linear-gradient(135deg,#5A55E0 0%,#A35BEA 100%)', btnInk: '#FFFFFF', btnSh: '0 10px 26px -10px rgba(90,85,224,.75)',
+    btn2: 'rgba(255,255,255,.78)', btn2Ink: '#2A2660', btn2Bd: 'rgba(90,85,224,.18)',
+    on: { fg: '#FFFFFF', bg: '#5A55E0', bd: '#5A55E0', sh: '0 6px 16px -6px rgba(90,85,224,.6)', fw: 600 },
+    off: { fg: '#4F4B74', bg: 'rgba(255,255,255,.62)', bd: 'rgba(90,85,224,.14)', sh: 'none', fw: 500 },
+    navOn: { fg: '#5A55E0', bg: '#FFFFFF', bd: 'rgba(90,85,224,.2)', sh: '0 8px 20px -10px rgba(90,85,224,.55)', fw: 600 },
+    navOff: { fg: '#8683A6', bg: 'transparent', bd: 'transparent', sh: 'none', fw: 500 },
+    rowOn: { bg: '#FFFFFF', bd: 'rgba(90,85,224,.42)', sh: '0 10px 24px -14px rgba(90,85,224,.6)' },
+    rowOff: { bg: 'rgba(255,255,255,.35)', bd: 'transparent', sh: 'none' },
+    planet: 'radial-gradient(circle at 34% 30%,#FFFFFF 0%,#FFD3EA 28%,#B7A6FF 64%,#7D6CF0 100%)', planetSh: '0 30px 60px -20px rgba(125,108,240,.55), inset -24px -30px 50px rgba(90,70,200,.25)',
+    ringC: 'rgba(90,85,224,.3)', hero: 'linear-gradient(135deg,rgba(255,255,255,.88),rgba(255,255,255,.55))',
+    ov: 'rgba(245,243,255,.93)', stage: 'radial-gradient(50% 45% at 50% 52%,rgba(183,166,255,.42),transparent 72%),rgba(255,255,255,.4)', platform: 'radial-gradient(50% 50% at 50% 50%,rgba(90,85,224,.22),rgba(90,85,224,0) 70%)',
+    frameSh: '0 1px 2px rgba(16,17,20,.06),0 30px 70px -24px rgba(60,50,140,.35)', tip: 'rgba(194,124,0,.07)', tipBd: 'rgba(194,124,0,.24)'
+  }
+};
+const rng = seed => { let s = seed; return () => (s = (s * 16807) % 2147483647) / 2147483647; };
+
+class Component extends DCLogic {
+  state = { d: null, l: null };
+  componentDidMount() {
+    const go = () => { if (!window.BodyKit) return false; this.setState(s => ({ d: s.d || window.BodyKit.init(), l: s.l || window.BodyKit.init() })); return true; };
+    if (!go()) this._poll = setInterval(() => { if (go()) clearInterval(this._poll); }, 60);
+    this._tick = setInterval(() => {
+      const K = window.BodyKit; if (!K) return;
+      ['d', 'l'].forEach(k => { const fs = this.state[k]; if (!fs) return; const n = K.tick(fs); if (n) this.setState({ [k]: n }); });
+    }, 1000);
+    this._ms = e => { const d = e.detail || {}, K = window.BodyKit; if (K && (d.channel === 'd' || d.channel === 'l') && K.isMuscle(d.id)) this.upd(d.channel, { mus: d.id }); };
+    document.addEventListener('muscle-select', this._ms);
+  }
+  componentWillUnmount() { clearInterval(this._poll); clearInterval(this._tick); document.removeEventListener('muscle-select', this._ms); }
+  upd(k, p) { this.setState(s => ({ [k]: Object.assign({}, s[k], p) })); }
+
+  fx(k) {
+    this._fx = this._fx || {};
+    if (this._fx[k]) return this._fx[k];
+    const r = rng(k === 'd' ? 7 : 19), kids = [];
+    if (k === 'd') {
+      [['4%', '58%', 560, 'rgba(139,92,246,.22)', 0], ['66%', '-10%', 500, 'rgba(79,216,240,.13)', -9], ['40%', '34%', 420, 'rgba(245,127,208,.08)', -15]].forEach(([l, t, s, c, d], i) => kids.push(E('div', { key: 'n' + i, style: { position: 'absolute', left: l, top: t, width: s, height: s, borderRadius: '50%', background: `radial-gradient(circle,${c},transparent 70%)`, filter: 'blur(24px)', animation: `neb ${24 + i * 5}s ease-in-out ${d}s infinite alternate` } })));
+      for (let i = 0; i < 120; i++) {
+        const big = r() > .86, s = big ? 2 + r() * 1.4 : 1 + r() * 1.1;
+        kids.push(E('span', { key: 's' + i, style: { position: 'absolute', left: (r() * 100).toFixed(2) + '%', top: (r() * 100).toFixed(2) + '%', width: s, height: s, borderRadius: '50%', background: i % 9 === 0 ? '#C9D2FF' : '#FFFFFF', boxShadow: big ? '0 0 6px rgba(255,255,255,.8)' : 'none', animation: `twinkle ${(2 + r() * 4).toFixed(1)}s ease-in-out ${(-r() * 6).toFixed(1)}s infinite` } }));
+      }
+      [['82%', '4%', 11, 2], ['52%', '12%', 14, 7.5]].forEach(([l, t, dur, d], i) => kids.push(E('span', { key: 'sh' + i, style: { position: 'absolute', left: l, top: t, width: 170, height: 1.5, borderRadius: 2, background: 'linear-gradient(90deg,#FFFFFF,rgba(255,255,255,0))', boxShadow: '0 0 8px rgba(200,210,255,.8)', animation: `shoot ${dur}s linear ${d}s infinite`, opacity: 0 } })));
+    } else {
+      [['-8%', '-22%', 720, 'rgba(255,186,222,.55)', 0], ['56%', '-26%', 660, 'rgba(188,196,255,.6)', -8], ['18%', '58%', 640, 'rgba(168,228,255,.5)', -14]].forEach(([l, t, s, c, d], i) => kids.push(E('div', { key: 'a' + i, style: { position: 'absolute', left: l, top: t, width: s, height: s, borderRadius: '50%', background: `radial-gradient(circle,${c},transparent 68%)`, filter: 'blur(30px)', animation: `neb ${22 + i * 6}s ease-in-out ${d}s infinite alternate` } })));
+      for (let i = 0; i < 34; i++) {
+        const s = 4 + r() * 5;
+        kids.push(E('span', { key: 'k' + i, style: { position: 'absolute', left: (r() * 100).toFixed(2) + '%', top: (r() * 100).toFixed(2) + '%', width: s, height: s, background: i % 3 ? '#FFFFFF' : '#B7A6FF', boxShadow: '0 0 8px rgba(255,255,255,.9)', animation: `sparkle ${(3 + r() * 4).toFixed(1)}s ease-in-out ${(-r() * 7).toFixed(1)}s infinite` } }));
+      }
+      for (let i = 0; i < 16; i++) kids.push(E('span', { key: 'm' + i, style: { position: 'absolute', left: (r() * 100).toFixed(2) + '%', bottom: (-2 + r() * 30).toFixed(1) + '%', width: 5, height: 5, borderRadius: '50%', background: i % 2 ? 'rgba(255,170,215,.9)' : 'rgba(150,160,255,.9)', '--dx': ((r() - .5) * 120).toFixed(0) + 'px', animation: `rise ${(9 + r() * 8).toFixed(1)}s ease-in-out ${(-r() * 12).toFixed(1)}s infinite` } }));
+    }
+    return (this._fx[k] = kids);
+  }
+  burst(k, T) {
+    this._b = this._b || {};
+    if (this._b[k]) return this._b[k];
+    const r = rng(k === 'd' ? 3 : 5), cols = [T.a3, T.acc, T.a2, T.a4, T.good];
+    return (this._b[k] = Array.from({ length: 48 }, (_, i) => { const a = r() * Math.PI * 2, d = 160 + r() * 360; return E('span', { key: i, style: { position: 'absolute', left: '50%', top: '40%', width: i % 3 ? 7 : 10, height: i % 3 ? 7 : 10, borderRadius: i % 4 ? '50%' : '2px', background: cols[i % 5], boxShadow: `0 0 10px ${cols[i % 5]}`, '--dx': (Math.cos(a) * d).toFixed(0) + 'px', '--dy': (Math.sin(a) * d).toFixed(0) + 'px', animation: `burst ${(1.2 + r() * .9).toFixed(2)}s cubic-bezier(.15,.7,.3,1) ${(r() * .25).toFixed(2)}s both` } }); }));
+  }
+  cons(v, T) {
+    const xs = [44, 168, 292, 416, 540, 664, 788], ys = [112, 58, 96, 40, 84, 122, 66];
+    const days = v.home.days;
+    const pts = days.map((d, i) => {
+      const done = d.isDone, today = d.isToday && !done, rest = d.isRest && !done;
+      const c = done ? T.a3 : today ? T.acc : rest ? T.ink3 : d.c;
+      return { x: xs[i], y: ys[i], ly: ys[i] + 24, r: done ? 9 : today ? 10 : rest ? 4.5 : 7, halo: done ? 20 : today ? 22 : 0, hop: done ? .2 : today ? .28 : 0, anim: today ? 'pulse 2.4s ease-in-out infinite' : 'none', c, fill: done ? T.a3 : today ? T.acc : T.bg0, glow: done ? `drop-shadow(0 0 8px ${T.a3})` : today ? `drop-shadow(0 0 10px ${T.acc})` : 'none', s: d.s, n: d.n, focus: d.focus, sc: done ? T.a3 : today ? T.acc : T.ink3, fc: done || today ? T.ink : T.ink2 };
+    });
+    const segs = pts.slice(0, -1).map((a, i) => { const b = pts[i + 1], lit = days[i].isDone && days[i + 1].isDone; return { x1: a.x, y1: a.y, x2: b.x, y2: b.y, c: lit ? T.a3 : T.ink3, w: lit ? 1.8 : 1.2, da: lit ? '0' : '3 6', op: lit ? .85 : .5 }; });
+    return { pts, segs };
+  }
+  renderVals() {
+    const K = window.BodyKit;
+    if (!K || !this.state.d) return {};
+    const frames = ['d', 'l'].map(k => {
+      const T = TH[k];
+      const v = K.view(this.state[k], T, p => this.upd(k, p), { trW: 846, trH: 214, sparkW: 150, sparkH: 40 });
+      return Object.assign(v, { key: k, id: k === 'd' ? '1a' : '1b', t: T, gid: 'gxTr' + k, label: (k === 'd' ? '1a Ngân hà tối · ' : '1b Ngân hà sáng · ') + v.page.n, fx: this.fx(k), cons: this.cons(v, T), burst: v.wk.isDone ? this.burst(k, T) : null });
+    });
+    return { frames };
+  }
+}
+</script>
+</body>
+</html>

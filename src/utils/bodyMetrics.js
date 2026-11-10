@@ -1,3 +1,5 @@
+import { toDateStr } from './dateUtils.js';
+
 /**
  * Pure calculation functions for Body Biometrics & Composition
  * Follows Mifflin-St Jeor equation and standard WHO BMI scales
@@ -269,4 +271,19 @@ export function smoothPath(points = []) {
       + `${r(p2[0] - (p3[0] - p1[0]) / 6)} ${r(p2[1] - (p3[1] - p1[1]) / 6)} ${r(p2[0])} ${r(p2[1])}`;
   }
   return d;
+}
+
+/**
+ * Tổng kcal theo ngày cho `n` ngày liền nhau kết thúc ở `endDateStr` (yyyy-mm-dd), cũ → mới.
+ * Ngày không có log = 0; log ngoài khoảng bị bỏ; kcal null/NaN bỏ qua. Cột kcal thật là `calories`.
+ */
+export function sumKcalByDay(logs = [], endDateStr, n = 7) {
+  const [y, m, d] = endDateStr.split('-').map(Number);
+  const days = Array.from({ length: n }, (_, i) => toDateStr(new Date(y, m - 1, d - (n - 1 - i))));
+  const totals = Object.fromEntries(days.map(date => [date, 0]));
+  logs.forEach(log => {
+    const v = Number(log?.calories);
+    if (log?.local_date in totals && Number.isFinite(v)) totals[log.local_date] += v;
+  });
+  return days.map(date => ({ date, kcal: totals[date] }));
 }

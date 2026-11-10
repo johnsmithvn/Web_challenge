@@ -33,9 +33,9 @@ const ddmm = str => {
 
 const GAUGE_LO = 15;
 const GAUGE_HI = 32;
-const GAUGE_SEGS = [[15, 18.5, '#4A8FE7'], [18.5, 23, '#2F9E5B'], [23, 25, '#E8973A'], [25, 32, '#D9503F']];
+const GAUGE_SEGS = [[15, 18.5, 'var(--body-blue)'], [18.5, 23, 'var(--body-green)'], [23, 25, 'var(--body-amber)'], [25, 32, 'var(--body-red)']];
 const BMI_SHORT = { underweight: 'Thiếu cân', normal: 'Bình thường', overweight: 'Thừa cân', obese: 'Béo phì' };
-const BMI_COLOR = { underweight: '#4A8FE7', normal: '#2F9E5B', overweight: '#E8973A', obese: '#D9503F' };
+const BMI_COLOR = { underweight: 'var(--body-blue)', normal: 'var(--body-green)', overweight: 'var(--body-amber)', obese: 'var(--body-red)' };
 const BMI_LEGEND = [
   ['underweight', 'Thiếu cân', '<18,5'],
   ['normal', 'Bình thường', '18,5–22,9'],
@@ -49,9 +49,9 @@ const RANGES = [
   { k: '365d', l: 'Năm', s: '12 tháng', days: 365 }
 ];
 const TREND_METRICS = [
-  { key: 'weight', field: 'weight', name: 'Cân nặng', unit: 'kg', dec: 2, color: '#6949E8', minSpan: 0.6 },
-  { key: 'fat', field: 'body_fat_pct', name: 'Tỷ lệ mỡ', unit: '%', dec: 1, color: '#E07B39', minSpan: 0.4, goodDir: -1 },
-  { key: 'muscle', field: 'skeletal_muscle_kg', name: 'Cơ xương', unit: 'kg', dec: 1, color: '#2F8A57', minSpan: 0.4, goodDir: 1 }
+  { key: 'weight', field: 'weight', name: 'Cân nặng', unit: 'kg', dec: 2, color: 'var(--body-accent)', minSpan: 0.6 },
+  { key: 'fat', field: 'body_fat_pct', name: 'Tỷ lệ mỡ', unit: '%', dec: 1, color: 'var(--body-amber)', minSpan: 0.4, goodDir: -1 },
+  { key: 'muscle', field: 'skeletal_muscle_kg', name: 'Cơ xương', unit: 'kg', dec: 1, color: 'var(--body-green)', minSpan: 0.4, goodDir: 1 }
 ];
 const SOURCE_NAME = { manual: 'Nhập tay', huawei_scale: 'Cân Huawei', csv_import: 'Nhập file' };
 const ACTIVITY_OPTIONS = [
@@ -75,7 +75,7 @@ const slotLabelOf = m => {
 const timeOf = m => new Date(m.measured_at).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
 
 /** Đồng hồ BMI nửa vòng: thang 15–32, kim đặt theo BMI; số cân nằm dưới vòng cung (không đè lên). */
-function BmiGauge({ bmi, color, weightText, small }) {
+function BmiGauge({ bmi, color, weightText }) {
   const cx = 150;
   const cy = 158;
   const R = 124;
@@ -86,7 +86,7 @@ function BmiGauge({ bmi, color, weightText, small }) {
     const p2 = pt(a2);
     return `M${p1[0]} ${p1[1]}A${R} ${R} 0 0 1 ${p2[0]} ${p2[1]}`;
   };
-  const gap = 0.012;
+  const gap = 0.014;
   const marker = bmi != null ? pt(bmiGaugeAngle(bmi, GAUGE_LO, GAUGE_HI)) : null;
   const ticks = [[18.5, '18,5'], [23, '23'], [25, '25']].map(([v, t]) => {
     const p = pt(bmiGaugeAngle(v, GAUGE_LO, GAUGE_HI), R + 22);
@@ -94,27 +94,27 @@ function BmiGauge({ bmi, color, weightText, small }) {
   });
 
   return (
-    <div className={`body-bm-gauge${small ? ' is-small' : ''}`}>
+    <div className="body-bm-gauge" style={{ '--dc': color }}>
       <svg viewBox="0 0 300 176" aria-hidden="true">
         <path d={arc(Math.PI, 0)} className="bm-gauge-track" />
         {bmi != null
           ? GAUGE_SEGS.map(([a, b, c], i) => (
             <path
-              key={c}
+              key={a}
               d={arc(bmiGaugeAngle(a) - (i ? gap : 0), bmiGaugeAngle(b) + (i < 3 ? gap : 0))}
-              stroke={c}
+              style={{ '--dc': c }}
               className="bm-gauge-seg"
             />
           ))
           : <path d={arc(Math.PI, 0)} className="bm-gauge-seg is-empty" />}
-        {marker && <circle cx={marker[0]} cy={marker[1]} r="11" stroke={color} className="bm-gauge-marker" />}
+        {marker && <circle cx={marker[0]} cy={marker[1]} r="11" className="bm-gauge-marker" />}
         {bmi != null && ticks.map(t => (
           <text key={t.t} x={t.x} y={t.y + 3.5} textAnchor="middle" className="bm-gauge-tick">{t.t}</text>
         ))}
         {bmi != null && (
           <>
-            <text x={cx - R} y={cy + 19} textAnchor="middle" className="bm-gauge-tick">15</text>
-            <text x={cx + R} y={cy + 19} textAnchor="middle" className="bm-gauge-tick">32</text>
+            <text x={cx - R} y={cy + 16} textAnchor="middle" className="bm-gauge-tick">15</text>
+            <text x={cx + R} y={cy + 16} textAnchor="middle" className="bm-gauge-tick">32</text>
           </>
         )}
       </svg>
@@ -126,17 +126,20 @@ function BmiGauge({ bmi, color, weightText, small }) {
   );
 }
 
-/** Biểu đồ xu hướng: đường cong mượt, vùng tô mờ, trục tự co theo dữ liệu, nhãn giá trị lần cuối. */
-function TrendChart({ points, color, unit, dec, minSpan, mobile }) {
+/**
+ * Biểu đồ xu hướng: đường cong mượt, vùng tô mờ, trục tự co theo dữ liệu, nhãn giá trị lần cuối.
+ * Khung hẹp (< 520px) thì thấp hơn. Bấm vào biểu đồ → mở lần đo của ngày gần chỗ bấm nhất.
+ */
+function TrendChart({ points, color, unit, dec, minSpan, onPick }) {
   const [ref, W] = useElementWidth();
-  const H = mobile ? 170 : 214;
-  const gradId = `bmFill${mobile ? 'M' : 'D'}`;
+  const compact = W > 0 && W < 520;
+  const H = compact ? 170 : 214;
 
   const chart = useMemo(() => {
     if (W < 120 || points.length < 2) return null;
     const padL = 4;
-    const padR = mobile ? 34 : 44;
-    const padT = mobile ? 34 : 40;
+    const padR = compact ? 34 : 44;
+    const padT = compact ? 34 : 40;
     const padB = 24;
     const pw = W - padL - padR;
     const ph = H - padT - padB;
@@ -155,7 +158,7 @@ function TrendChart({ points, color, unit, dec, minSpan, mobile }) {
       const yy = y(v);
       return { y: yy, label: Math.abs(yy - (lastY - 24)) > 16 ? f(v, 1) : null };
     });
-    const minGap = mobile ? 56 : 72;
+    const minGap = compact ? 56 : 72;
     const n = points.length - 1;
     const keep = [0];
     for (let i = 1; i < n; i++) {
@@ -163,10 +166,21 @@ function TrendChart({ points, color, unit, dec, minSpan, mobile }) {
     }
     keep.push(n);
     return { padL, pw, base, line, area, grid, last, keep, P, x };
-  }, [W, H, mobile, points, minSpan]);
+  }, [W, H, compact, points, minSpan]);
+
+  // Điểm gần chỗ bấm nhất theo trục ngang
+  const pickAt = e => {
+    if (!chart || !onPick) return;
+    const mx = e.clientX - e.currentTarget.getBoundingClientRect().left;
+    let best = 0;
+    chart.P.forEach((p, i) => {
+      if (Math.abs(p[0] - mx) < Math.abs(chart.P[best][0] - mx)) best = i;
+    });
+    onPick(points[best].date);
+  };
 
   return (
-    <div ref={ref} className={`body-bm-trend-chart${mobile ? ' is-mobile' : ''}`} style={{ height: H }}>
+    <div ref={ref} className={`body-bm-trend-chart${compact ? ' is-compact' : ''}`} style={{ height: H, '--dc': color }}>
       {points.length < 2 ? (
         <div className="body-bm-trend-empty">
           <AppIcon name="chartLine" size={20} />
@@ -174,30 +188,38 @@ function TrendChart({ points, color, unit, dec, minSpan, mobile }) {
         </div>
       ) : chart && (
         <>
-          <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} role="img" aria-label="Biểu đồ xu hướng">
+          <svg
+            width={W}
+            height={H}
+            viewBox={`0 0 ${W} ${H}`}
+            role="img"
+            aria-label="Biểu đồ xu hướng"
+            className={onPick ? 'is-pickable' : undefined}
+            onClick={pickAt}
+          >
+            <title>Bấm vào một điểm để xem chi tiết lần đo</title>
             <defs>
-              <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0" stopColor={color} stopOpacity="0.2" />
-                <stop offset="1" stopColor={color} stopOpacity="0" />
+              <linearGradient id="bmTrendFill" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0" className="bm-stop" />
+                <stop offset="1" className="bm-stop is-end" />
               </linearGradient>
             </defs>
             {chart.grid.map((g, k) => (
               <g key={k}>
                 <line x1={chart.padL} x2={chart.padL + chart.pw} y1={g.y} y2={g.y} className="bm-grid" />
-                {g.label && <text x={W - (mobile ? 30 : 38)} y={g.y + 3.5} className="bm-tick">{g.label}</text>}
+                {g.label && <text x={W - (compact ? 30 : 38)} y={g.y + 3.5} className="bm-tick">{g.label}</text>}
               </g>
             ))}
-            <path d={chart.area} fill={`url(#${gradId})`} />
-            <path d={chart.line} fill="none" stroke={color} strokeWidth={mobile ? 2.2 : 2.5} strokeLinecap="round" strokeLinejoin="round" />
-            <line x1={chart.last[0]} x2={chart.last[0]} y1={chart.last[1]} y2={chart.base} stroke={color} strokeDasharray="2 3" opacity="0.5" />
+            <path d={chart.area} fill="url(#bmTrendFill)" />
+            <path d={chart.line} className="bm-line" />
+            <line x1={chart.last[0]} x2={chart.last[0]} y1={chart.last[1]} y2={chart.base} className="bm-drop" />
             {chart.P.map((p, i) => (
               <circle
                 key={i}
                 cx={p[0]}
                 cy={p[1]}
-                r={i === chart.P.length - 1 ? (mobile ? 4.5 : 5.5) : (mobile ? 2.6 : 3.2)}
+                r={i === chart.P.length - 1 ? (compact ? 4.5 : 5.5) : (compact ? 2.6 : 3.2)}
                 className="bm-point"
-                stroke={color}
               />
             ))}
             {chart.keep.map((i, k) => (
@@ -242,7 +264,7 @@ export default function BiometricsScreen() {
   const [now] = useState(() => Date.now());
   const [selectedMetric, setSelectedMetric] = useState('weight');
   const [selectedHistoryId, setSelectedHistoryId] = useState(null);
-  const [inspectorOpen, setInspectorOpen] = useState(false); // mobile: ngăn chi tiết lần đo
+  const [inspectorOpen, setInspectorOpen] = useState(false); // ngăn chi tiết lần đo (desktop: trượt phải, mobile: sheet)
   const [confirmDeleteId, setConfirmDeleteId] = useState(null);
   const [showAddModal, setShowAddModal] = useState(false);
   const [saveError, setSaveError] = useState('');
@@ -317,6 +339,16 @@ export default function BiometricsScreen() {
     setSaveError('');
     setShowTapeCalc(withTape);
     setShowAddModal(true);
+  };
+
+  const openInspector = id => {
+    setSelectedHistoryId(id);
+    setInspectorOpen(true);
+  };
+  // Điểm biểu đồ là trung bình ngày → mở lần đo hợp lệ mới nhất của ngày đó
+  const pickTrendDate = dateStr => {
+    const m = validMeasurements.find(x => x.local_date === dateStr);
+    if (m) openInspector(m.id);
   };
 
   // Thước dây US Navy: chỉ tính khi có chiều cao thật; WHtR chỉ để tham khảo
@@ -424,14 +456,14 @@ export default function BiometricsScreen() {
     const fatKg = Number(((w * Number(latest.body_fat_pct)) / 100).toFixed(2));
     const parts = full
       ? [
-          { name: 'Hàm lượng nước', short: 'Nước', val: full.waterKg, color: '#4A8FE7' },
-          { name: 'Chất đạm & khác', short: 'Đạm & khác', val: full.proteinKg, color: '#E8A33D' },
-          { name: 'Mỡ', short: 'Mỡ', val: full.fatKg, color: '#D9503F' },
-          { name: 'Khoáng xương', short: 'Khoáng xương', val: full.boneKg, color: '#5CC8A8' }
+          { name: 'Hàm lượng nước', short: 'Nước', val: full.waterKg, color: 'var(--body-blue)' },
+          { name: 'Chất đạm & khác', short: 'Đạm & khác', val: full.proteinKg, color: 'var(--body-amber)' },
+          { name: 'Mỡ', short: 'Mỡ', val: full.fatKg, color: 'var(--body-red)' },
+          { name: 'Khoáng xương', short: 'Khoáng xương', val: full.boneKg, color: 'var(--body-green)' }
         ]
       : [
-          { name: 'Mỡ', short: 'Mỡ', val: fatKg, color: '#D9503F' },
-          { name: 'Khối không mỡ', short: 'Không mỡ', val: Number((w - fatKg).toFixed(2)), color: '#4A8FE7' }
+          { name: 'Mỡ', short: 'Mỡ', val: fatKg, color: 'var(--body-red)' },
+          { name: 'Khối không mỡ', short: 'Không mỡ', val: Number((w - fatKg).toFixed(2)), color: 'var(--body-blue)' }
         ];
     const tot = parts.reduce((acc, p) => acc + p.val, 0) || w;
     const C = 2 * Math.PI * 74;
@@ -653,19 +685,25 @@ export default function BiometricsScreen() {
 
   // ── KHỐI GIAO DIỆN ───────────────────────────────────────────
   const gaugeCard = (
-    <section className="body-bm-card body-bm-gauge-card">
-      <div className="body-bm-card-head">
-        <b>Lần đo gần nhất</b>
-        {latest && <small>{ddmm(latest.local_date)} · {slotLabelOf(latest)}</small>}
+    <section className="body-card body-bm-gauge-card">
+      <div className="body-card-head">
+        <h3 className="body-card-title">Lần đo gần nhất</h3>
+        {latest && (
+          <button type="button" className="body-bm-when" onClick={() => openInspector(latest.id)} title="Xem chi tiết lần đo">
+            {ddmm(latest.local_date)} · {slotLabelOf(latest)}<AppIcon name="caretRight" size={12} />
+          </button>
+        )}
       </div>
       {latest ? (
         <>
-          <BmiGauge bmi={bmiInfo?.bmi ?? null} color={bmiColor} weightText={f(latest.weight, 2)} />
+          <button type="button" className="body-bm-gauge-btn" onClick={() => openInspector(latest.id)} aria-label="Xem chi tiết lần đo gần nhất">
+            <BmiGauge bmi={bmiInfo?.bmi ?? null} color={bmiColor} weightText={f(latest.weight, 2)} />
+          </button>
           <div className="body-bm-bmi-chips">
             {bmiInfo ? (
               <>
-                <span className={`body-bm-bmi-chip is-${bmiKey}`}>
-                  <b>BMI {f(bmiInfo.bmi, 1)}</b><i />{BMI_SHORT[bmiKey]}
+                <span className="body-bm-bmi-chip" style={{ '--dc': bmiColor }}>
+                  <b>BMI {f(bmiInfo.bmi, 1)}</b>· {BMI_SHORT[bmiKey]}
                 </span>
                 <span className="body-bm-chip">Chuẩn Á Đông</span>
               </>
@@ -678,8 +716,8 @@ export default function BiometricsScreen() {
           {bmiInfo && (
             <div className="body-bm-legend">
               {BMI_LEGEND.map(([k, label, rangeText]) => (
-                <span key={k} className={k === bmiKey ? 'is-on' : ''}>
-                  <b><i style={{ background: BMI_COLOR[k] }} />{label}</b>
+                <span key={k} className={k === bmiKey ? 'is-on' : undefined} style={{ '--dc': BMI_COLOR[k] }}>
+                  <b><i />{label}</b>
                   <small>{rangeText}</small>
                 </span>
               ))}
@@ -706,7 +744,7 @@ export default function BiometricsScreen() {
           <span><AppIcon name="scales" size={24} /></span>
           <b>Chưa có lần đo nào</b>
           <p>Thêm số cân đầu tiên để xem BMI, xu hướng và các chỉ số cơ thể.</p>
-          <button type="button" className="body-bm-btn is-dark" onClick={() => openAddModal()}>
+          <button type="button" className="body-btn body-btn-primary" onClick={() => openAddModal()}>
             <AppIcon name="plus" size={14} />Thêm cân đo
           </button>
         </div>
@@ -715,9 +753,9 @@ export default function BiometricsScreen() {
   );
 
   const rangeSeg = (
-    <div className="body-bm-seg is-small" role="group" aria-label="Khoảng thời gian">
+    <div className="body-bm-range" role="group" aria-label="Khoảng thời gian">
       {RANGES.map(r => (
-        <button key={r.k} type="button" className={rangeTab === r.k ? 'is-on' : ''} onClick={() => setRangeTab(r.k)} aria-pressed={rangeTab === r.k}>
+        <button key={r.k} type="button" className="body-chip" onClick={() => setRangeTab(r.k)} aria-pressed={rangeTab === r.k}>
           {r.l}
         </button>
       ))}
@@ -730,12 +768,12 @@ export default function BiometricsScreen() {
         <button
           key={t.key}
           type="button"
-          className={`body-bm-tile${t.key === trend.sel.key ? ' is-on' : ''}`}
-          style={t.key === trend.sel.key ? { borderColor: t.color } : undefined}
+          className="body-bm-tile"
+          style={{ '--dc': t.color }}
           onClick={() => setSelectedMetric(t.key)}
           aria-pressed={t.key === trend.sel.key}
         >
-          <span className="body-bm-tile-name"><i style={{ background: t.color }} />{t.name}</span>
+          <span className="body-bm-tile-name"><i />{t.name}</span>
           <span className="body-bm-tile-row">
             <b>{t.cur != null ? f(t.cur, t.dec) : '—'}<small>{t.cur != null ? t.unit : ''}</small></b>
             <em className={`is-${t.tone}`}>{t.delta != null ? fs(t.delta, t.dec) : ''}</em>
@@ -766,7 +804,7 @@ export default function BiometricsScreen() {
           Chỉ số chưa đo sẽ hiện "Chưa đo" — app không tự điền giá trị ước đoán.
         </small>
       </span>
-      <button type="button" className="body-bm-science-btn" onClick={() => openAddModal(true)}>
+      <button type="button" className="body-btn body-bm-science-btn" onClick={() => openAddModal(true)}>
         <AppIcon name="ruler" size={14} />Không có cân? Đo bằng thước dây (US Navy)
       </button>
     </section>
@@ -775,7 +813,7 @@ export default function BiometricsScreen() {
   const metricCards = (
     <div className="body-bm-metrics">
       {metrics.map(m => (
-        <div key={m.name} className="body-bm-metric">
+        <div key={m.name} className="body-card body-bm-metric">
           <div className="body-bm-metric-head">
             <span>{m.name}</span>
             {m.source && <em className={`is-${m.source}`}>{m.source === 'formula' ? 'Công thức' : 'Đã đo'}</em>}
@@ -808,9 +846,9 @@ export default function BiometricsScreen() {
   );
 
   const compositionCard = (
-    <section className="body-bm-card body-bm-comp">
-      <div className="body-bm-card-head">
-        <b>Thành phần cơ thể</b>
+    <section className="body-card body-bm-comp">
+      <div className="body-card-head">
+        <h3 className="body-card-title">Thành phần cơ thể</h3>
         {composition && <em className="body-bm-badge is-measured">Đã đo</em>}
       </div>
       {composition ? (
@@ -818,17 +856,16 @@ export default function BiometricsScreen() {
           <div className="body-bm-donut">
             <svg viewBox="0 0 180 180" aria-hidden="true">
               {composition.parts.map(p => (
-                <circle key={p.name} cx="90" cy="90" r="74" stroke={p.color} strokeDasharray={p.da} strokeDashoffset={p.off} className="bm-donut-seg" />
+                <circle key={p.name} cx="90" cy="90" r="74" style={{ '--dc': p.color }} strokeDasharray={p.da} strokeDashoffset={p.off} className="bm-donut-seg" />
               ))}
             </svg>
             <span><b>{composition.total}</b><small>kg tổng</small></span>
           </div>
           <div className="body-bm-comp-list">
             {composition.parts.map(p => (
-              <div key={p.name}>
-                <span><i style={{ background: p.color }} /><span className="body-bm-d-text">{p.name}</span><span className="body-bm-m-text">{p.short}</span></span>
-                <b>{p.kg} kg</b>
-                <small>{p.pct}%</small>
+              <div key={p.name} style={{ '--dc': p.color }}>
+                <span><i /><span className="body-bm-d-text">{p.name}</span><span className="body-bm-m-text">{p.short}</span></span>
+                <b>{p.kg} kg<small> · {p.pct}%</small></b>
               </div>
             ))}
           </div>
@@ -849,88 +886,54 @@ export default function BiometricsScreen() {
     </section>
   );
 
-  const inspector = history.inspector && (
-    <aside className={`body-bm-card body-bm-insp${inspectorOpen ? ' is-open' : ''}`} aria-label="Chi tiết lần đo">
-      <span className="body-bm-sheet-grip" />
-      <div className="body-bm-insp-head">
-        <small>{history.inspector.when}</small>
-        <em className="body-bm-chip">{history.inspector.source}</em>
-        <button type="button" className="body-bm-icon-btn body-bm-m-only" onClick={() => setInspectorOpen(false)} aria-label="Đóng">
-          <AppIcon name="x" size={15} />
-        </button>
-      </div>
-      <b className="body-bm-insp-weight">{history.inspector.weight}<small>kg</small></b>
-      {history.inspector.item.is_outlier && (
-        <div className="body-bm-outlier">
-          <AppIcon name="warning" size={16} weight="fill" />
-          <span>Lần đo này được đánh dấu lệch giờ (ví dụ đo buổi tối sau khi ăn no) nên tách khỏi đường xu hướng chính.</span>
-        </div>
-      )}
-      <div className="body-bm-insp-rows">
-        {history.inspector.rows.map(r => (
-          <div key={r.name}>
-            <span>{r.name}</span>
-            <b>{r.val}<small>{r.unit}</small></b>
-          </div>
-        ))}
-      </div>
-      <div className="body-bm-insp-actions">
-        <button type="button" className="body-bm-btn" onClick={() => toggleOutlier(history.inspector.item.id)}>
-          <AppIcon name={history.inspector.item.is_outlier ? 'checkCircle' : 'warning'} size={14} />
-          {history.inspector.item.is_outlier ? 'Đánh dấu bình thường' : 'Đánh dấu lệch giờ'}
-        </button>
-        <button type="button" className="body-bm-btn is-danger" onClick={() => setConfirmDeleteId(history.inspector.item.id)}>
-          <AppIcon name="trash" size={14} />Xóa
-        </button>
-      </div>
-    </aside>
-  );
-
   return (
     <div className="body-bm">
       {/* ── THANH TRÊN: tab + trạng thái lần đo + thêm cân đo ── */}
       <div className="body-bm-top">
-        <div className="body-bm-top-left">
-          <div className="body-bm-seg" role="tablist" aria-label="Màn Cơ thể">
-            {tabs.map(([k, l]) => (
-              <button key={k} type="button" role="tab" aria-selected={activeTab === k} className={activeTab === k ? 'is-on' : ''} onClick={() => setActiveTab(k)}>
-                {l}
-              </button>
-            ))}
-          </div>
+        <div className="body-bm-tabs" role="tablist" aria-label="Màn Cơ thể">
+          {tabs.map(([k, l]) => (
+            <button key={k} type="button" role="tab" aria-selected={activeTab === k} className="body-chip" onClick={() => setActiveTab(k)}>
+              {l}
+            </button>
+          ))}
         </div>
         <div className="body-bm-top-right">
           <span className="body-bm-status"><i className={latest ? 'is-on' : ''} />{latestStatus}</span>
-          <button type="button" className="body-bm-btn is-dark" onClick={() => openAddModal()}>
+          <button type="button" className="body-btn body-btn-primary" onClick={() => openAddModal()}>
             <AppIcon name="plus" size={14} />Thêm cân đo
           </button>
         </div>
       </div>
 
-      {/* ── PHÂN TÍCH ─────────────────────────────────────────────── */}
+      {/* ── PHÂN TÍCH: trái = lần đo + thành phần, phải = xu hướng + chỉ số ── */}
       {activeTab === 'analysis' && (
         <div className="body-bm-analysis">
-          <div className="body-bm-row1">
+          <div className="body-bm-col">
             {gaugeCard}
-            <section className="body-bm-card body-bm-trend">
+            {latest && compositionCard}
+          </div>
+          <div className="body-bm-col">
+            <section className="body-card body-bm-trend">
               <div className="body-bm-trend-head">
                 <span className="body-bm-trend-title">
-                  <b>Xu hướng</b>
+                  <h3 className="body-card-title">Xu hướng</h3>
                   <small>{range.s} · trung bình ngày</small>
                 </span>
                 {rangeSeg}
               </div>
               {trendTiles}
-              <TrendChart points={trend.sel.pts} color={trend.sel.color} unit={trend.sel.unit} dec={trend.sel.dec} minSpan={trend.sel.minSpan} />
-              <TrendChart points={trend.sel.pts} color={trend.sel.color} unit={trend.sel.unit} dec={trend.sel.dec} minSpan={trend.sel.minSpan} mobile />
+              <TrendChart
+                points={trend.sel.pts}
+                color={trend.sel.color}
+                unit={trend.sel.unit}
+                dec={trend.sel.dec}
+                minSpan={trend.sel.minSpan}
+                onPick={pickTrendDate}
+              />
               {goalLine}
             </section>
-          </div>
 
-          <div className="body-bm-d-only">{scienceCard}</div>
-
-          {latest && (
-            <div className="body-bm-row3">
+            {latest && (
               <div>
                 {metricCards}
                 <div className="body-bm-src-legend">
@@ -938,11 +941,10 @@ export default function BiometricsScreen() {
                   <span><i className="is-formula" />Công thức</span>
                 </div>
               </div>
-              {compositionCard}
-            </div>
-          )}
+            )}
 
-          <div className="body-bm-m-only">{scienceCard}</div>
+            {scienceCard}
+          </div>
         </div>
       )}
 
@@ -950,51 +952,44 @@ export default function BiometricsScreen() {
       {activeTab === 'history' && (
         <div className="body-bm-history">
           <div className="body-bm-hstats">
-            <div><span>Cân nặng</span><b>{history.latestWeight}<small>kg</small></b></div>
-            <div><span>7 ngày qua</span><b className={`is-${history.delta7Tone}`}>{history.delta7}<small>{history.delta7 === '—' ? '' : 'kg'}</small></b></div>
-            <div><span>Số lần đo</span><b>{history.total}<small>lần</small></b></div>
+            <div className="body-card"><span>Cân nặng</span><b>{history.latestWeight}<small>kg</small></b></div>
+            <div className="body-card"><span>7 ngày qua</span><b className={`is-${history.delta7Tone}`}>{history.delta7}<small>{history.delta7 === '—' ? '' : 'kg'}</small></b></div>
+            <div className="body-card"><span>Số lần đo</span><b>{history.total}<small>lần</small></b></div>
           </div>
 
-          <div className="body-bm-hgrid">
-            <section className="body-bm-card body-bm-hlist">
-              {history.groups.length === 0 ? (
-                <div className="body-bm-empty">
-                  <span><AppIcon name="scales" size={24} /></span>
-                  <b>Chưa có lần đo nào</b>
-                  <p>Bấm "Thêm cân đo" để ghi lần đầu.</p>
+          <section className="body-card body-bm-hlist">
+            {history.groups.length === 0 ? (
+              <div className="body-bm-empty">
+                <span><AppIcon name="scales" size={24} /></span>
+                <b>Chưa có lần đo nào</b>
+                <p>Bấm "Thêm cân đo" để ghi lần đầu.</p>
+              </div>
+            ) : history.groups.map(group => (
+              <div key={group.dateStr} className="body-bm-hgroup">
+                <div className="body-bm-hgroup-head">
+                  <b>{group.label}</b>
+                  <small>TB {group.avg} kg</small>
                 </div>
-              ) : history.groups.map(group => (
-                <div key={group.dateStr} className="body-bm-hgroup">
-                  <div className="body-bm-hgroup-head">
-                    <b>{group.label}</b>
-                    <small>TB {group.avg} kg</small>
-                  </div>
-                  {group.items.map(item => (
-                    <button
-                      key={item.id}
-                      type="button"
-                      className={`body-bm-hitem${activeHistoryId === item.id ? ' is-on' : ''}`}
-                      onClick={() => {
-                        setSelectedHistoryId(item.id);
-                        setInspectorOpen(true);
-                      }}
-                    >
-                      <span className="body-bm-hitem-ic"><AppIcon name={item.source === 'manual' ? 'pencil' : 'scales'} size={16} /></span>
-                      <span className="body-bm-hitem-main">
-                        <b className={item.is_outlier ? 'is-outlier' : ''}>{item.weightStr}<small>kg</small></b>
-                        <small>{item.sub}</small>
-                      </span>
-                      {item.is_outlier && <em className="body-bm-chip is-warn">Lệch giờ</em>}
-                      <span className="body-bm-hitem-time">{item.timeStr}</span>
-                      <AppIcon name="caretRight" size={13} className="body-bm-muted" />
-                    </button>
-                  ))}
-                </div>
-              ))}
-            </section>
-            {inspector}
-          </div>
-          {inspectorOpen && <div className="body-bm-sheet-backdrop body-bm-m-only" onClick={() => setInspectorOpen(false)} />}
+                {group.items.map(item => (
+                  <button
+                    key={item.id}
+                    type="button"
+                    className={`body-bm-hitem${activeHistoryId === item.id ? ' is-on' : ''}`}
+                    onClick={() => openInspector(item.id)}
+                  >
+                    <span className="body-bm-hitem-ic"><AppIcon name={item.source === 'manual' ? 'pencil' : 'scales'} size={16} /></span>
+                    <span className="body-bm-hitem-main">
+                      <b className={item.is_outlier ? 'is-outlier' : ''}>{item.weightStr}<small>kg</small></b>
+                      <small>{item.sub}</small>
+                    </span>
+                    {item.is_outlier && <em className="body-bm-chip is-warn">Lệch giờ</em>}
+                    <span className="body-bm-hitem-time">{item.timeStr}</span>
+                    <AppIcon name="caretRight" size={13} className="body-bm-muted" />
+                  </button>
+                ))}
+              </div>
+            ))}
+          </section>
         </div>
       )}
 
@@ -1002,7 +997,7 @@ export default function BiometricsScreen() {
       {activeTab === 'profile' && (
         <div className="body-bm-profile">
           <div className="body-bm-pgrid">
-            <section className="body-bm-card body-bm-avatar">
+            <section className="body-card body-bm-avatar">
               <span className="body-bm-avatar-ic">{profile?.gender === 'female' ? 'N' : 'M'}</span>
               <span>
                 <b>{profile?.gender === 'female' ? 'Hồ sơ Nữ' : profile?.gender === 'other' ? 'Hồ sơ' : 'Hồ sơ Nam'}</b>
@@ -1015,10 +1010,10 @@ export default function BiometricsScreen() {
               </span>
             </section>
 
-            <section className="body-bm-card body-bm-goalcard">
-              <div className="body-bm-card-head">
-                <b>Mục tiêu cân nặng</b>
-                {weightGoal.pct != null && <small>{weightGoal.remain > 0.05 ? `Còn ${f(weightGoal.remain)} kg` : 'Đã đạt mục tiêu'}</small>}
+            <section className="body-card body-bm-goalcard">
+              <div className="body-card-head">
+                <h3 className="body-card-title">Mục tiêu cân nặng</h3>
+                {weightGoal.pct != null && <small className="body-bm-goal-left">{weightGoal.remain > 0.05 ? `Còn ${f(weightGoal.remain)} kg` : 'Đã đạt mục tiêu'}</small>}
               </div>
               {weightGoal.pct != null ? (
                 <>
@@ -1027,7 +1022,7 @@ export default function BiometricsScreen() {
                     <AppIcon name="arrowRight" size={14} />
                     <b className="is-accent">{f(weightGoal.goal)} kg</b>
                   </div>
-                  <div className="body-bm-progress"><span style={{ width: `${weightGoal.pct}%` }} /></div>
+                  <div className="body-bar"><i style={{ width: `${weightGoal.pct}%` }} /></div>
                   <small className="body-bm-muted-text">Bắt đầu {f(weightGoal.start)} kg · tiến độ {weightGoal.pct}%</small>
                 </>
               ) : (
@@ -1038,40 +1033,40 @@ export default function BiometricsScreen() {
             </section>
           </div>
 
-          <section className="body-bm-card body-bm-form-card">
-            <div className="body-bm-card-head is-col">
-              <b>Thông số hồ sơ</b>
+          <section className="body-card body-bm-form-card">
+            <div className="body-bm-form-head">
+              <h3 className="body-card-title">Thông số hồ sơ</h3>
               <small>Cần chiều cao, giới tính và năm sinh để tính BMI, BMR/TDEE và mục tiêu dinh dưỡng.</small>
             </div>
             <form className="body-bm-form" onSubmit={handleSaveProfile} onKeyDown={submitOnCtrlEnter}>
               <label className="body-bm-field">
                 <span>Giới tính</span>
-                <div className="body-bm-seg is-field" role="group" aria-label="Giới tính">
+                <div className="body-bm-seg" role="group" aria-label="Giới tính">
                   {[['male', 'Nam'], ['female', 'Nữ'], ['other', 'Khác']].map(([k, l]) => (
-                    <button key={k} type="button" className={editGender === k ? 'is-on' : ''} onClick={() => setEditGender(k)} aria-pressed={editGender === k}>{l}</button>
+                    <button key={k} type="button" className="body-chip" onClick={() => setEditGender(k)} aria-pressed={editGender === k}>{l}</button>
                   ))}
                 </div>
               </label>
               <label className="body-bm-field">
                 <span>Năm sinh</span>
-                <input className="body-bm-input" type="number" inputMode="numeric" min="1920" max={new Date().getFullYear()} placeholder="Ví dụ: 1995" value={editBirthYear} onChange={e => setEditBirthYear(e.target.value)} />
+                <input className="body-input" type="number" inputMode="numeric" min="1920" max={new Date().getFullYear()} placeholder="Ví dụ: 1995" value={editBirthYear} onChange={e => setEditBirthYear(e.target.value)} />
               </label>
               <label className="body-bm-field">
                 <span>Chiều cao (cm)</span>
-                <input className="body-bm-input" type="number" inputMode="decimal" step="0.5" required placeholder="Ví dụ: 170" value={editHeight} onChange={e => setEditHeight(e.target.value)} />
+                <input className="body-input" type="number" inputMode="decimal" step="0.5" required placeholder="Ví dụ: 170" value={editHeight} onChange={e => setEditHeight(e.target.value)} />
               </label>
               <label className="body-bm-field">
                 <span>Cân nặng mục tiêu (kg)</span>
-                <input className="body-bm-input" type="number" inputMode="decimal" step="0.5" placeholder="Ví dụ: 63" value={editGoalWeight} onChange={e => setEditGoalWeight(e.target.value)} />
+                <input className="body-input" type="number" inputMode="decimal" step="0.5" placeholder="Ví dụ: 63" value={editGoalWeight} onChange={e => setEditGoalWeight(e.target.value)} />
               </label>
               <label className="body-bm-field is-wide">
                 <span>Mức vận động hằng ngày</span>
-                <select className="body-bm-input" value={editActivity} onChange={e => setEditActivity(e.target.value)}>
+                <select className="body-input" value={editActivity} onChange={e => setEditActivity(e.target.value)}>
                   {ACTIVITY_OPTIONS.map(([k, l]) => <option key={k} value={k}>{l}</option>)}
                 </select>
               </label>
               <div className="body-bm-form-actions">
-                <button type="submit" className="body-bm-btn is-dark">
+                <button type="submit" className="body-btn body-btn-primary">
                   <AppIcon name={profileSaved ? 'checkCircle' : 'save'} size={14} />
                   {profileSaved ? 'Đã lưu hồ sơ' : 'Lưu hồ sơ'}
                 </button>
@@ -1081,10 +1076,51 @@ export default function BiometricsScreen() {
         </div>
       )}
 
+      {/* ── CHI TIẾT LẦN ĐO: ngăn trượt phải (desktop) / bottom sheet (mobile) ── */}
+      {inspectorOpen && history.inspector && (
+        <>
+          <div className="body-bm-scrim" onClick={() => setInspectorOpen(false)} />
+          <aside className="body-bm-insp" role="dialog" aria-modal="true" aria-label="Chi tiết lần đo">
+            <span className="body-bm-sheet-grip" />
+            <div className="body-bm-insp-head">
+              <small>{history.inspector.when}</small>
+              <em className="body-bm-chip">{history.inspector.source}</em>
+              <button type="button" className="body-icon-btn" onClick={() => setInspectorOpen(false)} aria-label="Đóng" autoFocus>
+                <AppIcon name="x" size={15} />
+              </button>
+            </div>
+            <b className="body-bm-insp-weight">{history.inspector.weight}<small>kg</small></b>
+            {history.inspector.item.is_outlier && (
+              <div className="body-bm-outlier">
+                <AppIcon name="warning" size={16} weight="fill" />
+                <span>Lần đo này được đánh dấu lệch giờ (ví dụ đo buổi tối sau khi ăn no) nên tách khỏi đường xu hướng chính.</span>
+              </div>
+            )}
+            <div className="body-bm-insp-rows">
+              {history.inspector.rows.map(r => (
+                <div key={r.name}>
+                  <span>{r.name}</span>
+                  <b>{r.val}<small>{r.unit}</small></b>
+                </div>
+              ))}
+            </div>
+            <div className="body-bm-insp-actions">
+              <button type="button" className="body-btn" onClick={() => toggleOutlier(history.inspector.item.id)}>
+                <AppIcon name={history.inspector.item.is_outlier ? 'checkCircle' : 'warning'} size={14} />
+                {history.inspector.item.is_outlier ? 'Đánh dấu bình thường' : 'Đánh dấu lệch giờ'}
+              </button>
+              <button type="button" className="body-btn body-btn-danger" onClick={() => setConfirmDeleteId(history.inspector.item.id)}>
+                <AppIcon name="trash" size={14} />Xóa
+              </button>
+            </div>
+          </aside>
+        </>
+      )}
+
       {/* ── THÊM CÂN ĐO: modal (desktop) / bottom sheet (mobile) ───── */}
       {showAddModal && (
         <>
-          <div className="body-bm-modal-backdrop" onClick={() => setShowAddModal(false)} />
+          <div className="body-bm-scrim" onClick={() => setShowAddModal(false)} />
           <div className="body-bm-modal" role="dialog" aria-modal="true" aria-label="Thêm chỉ số cân đo">
             <span className="body-bm-sheet-grip" />
             <div className="body-bm-modal-head">
@@ -1092,7 +1128,7 @@ export default function BiometricsScreen() {
                 <b>Thêm chỉ số cân đo</b>
                 <small>Chỉ cần cân nặng. Các chỉ số khác nhập nếu có cân InBody.</small>
               </span>
-              <button type="button" className="body-bm-icon-btn" onClick={() => setShowAddModal(false)} aria-label="Đóng">
+              <button type="button" className="body-icon-btn" onClick={() => setShowAddModal(false)} aria-label="Đóng">
                 <AppIcon name="x" size={16} />
               </button>
             </div>
@@ -1100,14 +1136,14 @@ export default function BiometricsScreen() {
               <div className="body-bm-modal-body">
                 <label className="body-bm-field">
                   <span>Cân nặng (kg) <em>Bắt buộc</em></span>
-                  <input className="body-bm-input is-big" type="number" inputMode="decimal" step="0.05" required autoFocus placeholder="Ví dụ: 65,05" value={newWeight} onChange={e => setNewWeight(e.target.value)} />
+                  <input className="body-input body-bm-big" type="number" inputMode="decimal" step="0.05" required autoFocus placeholder="Ví dụ: 65,05" value={newWeight} onChange={e => setNewWeight(e.target.value)} />
                 </label>
 
-                <div className="body-bm-seg is-field" role="group" aria-label="Thời điểm cân">
-                  <button type="button" className={newTimeSlot === 'morning' ? 'is-on' : ''} onClick={() => setNewTimeSlot('morning')} aria-pressed={newTimeSlot === 'morning'}>
+                <div className="body-bm-seg" role="group" aria-label="Thời điểm cân">
+                  <button type="button" className="body-chip" onClick={() => setNewTimeSlot('morning')} aria-pressed={newTimeSlot === 'morning'}>
                     <AppIcon name="sunHorizon" size={14} />Sáng sớm (đói bụng)
                   </button>
-                  <button type="button" className={newTimeSlot === 'evening' ? 'is-on' : ''} onClick={() => setNewTimeSlot('evening')} aria-pressed={newTimeSlot === 'evening'}>
+                  <button type="button" className="body-chip" onClick={() => setNewTimeSlot('evening')} aria-pressed={newTimeSlot === 'evening'}>
                     <AppIcon name="moon" size={14} />Buổi tối (sau ăn)
                   </button>
                 </div>
@@ -1118,23 +1154,23 @@ export default function BiometricsScreen() {
                 <div className="body-bm-fields2">
                   <label className="body-bm-field">
                     <span>Tỷ lệ mỡ (%)</span>
-                    <input className="body-bm-input" type="number" inputMode="decimal" step="0.1" placeholder="15,2" value={newFat} onChange={e => setNewFat(e.target.value)} />
+                    <input className="body-input" type="number" inputMode="decimal" step="0.1" placeholder="15,2" value={newFat} onChange={e => setNewFat(e.target.value)} />
                   </label>
                   <label className="body-bm-field">
                     <span>Cơ xương (kg)</span>
-                    <input className="body-bm-input" type="number" inputMode="decimal" step="0.1" placeholder="29,6" value={newMuscle} onChange={e => setNewMuscle(e.target.value)} />
+                    <input className="body-input" type="number" inputMode="decimal" step="0.1" placeholder="29,6" value={newMuscle} onChange={e => setNewMuscle(e.target.value)} />
                   </label>
                   <label className="body-bm-field">
                     <span>Mỡ nội tạng (mức 1–20)</span>
-                    <input className="body-bm-input" type="number" inputMode="decimal" step="0.5" placeholder="5" value={newVisceral} onChange={e => setNewVisceral(e.target.value)} />
+                    <input className="body-input" type="number" inputMode="decimal" step="0.5" placeholder="5" value={newVisceral} onChange={e => setNewVisceral(e.target.value)} />
                   </label>
                   <label className="body-bm-field">
                     <span>Tỷ lệ nước (%)</span>
-                    <input className="body-bm-input" type="number" inputMode="decimal" step="0.1" placeholder="58,9" value={newWater} onChange={e => setNewWater(e.target.value)} />
+                    <input className="body-input" type="number" inputMode="decimal" step="0.1" placeholder="58,9" value={newWater} onChange={e => setNewWater(e.target.value)} />
                   </label>
                   <label className="body-bm-field">
                     <span>Khoáng xương (kg)</span>
-                    <input className="body-bm-input" type="number" inputMode="decimal" step="0.05" placeholder="2,82" value={newBone} onChange={e => setNewBone(e.target.value)} />
+                    <input className="body-input" type="number" inputMode="decimal" step="0.05" placeholder="2,82" value={newBone} onChange={e => setNewBone(e.target.value)} />
                   </label>
                 </div>
 
@@ -1152,21 +1188,21 @@ export default function BiometricsScreen() {
                       <div className={`body-bm-fields2${(editGender || profile?.gender) === 'female' ? ' is-3' : ''}`}>
                         <label className="body-bm-field">
                           <span>Vòng eo (ngang rốn, cm)</span>
-                          <input className="body-bm-input" type="number" inputMode="decimal" step="0.5" placeholder="78" value={tapeWaist} onChange={e => setTapeWaist(e.target.value)} />
+                          <input className="body-input" type="number" inputMode="decimal" step="0.5" placeholder="78" value={tapeWaist} onChange={e => setTapeWaist(e.target.value)} />
                         </label>
                         <label className="body-bm-field">
                           <span>Vòng cổ (dưới yết hầu, cm)</span>
-                          <input className="body-bm-input" type="number" inputMode="decimal" step="0.5" placeholder="37" value={tapeNeck} onChange={e => setTapeNeck(e.target.value)} />
+                          <input className="body-input" type="number" inputMode="decimal" step="0.5" placeholder="37" value={tapeNeck} onChange={e => setTapeNeck(e.target.value)} />
                         </label>
                         {(editGender || profile?.gender) === 'female' && (
                           <label className="body-bm-field">
                             <span>Vòng hông (cm)</span>
-                            <input className="body-bm-input" type="number" inputMode="decimal" step="0.5" placeholder="93" value={tapeHip} onChange={e => setTapeHip(e.target.value)} />
+                            <input className="body-input" type="number" inputMode="decimal" step="0.5" placeholder="93" value={tapeHip} onChange={e => setTapeHip(e.target.value)} />
                           </label>
                         )}
                       </div>
                       <div className="body-bm-tape-actions">
-                        <button type="button" className="body-bm-btn is-accent" onClick={handleRunTapeCalc}>Tính &amp; điền vào form</button>
+                        <button type="button" className="body-btn" onClick={handleRunTapeCalc}>Tính &amp; điền vào form</button>
                         {tapeCalculated?.error && <span className="is-bad">{tapeCalculated.error}</span>}
                         {tapeCalculated?.fatPct != null && (
                           <span className="is-good">
@@ -1181,8 +1217,8 @@ export default function BiometricsScreen() {
                 {saveError && <div className="body-bm-error" role="alert">{saveError}</div>}
               </div>
               <div className="body-bm-modal-foot">
-                <button type="button" className="body-bm-btn" onClick={() => setShowAddModal(false)}>Hủy</button>
-                <button type="submit" className="body-bm-btn is-dark" disabled={!newWeight}>Lưu số đo</button>
+                <button type="button" className="body-btn" onClick={() => setShowAddModal(false)}>Hủy</button>
+                <button type="submit" className="body-btn body-btn-primary" disabled={!newWeight}>Lưu số đo</button>
               </div>
             </form>
           </div>

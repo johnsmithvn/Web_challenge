@@ -14,7 +14,8 @@ import {
   dailyAverageSeries,
   trendDomain,
   bmiGaugeAngle,
-  smoothPath
+  smoothPath,
+  sumKcalByDay
 } from '../../utils/bodyMetrics.js';
 
 console.log('Testing bodyMetrics pure functions...');
@@ -158,6 +159,28 @@ console.log('Testing bodyMetrics pure functions...');
   assert.equal(smoothPath([[0, 10]]), 'M0 10');
   assert.ok(smoothPath([[0, 10], [50, 0], [100, 10]]).startsWith('M0 10C'), 'đường cong bezier');
   console.log('  ✓ dailyAverageSeries / trendDomain / bmiGaugeAngle / smoothPath OK');
+}
+
+// sumKcalByDay
+{
+  const logs = [
+    { local_date: '2026-03-01', calories: 500 },
+    { local_date: '2026-03-01', calories: '250' },
+    { local_date: '2026-02-27', calories: 800 },
+    { local_date: '2026-02-28', calories: null },
+    { local_date: '2026-02-20', calories: 999 },
+    { local_date: '2026-03-02', calories: 999 }
+  ];
+  const week = sumKcalByDay(logs, '2026-03-01');
+  assert.equal(week.length, 7);
+  assert.deepEqual(week.map(w => w.date), ['2026-02-23', '2026-02-24', '2026-02-25', '2026-02-26', '2026-02-27', '2026-02-28', '2026-03-01'], 'qua ranh giới tháng');
+  assert.equal(week[6].kcal, 750, 'nhiều log cùng ngày cộng dồn');
+  assert.equal(week[4].kcal, 800);
+  assert.equal(week[5].kcal, 0, 'kcal null bỏ qua');
+  assert.equal(week[0].kcal, 0, 'ngày trống = 0');
+  assert.equal(week.reduce((s, w) => s + w.kcal, 0), 1550, 'log ngoài khoảng bị bỏ');
+  assert.equal(sumKcalByDay([], '2026-01-02', 3)[0].date, '2025-12-31', 'qua ranh giới năm');
+  console.log('  ✓ sumKcalByDay OK');
 }
 
 console.log('ALL BODY METRICS TESTS PASSED!');

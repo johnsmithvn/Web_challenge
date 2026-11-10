@@ -20,9 +20,21 @@ import {
   Butterfly, Leaf, ArrowsOutSimple,
   Gauge, ChartBar, Books, Flask, FlagPennant, Wind, Crosshair, XCircle, Stairs, FirstAidKit, Info,
   Path, Shuffle, LockSimple, Metronome, ArrowsLeftRight, Checks, Target, SlidersHorizontal,
+  Planet, RocketLaunch, StarFour, Stack, WarningDiamond, HandPointing, FastForward, CircleDashed, Cookie, Fish,
 } from '@phosphor-icons/react';
 
 const ICONS = {
+  // Body · Ngân hà
+  planet: Planet,
+  rocketLaunch: RocketLaunch,
+  starFour: StarFour,
+  stack: Stack,
+  warningDiamond: WarningDiamond,
+  handPointing: HandPointing,
+  fastForward: FastForward,
+  circleDashed: CircleDashed,
+  cookie: Cookie,
+  fish: Fish,
   // Body v2 (mockup Lộ trình / Buổi tập / Tiến bộ / Cơ thể / Thư viện)
   gauge: Gauge,
   chartBar: ChartBar,

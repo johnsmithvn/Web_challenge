@@ -625,7 +625,9 @@ whenever anything behind it moves (the Tasks sky is always moving), so:
 
 - **Popups, drawers, sheets, dropdown menus and modal scrims use a solid fill,
   no `backdrop-filter`** (fill alpha ≥ 0.94; scrims only darken). Glass stays on
-  persistent chrome (sidebar, topbar, bottom tabs, panels/columns).
+  persistent chrome (sidebar, topbar, bottom tabs, panels/columns). One exception:
+  the Auth screen (see Components › Auth) covers the whole viewport with a static
+  landscape, so nothing moves behind its glass card.
 - Don't nest glass: a blurred element inside a blurred parent only blurs the
   parent's fill (the parent is the backdrop root) — pure GPU cost.
 - Animated background layers animate only `transform` / `opacity`; never put
@@ -719,6 +721,33 @@ dialog use scoped backdrops/dialogs rather than these shared primitives. Keep
 those exceptions inside their module. The `.modal-overlay`/`.modal-content`
 block still present in `global.css` has no JSX consumer and is tracked as debt
 below, not as an active component.
+
+### Auth — "Đèn pin" sign-in screen (`AuthModal.jsx`, `auth.css` `.auth-*`)
+
+One screen for sign in, register, forgot and reset password (Navbar, Landing and
+QuickCapture all open it). Scoped design contract, like Vault:
+
+- **Full-screen, own palette.** `.auth-screen` is `position: fixed; inset: 0`
+  over the app with a static landscape (`public/art/auth/auth-scene-*.svg`). Sky
+  blue / teal (`#74bfdc`, `#148d9d → #136a7b`), not the app purple, and it does
+  **not** follow `[data-theme]` — it is one look in both themes. Close with the
+  X button or `Esc`.
+- **Glass card, allowed here only.** `.auth-card` (860px, 2 panels: landscape
+  `.auth-scene` + form `.auth-panel`, one column under 640px) keeps
+  `backdrop-filter: blur(28px)` because nothing behind it moves. Do not copy
+  this exception to other dialogs.
+- **Flashlight.** The button at the end of the password field (`.auth-eye`, eye
+  icon, tooltip "Soi mật khẩu bằng đèn pin") toggles `.is-night` on the login
+  tab: day → night landscape, sun sets / moon rises, a torch + beam follow the
+  pointer, password characters show only where the beam falls (`.auth-reveal`,
+  monospace input so characters line up), and an owl on the username field
+  appears and looks at the light. JS only writes `transform` / size / `--lit`
+  / `--owl-*`; never animates layout.
+- **Inputs.** `.auth-entry` (52px, 14px radius, glass). `.auth-input` is a
+  different, shared input used by TaskForm / SubtaskList / LinkKBModal — the
+  Auth screen must not use it.
+- Labels are `.sr-only` + placeholder. Motion stops under
+  `:root[data-reduce-motion]`.
 
 ### Input — `.generic-modal__input` (`generic-modal.css`)
 
@@ -1412,6 +1441,47 @@ Knowledge có contract riêng, scoped trên `.kb-page`; không dùng glass/gradi
   cột / thanh dùng `color-mix(--kb-bg, transparent)`, hộp thoại `--kb-pop` đặc. Chỉ animate transform / opacity
   (vạch đọc dùng `scaleX`).
 - **Focus**: `.kb-page :focus-visible` viền `2px --kb-accent`; Giảm chuyển động tắt chuyển động trong `.kb-page`.
+
+### Body (Ngân hà) — `.body-*` (`body.css`)
+
+Plan + bảng token đầy đủ: [`docs/PLAN_BODY_NGAN_HA.md`](docs/PLAN_BODY_NGAN_HA.md); mockup `design/body-ngan-ha/`.
+Tối = đêm sao (kính mờ, chữ sáng); sáng = "Bình minh" pastel. `:root` là sáng, `[data-theme="dark"]` là tối.
+
+- **Nền**: `<SkyBackground calm />` như Knowledge. Màn tập (`.body-ls`) phủ `--body-overlay` + `blur(12px)` (desktop)
+  để vẫn thấy trời phía sau.
+- **Token chính**:
+
+  | Nhóm | Token | Ghi chú |
+  |---|---|---|
+  | Nền / lớp | `--body-bg`, `--body-shell-bg`, `--body-card-bg` (kính), `--body-card-raised` (ô trong thẻ), `--body-card-solid` (lớp nổi đặc), `--body-hero`, `--body-stage`, `--body-overlay`, `--body-scrim` | |
+  | Viền / chữ | `--body-card-border`, `--body-border-subtle`, `--body-text-main/-sub/-muted` | |
+  | Màu ý nghĩa | `--body-accent`, `--body-green`, `--body-amber`, `--body-red`, `--body-blue`, `--body-pink` + `-text` / `-soft` | tối: `#8F96FF` / `#5EF2C2` / `#FFC857` / `#FF6B8A` / `#4FD8F0` / `#F57FD0` |
+  | Trạng thái chọn | `--body-on-bg/-bd/-sh/-fg` (chip), `--body-off-*`, `--body-row-on-*` (dòng / thẻ đang chọn) | |
+  | Nút / trang trí | `--body-btn-grad` + `--body-btn-ink` (nút chính gradient), `--body-track`, `--body-ring`, `--body-platform`, `--body-tip-bg/-bd` | |
+  | Hình khối | `--body-radius-card` 22px, `--body-shadow`, `--body-blur` | |
+
+  Font: `--body-title-font` (Space Grotesk) cho tiêu đề và số lớn, `--body-font` (Be Vietnam Pro), `--body-mono`.
+- **Kính mờ / lớp nổi đặc**: thẻ `--body-card-bg` + `backdrop-filter: var(--body-blur)` chỉ trên desktop (≥841px);
+  mọi lớp nổi (modal, bottom sheet, popover, ngăn sửa số, màn chi tiết bài trên điện thoại) dùng `--body-card-solid`.
+  **Mobile không blur.**
+- **Header + tab ngang**: header trong suốt (lời chào + nút trạng thái hôm nay 4 kiểu: Buổi dở / Bắt đầu / Đã tập /
+  Mở lộ trình), tab ngang dạng chip; màn tập không có header chung.
+- **Màu theo ý nghĩa**: xanh lá = đạt / sẵn sàng, amber = chưa đủ / đang hồi / cảnh báo nhẹ, đỏ = cần nghỉ / nguy cơ,
+  xanh ngọc (`--body-blue`) = thời gian / thông tin phụ, accent = đang làm / cơ chính. Màu riêng từng mục truyền qua
+  biến `--dc` đặt inline; màu SVG qua class CSS. Không thêm hex mới (ngoại lệ: khung video nền đen).
+- **Class dùng chung**: `.body-card`, `.body-hero`, `.body-tile`, `.body-card-head/-title/-sub/-link`, `.body-pill`
+  (`.is-accent/green/amber/red/blue/pink`), `.body-chip` (bật bằng `.is-on` / `aria-pressed` / `aria-selected`),
+  `.body-chip-row`, `.body-bar > i` (`--bar-c`), `.body-btn` (`-primary` gradient / `-danger` / `-ghost` / `-lg`),
+  `.body-icon-btn` 30px, `.body-input` (16px trên điện thoại), `.body-modal-backdrop` + `.body-modal-panel`,
+  `.body-eyebrow`.
+- **Trang trí + giảm chuyển động**: `.body-deco-orbit` / `.body-deco-pulse` / `.body-deco-floaty` (thời lượng qua
+  `--deco-dur`), `.body-burst-dot` (pháo sao màn xong buổi: RNG hạt cố định, 48 hạt / 32 trên điện thoại). Cài đặt
+  Giảm chuyển động (`:root[data-reduce-motion]`, không dùng `prefers-reduced-motion`) dừng các class này và ẩn pháo sao.
+- **Hình cơ thể 2D**: `MuscleAnatomy2D` + `muscleFigureFills({ mode, … })` (`workoutLogic.js`) dùng chung cho Bản đồ cơ,
+  Thư viện, chi tiết bài; dữ liệu hình `src/data/body-muscle-figure.json` lấy từ `react-body-highlighter` v2.0.5 (MIT).
+  Bản đồ cơ: desktop hai mặt, điện thoại một mặt + nút Lật mặt.
+- **Breakpoint**: điện thoại ≤840px — giữ cấu trúc mobile cũ (header + chip tab, thẻ xếp dọc, bottom sheet, thanh nút
+  đáy), chỉ đổi lớp áo.
 
 ### Other active shared atoms (`global.css`)
 

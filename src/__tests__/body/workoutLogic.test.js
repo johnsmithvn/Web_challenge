@@ -34,7 +34,13 @@ import {
   buildExerciseHistory,
   summarizeTrainedExercises,
   niceAxis,
-  nextTargetFor
+  nextTargetFor,
+  muscleFigureFills,
+  getTodayTrainingState,
+  buildWeekConstellation,
+  dayColorOf,
+  DAY_TAG_COLORS,
+  DAY_TYPE_COLORS
 } from '../../utils/workoutLogic.js';
 
 console.log('Testing workoutLogic pure functions...');
@@ -431,6 +437,80 @@ console.log('Testing workoutLogic pure functions...');
   assert.deepEqual(nextTargetFor(h, { target_sets: 3, target_val: 14 }), { sets: 3, val: 14, fromRoutine: true });
   assert.equal(nextTargetFor([], null), null);
   console.log('  ✓ buildExerciseHistory / summarizeTrainedExercises / niceAxis / nextTargetFor OK');
+}
+
+// 13. Hình cơ thể 2D: tô màu theo 3 chế độ
+{
+  const g = muscleFigureFills({ mode: 'group', selected: 'chest', secondary: ['shoulders', 'chest', 'triceps'] });
+  assert.equal(g.fills.chest, 'var(--body-accent)', 'cơ chính = accent');
+  assert.equal(g.glow.chest, true);
+  assert.equal(g.fills.shoulders, 'var(--body-blue)');
+  assert.equal(g.glow.shoulders, undefined, 'cơ phụ không glow');
+  assert.equal(Object.keys(g.fills).length, 3, 'nhóm khác không tô');
+
+  const h = muscleFigureFills({ mode: 'heat', heatMap: { a: 0, b: 0.35, c: 0.36, d: 0.7, e: 0.71, f: 1 } });
+  assert.equal(h.fills.a, undefined, '0 không tô');
+  assert.deepEqual([h.fills.b, h.fills.c, h.fills.d, h.fills.e], ['var(--body-blue)', 'var(--body-amber)', 'var(--body-amber)', 'var(--body-red)']);
+  assert.deepEqual(Object.keys(h.glow).sort(), ['e', 'f'], 'chỉ > .7 glow');
+
+  const r = muscleFigureFills({ mode: 'rec', recoveryMap: { chest: 'low', abs: 'mid', quads: 'ready' }, ids: ['chest', 'abs', 'quads', 'calves'] });
+  assert.deepEqual([r.fills.chest, r.fills.abs, r.fills.quads], ['var(--body-red)', 'var(--body-amber)', 'var(--body-green)']);
+  assert.equal(r.fills.calves, 'var(--body-green)', 'thiếu trong map = ready');
+  assert.deepEqual(Object.keys(r.glow), ['chest']);
+  assert.equal(muscleFigureFills({ mode: 'rec', recoveryMap: { chest: 'low' } }).fills.chest, 'var(--body-red)', 'ids mặc định = khoá của map');
+  console.log('  ✓ muscleFigureFills OK');
+}
+
+// 14. Nút "hôm nay" trên header
+{
+  const tue = new Date(2026, 9, 13, 20, 0); // Thứ Ba 13/10/2026
+  const items = [{ weekday: 2, day_name: 'Ngày A · Đẩy' }, { weekday: 2, day_name: 'x' }, { weekday: 4, day_name: 'Ngày B' }];
+  assert.deepEqual(getTodayTrainingState({ sessions: [], routineItems: items, today: tue }), { state: 'start', weekday: 2, dayName: 'Ngày A · Đẩy' });
+  const live = { id: 'l', status: 'in_progress', local_date: '2026-10-12' };
+  assert.equal(getTodayTrainingState({ sessions: [live], routineItems: items, today: tue }).state, 'resume', 'buổi dở từ hôm qua vẫn resume');
+  const done = { id: 'd', status: 'completed', local_date: '2026-10-13' };
+  assert.equal(getTodayTrainingState({ sessions: [done], routineItems: items, today: tue }).state, 'done');
+  assert.equal(getTodayTrainingState({ sessions: [done, live], routineItems: items, today: tue }).state, 'resume', 'buổi dở ưu tiên hơn đã xong');
+  assert.equal(getTodayTrainingState({ sessions: [{ status: 'completed', local_date: '2026-10-12' }], routineItems: items, today: tue }).state, 'start', 'xong hôm qua không tính');
+  const sun = getTodayTrainingState({ sessions: [], routineItems: items, today: new Date(2026, 9, 18) });
+  assert.deepEqual(sun, { state: 'rest', weekday: 7 }, 'Chủ nhật = 7, không lịch = rest');
+  assert.equal(getTodayTrainingState({ sessions: [], routineItems: [], today: tue }).state, 'rest');
+  assert.equal(getTodayTrainingState({ routineItems: [{ weekday: 2 }], today: tue }).dayName, 'Buổi tập hôm nay');
+  console.log('  ✓ getTodayTrainingState OK');
+}
+
+// 15. Chòm sao tuần
+{
+  const st = ['done', 'done', 'rest', 'done', 'today', 'planned', 'rest'];
+  const c = buildWeekConstellation(st.map((status, i) => ({ label: `T${i + 2}`, dateNum: String(12 + i), title: 'x', status, sets: 0 })));
+  assert.deepEqual(c.stars.map(s => s.x), [44, 168, 292, 416, 540, 664, 788]);
+  assert.deepEqual(c.stars.map(s => s.y), [112, 58, 96, 40, 84, 122, 66]);
+  assert.equal(c.stars[0].ly, 136);
+  assert.deepEqual([c.stars[0].r, c.stars[4].r, c.stars[2].r, c.stars[5].r], [9, 10, 4.5, 7]);
+  assert.equal(c.stars[4].pulse, true);
+  assert.equal(c.links.length, 6);
+  assert.deepEqual(c.links.map(l => l.lit), [true, false, false, false, false, false], 'chỉ sáng khi hai đầu đã tập');
+  assert.deepEqual([c.links[0].dash, c.links[1].dash], [null, '3 6']);
+  assert.equal(c.doneCount, 3);
+  assert.equal(c.plannedCount, 5);
+  assert.throws(() => buildWeekConstellation([]), /days must have 7 items/);
+  console.log('  ✓ buildWeekConstellation OK');
+}
+
+// 16. Màu buổi dùng token (không nối chuỗi alpha được với hex)
+{
+  [...Object.values(DAY_TAG_COLORS), ...Object.values(DAY_TYPE_COLORS)].forEach(c => assert.match(c, /^var\(--body-/));
+  console.log('  ✓ DAY colors use tokens OK');
+}
+
+// 17. dayColorOf: chữ cái "Ngày X" trước, rồi loại buổi trong tên, mặc định accent
+{
+  assert.equal(dayColorOf('Ngày A - Ngực, Vai'), DAY_TAG_COLORS.A);
+  assert.equal(dayColorOf('Ngày B - Chân'), DAY_TAG_COLORS.B);
+  assert.equal(dayColorOf('Ngày C - Kéo'), 'var(--body-accent)');
+  assert.equal(dayColorOf('Kéo xà'), DAY_TYPE_COLORS['Kéo']);
+  assert.equal(dayColorOf(''), 'var(--body-accent)');
+  console.log('  ✓ dayColorOf OK');
 }
 
 console.log('ALL WORKOUT LOGIC TESTS PASSED!');

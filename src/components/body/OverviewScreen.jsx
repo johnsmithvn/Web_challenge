@@ -1,17 +1,26 @@
-import { useState, useMemo, useEffect, useCallback, lazy, Suspense } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import AppIcon from '../AppIcon';
+import MuscleAnatomy2D from './MuscleAnatomy2D';
 import SkeletonList from '../SkeletonList';
-import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../contexts/ToastContext';
 import { useBiometrics } from '../../hooks/useBiometrics';
 import { useNutrition } from '../../hooks/useNutrition';
 import { useWorkouts } from '../../hooks/useWorkouts';
-import { calculateRecoveryMetrics, getRoutineWeek, estimateQueueMinutes, generateWorkoutQueue } from '../../utils/workoutLogic';
+import {
+  calculateRecoveryMetrics,
+  getRoutineWeek,
+  estimateQueueMinutes,
+  generateWorkoutQueue,
+  muscleFigureFills,
+  getTodayTrainingState,
+  buildWeekConstellation,
+  splitDayName,
+  splitExerciseName,
+  dayColorOf
+} from '../../utils/workoutLogic';
 import { calculateMacroTargets } from '../../utils/bodyMetrics';
 import { getWeekDates, toDateStr } from '../../utils/dateUtils';
 
-// Three.js chỉ tải khi canvas thật sự hiển thị (D5)
-const MuscleBodyCanvas = lazy(() => import('./MuscleBodyCanvas'));
 
 const VN_MUSCLES = {
   chest: 'Ngực',
@@ -30,8 +39,31 @@ const VN_MUSCLES = {
   lats: 'Xô'
 };
 
+const DAY_LABELS = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
+// Màu sao theo trạng thái; ngày "planned" lấy màu buổi (dayColorOf)
+const STAR_C = { done: 'var(--body-amber)', today: 'var(--body-accent)', rest: 'var(--body-text-muted)' };
+// Vòng "Quỹ đạo hôm nay": kcal / đạm / tinh bột (chất béo chỉ có dòng)
+const ORBIT_R = [80, 62, 44];
+const ringDash = (r, ratio) => `${(2 * Math.PI * r * ratio).toFixed(1)} ${(2 * Math.PI * r).toFixed(1)}`;
+// Buổi đã lưu: title = "Buổi {tên ngày}", day_type = tên ngày
+const sessionDayName = s => s?.day_type || String(s?.title || '').replace(/^Buổi\s+/, '');
+
+const QUICK_TABS = [
+  { key: 'weight', label: 'Cân nặng', icon: 'scales' },
+  { key: 'meal', label: 'Bữa ăn', icon: 'bowlFood' }
+];
+const WEIGHT_SLOTS = [
+  { key: 'morning', label: 'Sáng sớm (đói)', icon: 'sunHorizon' },
+  { key: 'evening', label: 'Buổi tối (sau ăn)', icon: 'moon' }
+];
+const MEAL_TYPES = [
+  { key: 'breakfast', label: 'Sáng' },
+  { key: 'lunch', label: 'Trưa' },
+  { key: 'dinner', label: 'Tối' },
+  { key: 'snack', label: 'Phụ' }
+];
+
 export default function OverviewScreen({ onNavigateTab, onStartSession }) {
-  const { user } = useAuth();
   const { showToast } = useToast();
   const { latest: latestWeight, addMeasurement, measurements, profile, tdee, hasLoaded: bioLoaded } = useBiometrics();
   const { mealLogs, addMealLog, hasLoaded: nutLoaded } = useNutrition();
@@ -60,42 +92,15 @@ export default function OverviewScreen({ onNavigateTab, onStartSession }) {
 
   const [now] = useState(() => Date.now());
 
-  // Chỉ mount 1 canvas WebGL cho bố cục đang hiển thị (desktop/mobile cùng breakpoint 840px với body.css)
-  const [isMobileLayout, setIsMobileLayout] = useState(() => window.matchMedia?.('(max-width: 840px)').matches ?? false);
-  useEffect(() => {
-    const mq = window.matchMedia?.('(max-width: 840px)');
-    if (!mq) return undefined;
-    const onChange = e => setIsMobileLayout(e.matches);
-    mq.addEventListener('change', onChange);
-    return () => mq.removeEventListener('change', onChange);
-  }, []);
   const today = useMemo(() => new Date(now), [now]);
-  const jsDay = today.getDay();
-  const todayWeekday = jsDay === 0 ? 7 : jsDay; // 1 = T2 ... 7 = CN
-
-  const todayStr = useMemo(() => {
-    return today.toLocaleDateString('vi-VN', { weekday: 'long', day: 'numeric', month: 'numeric', year: 'numeric' });
-  }, [today]);
-
-  const timeGreeting = useMemo(() => {
-    const hr = today.getHours();
-    if (hr < 12) return 'Sáng nay';
-    if (hr < 18) return 'Chiều nay';
-    return 'Tối nay';
-  }, [today]);
-
-  const displayName = user?.user_metadata?.full_name?.split(' ').pop() || user?.email?.split('@')[0] || 'bạn';
   const todayDateStr = useMemo(() => toDateStr(today), [today]);
 
-  // Buổi tập hoàn thành hôm nay
-  const todayCompletedSession = useMemo(() => {
-    return (sessions || []).find(s => s.status === 'completed' && s.local_date === todayDateStr);
-  }, [sessions, todayDateStr]);
-
-  // Buổi tập đang diễn ra
-  const inProgressSession = useMemo(() => {
-    return (sessions || []).find(s => s.status === 'in_progress');
-  }, [sessions]);
+  // Buổi dở / đã xong / có lịch / nghỉ — cùng nguồn với nút "hôm nay" trên header
+  const todayState = useMemo(
+    () => getTodayTrainingState({ sessions, routineItems, today }),
+    [sessions, routineItems, today]
+  );
+  const todayWeekday = todayState.weekday; // 1 = T2 ... 7 = CN
 
   // Các bài tập theo lịch hôm nay
   const todayRoutineItems = useMemo(() => {
@@ -119,71 +124,59 @@ export default function OverviewScreen({ onNavigateTab, onStartSession }) {
     };
   }, [recentSets]);
 
-  // ── THẺ 1: BUỔI TẬP HÔM NAY ──────────────────────────────────
+  // ── HERO: BUỔI TẬP HÔM NAY ───────────────────────────────────
   const sessionStats = useMemo(() => {
-    const isDone = Boolean(todayCompletedSession);
-    const isInProgress = Boolean(inProgressSession);
-    const hasPlan = todayRoutineItems.length > 0;
     const week = activeRoutine ? getRoutineWeek(activeRoutine.start_date, activeRoutine.weeks, today) : null;
     const weekPrefix = week ? `Tuần ${week.current} / ${week.total}` : '';
-    const estMinutes = hasPlan ? estimateQueueMinutes(generateWorkoutQueue(todayRoutineItems, 'straight')) : 0;
+    const estMinutes = todayRoutineItems.length ? estimateQueueMinutes(generateWorkoutQueue(todayRoutineItems, 'straight')) : 0;
+    const { state, session } = todayState;
 
-    if (isInProgress) {
-      const title = inProgressSession.day_type || inProgressSession.title || 'Buổi tập đang diễn ra';
-      const done = statsOfSession(inProgressSession.id);
+    if (state === 'resume') {
       return {
-        isDone: false,
-        isInProgress: true,
-        hasPlan: true,
-        durationMin: Math.round((inProgressSession.duration_seconds || 0) / 60),
+        state,
         estMinutes,
-        exercisesCount: done.exercisesCount,
-        setsCount: done.setsCount,
-        volumeKg: done.volumeKg,
-        title,
+        ...statsOfSession(session.id),
+        durationMin: Math.round((session.duration_seconds || 0) / 60),
+        title: session.day_type || session.title || 'Buổi tập đang diễn ra',
         weekText: weekPrefix ? `${weekPrefix} · Đang thực hiện` : 'Buổi tập dở dang',
         finishTime: null
       };
     }
 
-    if (isDone) {
-      const done = statsOfSession(todayCompletedSession.id);
-      const durationMin = Math.round((todayCompletedSession.duration_seconds || 0) / 60);
-      const title = todayCompletedSession.title || 'Buổi tập hôm nay';
-      const weekText = todayCompletedSession.routine_id && activeRoutine && weekPrefix
-        ? `${weekPrefix} · ${activeRoutine.name}`
-        : 'Buổi tập tự do';
-      const finishTime = todayCompletedSession.ended_at
-        ? new Date(todayCompletedSession.ended_at).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })
-        : 'Hoàn thành';
-
-      return { isDone: true, hasPlan: true, durationMin, estMinutes, ...done, title, weekText, finishTime };
+    if (state === 'done') {
+      return {
+        state,
+        estMinutes,
+        ...statsOfSession(session.id),
+        durationMin: Math.round((session.duration_seconds || 0) / 60),
+        title: session.title || 'Buổi tập hôm nay',
+        weekText: session.routine_id && activeRoutine && weekPrefix
+          ? `${weekPrefix} · ${activeRoutine.name}`
+          : 'Buổi tập tự do',
+        finishTime: session.ended_at
+          ? new Date(session.ended_at).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })
+          : 'Hoàn thành'
+      };
     }
 
-    if (hasPlan) {
-      const exercisesCount = todayRoutineItems.length;
-      const setsCount = todayRoutineItems.reduce((acc, it) => acc + (Number(it.target_sets) || 0), 0);
-      const title = todayRoutineItems[0]?.day_name || 'Buổi tập hôm nay';
-
+    if (state === 'start') {
       return {
-        isDone: false,
-        hasPlan: true,
-        durationMin: 0,
+        state,
         estMinutes,
-        exercisesCount,
-        setsCount,
+        durationMin: 0,
+        exercisesCount: todayRoutineItems.length,
+        setsCount: todayRoutineItems.reduce((acc, it) => acc + (Number(it.target_sets) || 0), 0),
         volumeKg: 0,
-        title,
+        title: todayState.dayName,
         weekText: weekPrefix ? `${weekPrefix} · ${activeRoutine.name}` : 'Kế hoạch tập luyện',
         finishTime: null
       };
     }
 
     return {
-      isDone: false,
-      hasPlan: false,
-      durationMin: 0,
+      state,
       estMinutes: 0,
+      durationMin: 0,
       exercisesCount: 0,
       setsCount: 0,
       volumeKg: 0,
@@ -191,9 +184,9 @@ export default function OverviewScreen({ onNavigateTab, onStartSession }) {
       weekText: activeRoutine ? `Lộ trình: ${activeRoutine.name} · Nghỉ ngơi phục hồi` : 'Chưa chọn lộ trình nào',
       finishTime: null
     };
-  }, [todayCompletedSession, inProgressSession, todayRoutineItems, statsOfSession, activeRoutine, today]);
+  }, [todayState, todayRoutineItems, statsOfSession, activeRoutine, today]);
 
-  // ── THẺ 2: CÂN NẶNG & SPARKLINE THẬT ─────────────────────────
+  // ── CÂN NẶNG & SPARKLINE THẬT ────────────────────────────────
   const weightData = useMemo(() => {
     if (!latestWeight || !latestWeight.weight) {
       return {
@@ -224,9 +217,9 @@ export default function OverviewScreen({ onNavigateTab, onStartSession }) {
       diffText = `${diffSign.replace('.', ',')} kg`;
     }
 
-    // Sparkline từ các lần đo thật
+    // Sparkline từ các lần đo thật (khung 300×80, co giãn theo thẻ); endY = % chiều cao của điểm cuối
     const recentM = (measurements || []).slice(0, 20).reverse();
-    let spark = null;
+    let spark = { line: 'M0 40 L300 40', goal: null, endY: 50 };
     if (recentM.length >= 2) {
       const weights = recentM.map(m => Number(m.weight));
       const minW = Math.min(...weights) - 0.5;
@@ -237,17 +230,10 @@ export default function OverviewScreen({ onNavigateTab, onStartSession }) {
       const X = i => (i / (n - 1)) * 300;
       const Y = v => Math.max(5, Math.min(75, (1 - (v - minW) / range) * 80));
 
-      const line = weights.map((v, i) => `${i ? 'L' : 'M'}${X(i).toFixed(1)} ${Y(v).toFixed(1)}`).join(' ');
       spark = {
-        line,
-        area: `${line} L300 80 L0 80 Z`,
-        goal: targetWeight ? `M0 ${Y(targetWeight).toFixed(1)} L300 ${Y(targetWeight).toFixed(1)}` : null
-      };
-    } else {
-      spark = {
-        line: 'M0 40 L300 40',
-        area: 'M0 40 L300 40 L300 80 L0 80 Z',
-        goal: null
+        line: weights.map((v, i) => `${i ? 'L' : 'M'}${X(i).toFixed(1)} ${Y(v).toFixed(1)}`).join(' '),
+        goal: targetWeight ? `M0 ${Y(targetWeight).toFixed(1)} L300 ${Y(targetWeight).toFixed(1)}` : null,
+        endY: (Y(weights[n - 1]) / 80) * 100
       };
     }
 
@@ -279,29 +265,21 @@ export default function OverviewScreen({ onNavigateTab, onStartSession }) {
     };
   }, [latestWeight, measurements, profile]);
 
-  // ── THẺ 3: DINH DƯỠNG & MACROS THẬT ──────────────────────────
+  // ── QUỸ ĐẠO HÔM NAY: KCAL + MACRO THẬT ───────────────────────
   const nutritionData = useMemo(() => {
-    const totalKcal = (mealLogs || []).reduce((sum, m) => sum + (m.calories || 0), 0);
+    const sumOf = key => (mealLogs || []).reduce((sum, m) => sum + (Number(m[key]) || 0), 0);
+    const totalKcal = sumOf('calories');
     // Cùng công thức với màn Dinh dưỡng; chưa có TDEE (thiếu hồ sơ) thì không bịa mục tiêu
     const targets = calculateMacroTargets(tdee, latestWeight?.weight);
     const goalKcal = targets?.kcal ?? null;
-    const C44 = 2 * Math.PI * 44;
-    const ratio = goalKcal ? Math.min(1, totalKcal / goalKcal) : 0;
-    const kcalDash = `${(C44 * ratio).toFixed(1)} ${C44.toFixed(1)}`;
-
-    const sumOf = key => (mealLogs || []).reduce((sum, m) => sum + (Number(m[key]) || 0), 0);
-    const macroRow = (n, total, goal, c) => ({
-      n,
-      v: goal ? `${Math.round(total)}/${goal} g` : `${Math.round(total)} g`,
-      p: `${goal ? Math.min(100, Math.round((total / goal) * 100)) : 0}%`,
-      c
-    });
     const totalProt = sumOf('protein');
-    const macros = [
-      macroRow('Đạm', totalProt, targets?.protein, '#6949E8'),
-      macroRow('Tinh bột', sumOf('carbs'), targets?.carbs, '#E0A23C'),
-      macroRow('Chất béo', sumOf('fat'), targets?.fat, '#E26A5A')
-    ];
+
+    const rows = [
+      { key: 'kcal', n: 'Năng lượng', total: totalKcal, goal: goalKcal, unit: 'kcal', c: 'var(--body-accent)' },
+      { key: 'protein', n: 'Đạm', total: totalProt, goal: targets?.protein ?? null, unit: 'g', c: 'var(--body-pink)' },
+      { key: 'carbs', n: 'Tinh bột', total: sumOf('carbs'), goal: targets?.carbs ?? null, unit: 'g', c: 'var(--body-blue)' },
+      { key: 'fat', n: 'Chất béo', total: sumOf('fat'), goal: targets?.fat ?? null, unit: 'g', c: 'var(--body-amber)' }
+    ].map(r => ({ ...r, ratio: r.goal ? Math.min(1, r.total / r.goal) : 0 }));
 
     const mealsCount = (mealLogs || []).length;
     let note = mealsCount > 0 ? '' : 'Chưa ghi bữa ăn nào hôm nay.';
@@ -314,18 +292,17 @@ export default function OverviewScreen({ onNavigateTab, onStartSession }) {
         ? `Còn ${remainKcal} kcal và ${remainProt} g đạm cho hôm nay.`
         : `Vượt mục tiêu ${Math.abs(remainKcal)} kcal hôm nay.`;
     }
+    // Bản ngắn cho thẻ nửa bề ngang trên mobile
+    const shortNote = !goalKcal
+      ? 'chưa có mục tiêu calo'
+      : goalKcal > totalKcal
+        ? `còn ${goalKcal - totalKcal} kcal`
+        : `vượt ${totalKcal - goalKcal} kcal`;
 
-    return {
-      totalKcal,
-      goalKcal,
-      kcalDash,
-      macros,
-      mealsCount,
-      note
-    };
+    return { totalKcal, rows, mealsCount, note, shortNote };
   }, [mealLogs, tdee, latestWeight]);
 
-  // ── THẺ 4: PHỤC HỒI CƠ (BẢN ĐỒ CƠ THẬT) ─────────────────────
+  // ── PHỤC HỒI CƠ (BẢN ĐỒ CƠ THẬT) ─────────────────────────────
   const recoveryData = useMemo(() => {
     const map = {};
     const muscleKeys = Object.keys(VN_MUSCLES);
@@ -378,10 +355,11 @@ export default function OverviewScreen({ onNavigateTab, onStartSession }) {
       });
     }
 
+    // Màu nhóm: class is-low (red) / is-mid (amber) / is-ready (green) trong body.css
     const recGroups = [
-      { id: 'low', n: 'Cần nghỉ', c: '#C23B22', items: [], joined: '' },
-      { id: 'mid', n: 'Đang hồi', c: '#B57A12', items: [], joined: '' },
-      { id: 'ready', n: 'Sẵn sàng', c: '#2F8A57', items: [], joined: '' }
+      { id: 'low', n: 'Cần nghỉ', items: [], joined: '' },
+      { id: 'mid', n: 'Đang hồi', items: [], joined: '' },
+      { id: 'ready', n: 'Sẵn sàng', items: [], joined: '' }
     ];
 
     muscleKeys.forEach(k => {
@@ -397,14 +375,13 @@ export default function OverviewScreen({ onNavigateTab, onStartSession }) {
     return { map, recGroups };
   }, [recentSets, exerciseMap, now]);
 
-  // ── THẺ 5: TUẦN NÀY (7-NGÀY CỘT THẬT) ───────────────────────
+  const recoveryFigure = useMemo(() => muscleFigureFills({ mode: 'rec', recoveryMap: recoveryData.map }), [recoveryData.map]);
+
+  // ── CHÒM SAO TUẦN NÀY ────────────────────────────────────────
   const weekData = useMemo(() => {
     const weekDates = getWeekDates(today);
-    const mondayStr = new Date(weekDates[0]);
-    const sundayStr = new Date(weekDates[6]);
-    const dateRange = `${mondayStr.getDate()}/${mondayStr.getMonth() + 1} – ${sundayStr.getDate()}/${sundayStr.getMonth() + 1}`;
-
-    const DAY_LABELS = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
+    const dayMonth = str => `${Number(str.slice(8, 10))}/${Number(str.slice(5, 7))}`;
+    const dateRange = `${dayMonth(weekDates[0])} – ${dayMonth(weekDates[6])}`;
 
     const weekCompletedSessions = (sessions || []).filter(
       s => s.status === 'completed' && weekDates.includes(s.local_date)
@@ -422,59 +399,36 @@ export default function OverviewScreen({ onNavigateTab, onStartSession }) {
     const plannedWeekdays = new Set((routineItems || []).map(it => it.weekday));
     const targetSessions = plannedWeekdays.size;
 
-    const dayStats = weekDates.map((dateStr, idx) => {
-      const weekdayNum = idx + 1;
-      const daySessions = (sessions || []).filter(
-        s => s.status === 'completed' && s.local_date === dateStr
-      );
-      const setsOnDay = daySessions.reduce((acc, s) => acc + statsOfSession(s.id).setsCount, 0);
+    // Mỗi ngày một sao: đã tập > hôm nay > có lịch (kể cả đã lỡ) > nghỉ
+    const constellation = buildWeekConstellation(weekDates.map((dateStr, idx) => {
+      const daySessions = weekCompletedSessions.filter(s => s.local_date === dateStr);
+      const plannedName = (routineItems || []).find(it => it.weekday === idx + 1)?.day_name || '';
       const isDone = daySessions.length > 0;
-      const isPlanned = plannedWeekdays.has(weekdayNum);
-
-      let st = 'rest';
-      if (isDone) {
-        st = 'done';
-      } else if (isPlanned) {
-        st = dateStr >= todayDateStr ? 'plan' : 'missed';
-      }
-
+      const status = isDone ? 'done' : dateStr === todayDateStr ? 'today' : plannedName ? 'planned' : 'rest';
+      const name = isDone ? sessionDayName(daySessions[0]) : plannedName;
       return {
-        d: DAY_LABELS[idx],
-        dateStr,
-        s: setsOnDay,
-        st
+        label: DAY_LABELS[idx],
+        dateNum: String(Number(dateStr.slice(8, 10))),
+        title: name ? splitDayName(name).title : 'Nghỉ',
+        status,
+        sets: daySessions.reduce((acc, s) => acc + statsOfSession(s.id).setsCount, 0),
+        color: STAR_C[status] || dayColorOf(name)
       };
-    });
-
-    const maxSets = Math.max(16, ...dayStats.map(d => d.s));
-
-    const columns = dayStats.map((item) => {
-      const isTodayCol = item.dateStr === todayDateStr;
-      return {
-        d: item.d,
-        lbl: item.s > 0 ? item.s : '',
-        h: item.st === 'rest' ? '4px' : `${Math.max(8, Math.round(item.s / maxSets * 100))}%`,
-        bg: item.st === 'done'
-          ? (isTodayCol ? '#6949E8' : '#C4B6F4')
-          : item.st === 'plan' ? 'transparent' : 'var(--body-shell-bg)',
-        bd: item.st === 'plan' ? '1.5px dashed #C9C6BE' : '0',
-        fg: isTodayCol ? '#15161A' : '#8A8A84',
-        font: `${isTodayCol ? 600 : 500} 11px/1 'Be Vietnam Pro', sans-serif`
-      };
-    });
+    }));
 
     return {
       dateRange,
+      targetSessions,
       stats: [
         { n: 'Buổi', v: `${weekCompletedSessions.length}`, u: targetSessions ? ` / ${targetSessions}` : '' },
         { n: 'Set', v: `${weekSets}`, u: '' },
         { n: 'Thời gian', v: timeText, u: timeUnit }
       ],
-      columns
+      constellation
     };
   }, [today, todayDateStr, sessions, routineItems, statsOfSession]);
 
-  // ── THẺ 6: CHECK-IN TUẦN & NGÀY MAI THẬT ────────────────────
+  // ── CHECK-IN TUẦN & NGÀY MAI THẬT ────────────────────────────
   const checkinTomorrowData = useMemo(() => {
     const daysLeft = Math.max(0, 7 - todayWeekday);
     const weekDates = getWeekDates(today);
@@ -562,680 +516,367 @@ export default function OverviewScreen({ onNavigateTab, onStartSession }) {
     return <SkeletonList heading rows={4} gap="10px" label="Đang tải tổng quan" />;
   }
 
+  const { state } = sessionStats;
+  const heroTag = state === 'start' ? splitDayName(sessionStats.title) : null;
+  const statusPill = {
+    resume: { cls: 'is-amber', text: 'Đang tập dở' },
+    done: { cls: 'is-green', icon: 'checkCircle', text: `Xong ${sessionStats.finishTime}` },
+    start: { cls: 'is-accent', icon: 'calendar', text: heroTag?.tag ? `${heroTag.tag.toUpperCase()} · HÔM NAY` : 'Lên lịch hôm nay' },
+    rest: { cls: '', icon: 'moon', text: 'Nghỉ ngơi' }
+  }[state];
+  const heroAction = {
+    resume: { label: 'Tiếp tục buổi tập', icon: 'play', go: () => onNavigateTab?.('session') },
+    done: { label: 'Xem buổi tập', icon: 'trophy', go: () => onNavigateTab?.('history') },
+    start: { label: 'Bắt đầu tập hôm nay', icon: 'rocketLaunch', go: () => (onStartSession ? onStartSession(todayStartPayload) : onNavigateTab?.('routine')) },
+    rest: { label: 'Xem lộ trình tập', icon: 'path', go: () => onNavigateTab?.('routine') }
+  }[state];
+  // Desktop tối đa 4 ô (ô thứ 4 thành "+n bài nữa" khi dư); mobile tối đa 3 ô (CSS ẩn ô 4 + hiện ô "+1")
+  const exTiles = todayRoutineItems.length > 4 ? todayRoutineItems.slice(0, 3) : todayRoutineItems;
+  const exMore = todayRoutineItems.length - exTiles.length;
+  const { stars, links, doneCount } = weekData.constellation;
+  const lowGroup = recoveryData.recGroups[0];
+  const openBiometrics = () => onNavigateTab?.('biometrics');
+
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+    <div className="body-ov">
 
-      {/* ── LỜI CHÀO TRÊN MOBILE (DESKTOP ĐÃ CÓ TRÊN 1 HEADER DUY NHẤT) ── */}
-      <div className="body-mobile-greeting" style={{ display: 'none', flexDirection: 'column', gap: '4px', padding: '0 2px 2px' }}>
-        <span style={{ fontSize: '19px', fontWeight: 600, color: 'var(--body-text-main)', letterSpacing: '-0.01em' }}>
-          {timeGreeting}, {displayName}
-        </span>
-        <span style={{ fontSize: '12.5px', color: 'var(--body-text-muted)', fontWeight: 500 }}>
-          {todayStr}
-        </span>
-      </div>
+      {/* ── CỘT TRÁI: HERO + CHÒM SAO ── */}
+      <div className="body-ov-col">
+        <section className="body-hero body-ov-hero" aria-label="Buổi tập hôm nay">
+          <div className="body-ov-planet body-deco-floaty" aria-hidden="true">
+            <i className="body-ov-ring is-back" />
+            <i className="body-ov-planet-core" />
+            <i className="body-ov-ring is-front" />
+            <span className="body-ov-sat body-deco-orbit"><i /></span>
+          </div>
 
-      {/* ══════════════════════════════════════════════════════════════════
-          PHƯƠNG ÁN 2A: DESKTOP BẢNG THẺ GRID (3 CỘT × 2 HÀNG)
-          ══════════════════════════════════════════════════════════════════ */}
-      <div className="body-2a-grid">
-
-        {/* ── CARD 1: BUỔI TẬP HÔM NAY (DARK CARD) ── */}
-        <div className="body-2a-dark-card">
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span style={{ font: "500 10.5px/1 var(--body-mono)", letterSpacing: "0.09em", color: "#9C9AA8" }}>
-              BUỔI TẬP HÔM NAY
+          <div className="body-ov-hero-pills">
+            <span className={`body-pill ${statusPill.cls}`}>
+              {statusPill.icon ? <AppIcon name={statusPill.icon} size={13} weight="fill" /> : <i />}
+              {statusPill.text}
             </span>
-            {sessionStats.isInProgress ? (
-              <span style={{ padding: "5px 9px", borderRadius: "20px", background: "rgba(245, 158, 11, 0.2)", font: "600 11.5px/1 'Be Vietnam Pro',sans-serif", color: "#F59E0B", display: "flex", alignItems: "center", gap: "5px" }}>
-                <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#F59E0B' }} />
-                Đang tập dở
+            {state !== 'rest' && (
+              <span className="body-pill">
+                <AppIcon name="clock" size={13} />
+                {state === 'start' ? `~${sessionStats.estMinutes} phút` : `${sessionStats.durationMin} phút`}
+                {` · ${sessionStats.exercisesCount} bài · ${sessionStats.setsCount} set`}
               </span>
-            ) : sessionStats.isDone ? (
-              <span style={{ padding: "5px 9px", borderRadius: "20px", background: "rgba(62,158,104,0.22)", font: "600 11.5px/1 'Be Vietnam Pro',sans-serif", color: "#7FD3A2", display: "flex", alignItems: "center", gap: "5px" }}>
-                <AppIcon name="checkCircle" size={13} weight="fill" />
-                Xong {sessionStats.finishTime}
-              </span>
-            ) : sessionStats.hasPlan ? (
-              <span style={{ padding: "5px 9px", borderRadius: "20px", background: "rgba(105,73,232,0.25)", font: "600 11.5px/1 'Be Vietnam Pro',sans-serif", color: "#B3A2F0", display: "flex", alignItems: "center", gap: "5px" }}>
-                <AppIcon name="calendar" size={13} />
-                Lên lịch hôm nay
-              </span>
-            ) : (
-              <span style={{ padding: "5px 9px", borderRadius: "20px", background: "rgba(255,255,255,0.1)", font: "600 11.5px/1 'Be Vietnam Pro',sans-serif", color: "#9C9AA8", display: "flex", alignItems: "center", gap: "5px" }}>
-                <AppIcon name="moon" size={13} />
-                Nghỉ ngơi
+            )}
+            {state === 'done' && (
+              <span className="body-pill">
+                <AppIcon name="barbell" size={13} />
+                Khối lượng {sessionStats.volumeKg.toLocaleString('vi-VN')} kg
               </span>
             )}
           </div>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '7px' }}>
-            <span style={{ font: "600 24px/1.15 'Be Vietnam Pro',sans-serif", color: "#FFFFFF", letterSpacing: "-0.01em" }}>
-              {sessionStats.title}
-            </span>
-            <span style={{ font: "400 13px/1 'Be Vietnam Pro',sans-serif", color: "#9C9AA8" }}>
-              {sessionStats.weekText}
-            </span>
+          <div className="body-ov-hero-head">
+            <h2 className="body-ov-hero-title">{heroTag?.tag ? heroTag.title : sessionStats.title}</h2>
+            <p className="body-ov-hero-sub">{sessionStats.weekText}</p>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: '10px' }}>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-              <span style={{ font: "400 11.5px/1 'Be Vietnam Pro',sans-serif", color: "#9C9AA8" }}>Thời gian</span>
-              <span style={{ font: "600 19px/1 'Be Vietnam Pro',sans-serif" }}>
-                {sessionStats.isDone || sessionStats.isInProgress ? `${sessionStats.durationMin} phút` : (sessionStats.hasPlan ? `~${sessionStats.estMinutes}p` : '—')}
-              </span>
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-              <span style={{ font: "400 11.5px/1 'Be Vietnam Pro',sans-serif", color: "#9C9AA8" }}>Bài</span>
-              <span style={{ font: "600 19px/1 'Be Vietnam Pro',sans-serif" }}>
-                {sessionStats.isDone || sessionStats.hasPlan ? sessionStats.exercisesCount : '—'}
-              </span>
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-              <span style={{ font: "400 11.5px/1 'Be Vietnam Pro',sans-serif", color: "#9C9AA8" }}>Set</span>
-              <span style={{ font: "600 19px/1 'Be Vietnam Pro',sans-serif" }}>
-                {sessionStats.isDone || sessionStats.hasPlan ? sessionStats.setsCount : '—'}
-              </span>
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-              <span style={{ font: "400 11.5px/1 'Be Vietnam Pro',sans-serif", color: "#9C9AA8" }}>Khối lượng</span>
-              <span style={{ font: "600 19px/1 'Be Vietnam Pro',sans-serif" }}>
-                {sessionStats.isDone ? `${sessionStats.volumeKg.toLocaleString('vi-VN')} kg` : '—'}
-              </span>
-            </div>
-          </div>
-
-          <div style={{ marginTop: 'auto', display: 'flex', alignItems: 'center', gap: '12px', paddingTop: '14px', borderTop: '1px solid rgba(255,255,255,0.1)' }}>
-            {sessionStats.isInProgress ? (
-              <>
-                <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#F59E0B' }} />
-                <span style={{ flex: 1, font: "400 12.5px/1.3 'Be Vietnam Pro',sans-serif", color: "#F59E0B" }}>
-                  Buổi tập đang tạm dừng. Tiếp tục ngay!
-                </span>
-                <button
-                  onClick={() => onNavigateTab?.('session')}
-                  style={{
-                    height: '34px',
-                    padding: '0 16px',
-                    borderRadius: '8px',
-                    background: 'linear-gradient(135deg, #F59E0B, #D97706)',
-                    color: '#FFF',
-                    fontWeight: 600,
-                    fontSize: '13px',
-                    border: 'none',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '6px'
-                  }}
-                >
-                  <AppIcon name="play" size={14} weight="fill" />
-                  Tiếp tục buổi tập
-                </button>
-              </>
-            ) : sessionStats.isDone ? (
-              <>
-                <AppIcon name="trophy" size={17} weight="fill" style={{ color: "#E0A23C" }} />
-                <span style={{ flex: 1, font: "400 12.5px/1.3 'Be Vietnam Pro',sans-serif", color: "#D8D6E0" }}>
-                  Buổi tập đã hoàn thành xuất sắc!
-                </span>
-                <button
-                  onClick={() => onNavigateTab?.('history')}
-                  style={{ font: "600 12.5px/1 'Be Vietnam Pro',sans-serif", color: "#B3A2F0", background: "none", border: "none", cursor: "pointer", padding: 0 }}
-                >
-                  Xem buổi tập
-                </button>
-              </>
-            ) : sessionStats.hasPlan ? (
-              <button
-                onClick={() => onStartSession ? onStartSession(todayStartPayload) : onNavigateTab?.('routine')}
-                style={{
-                  height: '34px',
-                  padding: '0 16px',
-                  borderRadius: '8px',
-                  background: '#6949E8',
-                  color: '#FFF',
-                  fontWeight: 600,
-                  fontSize: '13px',
-                  border: 'none',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px'
-                }}
-              >
-                <AppIcon name="play" size={14} weight="fill" />
-                Bắt đầu tập hôm nay
-              </button>
-            ) : (
-              <button
-                onClick={() => onNavigateTab?.('routine')}
-                style={{
-                  height: '34px',
-                  padding: '0 14px',
-                  borderRadius: '8px',
-                  background: 'rgba(255,255,255,0.12)',
-                  color: '#FFF',
-                  fontWeight: 600,
-                  fontSize: '12.5px',
-                  border: 'none',
-                  cursor: 'pointer'
-                }}
-              >
-                Xem lộ trình tập
-              </button>
-            )}
-          </div>
-        </div>
-
-        {/* ── CARD 2: CÂN NẶNG ── */}
-        <div className="body-card" style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '12px', minWidth: 0 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-            <span style={{ font: "600 14px/1 'Be Vietnam Pro',sans-serif", color: "var(--body-text-main)" }}>Cân nặng</span>
-            <span style={{ font: "400 12px/1 var(--body-mono)", color: "var(--body-text-muted)" }}>
-              {weightData.hasData ? weightData.time : 'Chưa đo'}
-            </span>
-          </div>
-
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: '10px' }}>
-            <span style={{ font: "600 32px/1 'Be Vietnam Pro',sans-serif", letterSpacing: "-0.01em", color: "var(--body-text-main)" }}>
-              {weightData.currentStr}<span style={{ font: "400 14px/1 'Be Vietnam Pro',sans-serif", color: "var(--body-text-muted)" }}> kg</span>
-            </span>
-            {weightData.hasData && (
-              <span style={{ font: "600 12.5px/1 'Be Vietnam Pro',sans-serif", color: "var(--body-green)" }}>
-                {weightData.diffText}
-              </span>
-            )}
-          </div>
-
-          {weightData.hasData ? (
-            <>
-              <div style={{ flex: 1, minHeight: '65px', position: 'relative' }}>
-                <svg viewBox="0 0 300 80" preserveAspectRatio="none" style={{ position: 'absolute', left: 0, top: 0, width: '100%', height: '100%' }}>
-                  <path d={weightData.spark.area} fill="rgba(105,73,232,0.08)" />
-                  {weightData.spark.goal && (
-                    <path d={weightData.spark.goal} fill="none" stroke="#2F8A57" strokeWidth="1.25" strokeDasharray="4 4" vectorEffect="non-scaling-stroke" />
-                  )}
-                  <path d={weightData.spark.line} fill="none" stroke="#6949E8" strokeWidth="2" vectorEffect="non-scaling-stroke" />
-                </svg>
-              </div>
-
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '7px' }}>
-                <span style={{ height: '6px', borderRadius: '3px', background: 'var(--body-shell-bg)', overflow: 'hidden' }}>
-                  <span style={{ display: 'block', height: '100%', width: `${weightData.progressPercent}%`, background: '#6949E8', borderRadius: '3px' }} />
-                </span>
-                <div style={{ display: 'flex', justifyContent: 'space-between', font: "400 12px/1 'Be Vietnam Pro',sans-serif", color: "var(--body-text-muted)" }}>
-                  <span>{weightData.startStr}</span>
-                  <span>{weightData.remainText}</span>
-                </div>
-              </div>
-            </>
-          ) : (
-            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: '10px', background: 'var(--body-shell-bg)', borderRadius: '10px', padding: '14px', textAlign: 'center' }}>
-              <span style={{ font: "400 12px/1.4 'Be Vietnam Pro',sans-serif", color: "var(--body-text-muted)" }}>
-                Ghi lần cân đầu tiên để bắt đầu vẽ biểu đồ tiến độ & tính BMI, TDEE
-              </span>
-              <button
-                type="button"
-                onClick={() => setQuickModal(true)}
-                className="body-btn body-btn-secondary"
-                style={{ width: '100%', height: '32px', fontSize: '12px', fontWeight: 600 }}
-              >
-                + Ghi cân nặng ngay
-              </button>
-            </div>
+          {exTiles.length > 0 && (
+            <ul className="body-ov-ex">
+              {exTiles.map((it, i) => {
+                const { vn, en } = splitExerciseName(exerciseMap?.get(it.exercise_key)?.name || it.exercise_key);
+                return (
+                  <li key={it.id ?? `${it.exercise_key}-${i}`} className="body-tile body-ov-ex-tile">
+                    <span className="body-ov-ex-no">{String(i + 1).padStart(2, '0')}</span>
+                    <span className="body-ov-ex-name">
+                      <b>{vn}</b>
+                      {en && <small>{en}</small>}
+                    </span>
+                    <span className="body-ov-ex-rx">
+                      {it.target_sets} × {it.target_val} {it.unit === 's' ? 'giây' : 'rep'}
+                    </span>
+                  </li>
+                );
+              })}
+              {exMore > 0 && <li className="body-tile body-ov-ex-tile is-more">+{exMore} bài nữa</li>}
+              {todayRoutineItems.length === 4 && <li className="body-tile body-ov-ex-tile is-more is-mobile-more">+1 bài nữa</li>}
+            </ul>
           )}
-        </div>
 
-        {/* ── CARD 3: DINH DƯỠNG ── */}
-        <div className="body-card" style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px', minWidth: 0 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-            <span style={{ font: "600 14px/1 'Be Vietnam Pro',sans-serif", color: "var(--body-text-main)" }}>Dinh dưỡng</span>
-            <span style={{ font: "400 12px/1 'Be Vietnam Pro',sans-serif", color: "var(--body-text-muted)" }}>
-              {nutritionData.mealsCount} bữa đã ghi
-            </span>
-          </div>
-
-          <div style={{ display: 'flex', alignItems: 'center', gap: '18px' }}>
-            <div style={{ position: 'relative', width: '104px', height: '104px', flex: 'none' }}>
-              <svg width="104" height="104" viewBox="0 0 104 104" style={{ display: 'block', transform: 'rotate(-90deg)' }}>
-                <circle cx="52" cy="52" r="44" fill="none" stroke="var(--body-shell-bg)" strokeWidth="10" />
-                <circle cx="52" cy="52" r="44" fill="none" stroke="#6949E8" strokeWidth="10" strokeLinecap="round" strokeDasharray={nutritionData.kcalDash} />
-              </svg>
-              <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
-                <span style={{ font: "600 18px/1 'Be Vietnam Pro',sans-serif", color: "var(--body-text-main)" }}>
-                  {nutritionData.totalKcal.toLocaleString('vi-VN')}
-                </span>
-                <span style={{ font: "400 10.5px/1 'Be Vietnam Pro',sans-serif", color: "var(--body-text-muted)" }}>
-                  {nutritionData.goalKcal ? `/ ${nutritionData.goalKcal.toLocaleString('vi-VN')} kcal` : 'kcal · chưa có mục tiêu'}
-                </span>
-              </div>
-            </div>
-
-            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '11px', minWidth: 0 }}>
-              {nutritionData.macros.map(m => (
-                <div key={m.n} style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', font: "400 12px/1 'Be Vietnam Pro',sans-serif", color: "var(--body-text-sub)" }}>
-                    <span>{m.n}</span>
-                    <span style={{ font: "500 11.5px/1 var(--body-mono)", color: "var(--body-text-main)" }}>{m.v}</span>
-                  </div>
-                  <span style={{ height: '5px', borderRadius: '3px', background: 'var(--body-shell-bg)', overflow: 'hidden' }}>
-                    <span style={{ display: 'block', height: '100%', width: m.p, background: m.c, borderRadius: '3px' }} />
-                  </span>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div style={{ marginTop: 'auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span style={{ font: "400 12.5px/1.45 'Be Vietnam Pro',sans-serif", color: "var(--body-text-sub)" }}>
-              {nutritionData.note}
-            </span>
-            <button
-              onClick={() => onNavigateTab?.('nutrition')}
-              style={{ font: "600 12px/1 'Be Vietnam Pro',sans-serif", color: "#6949E8", background: "none", border: "none", cursor: "pointer", padding: 0 }}
-            >
-              Xem thực đơn
+          <div className="body-ov-hero-actions">
+            <button type="button" className="body-btn body-btn-primary body-btn-lg" onClick={heroAction.go}>
+              <AppIcon name={heroAction.icon} size={17} weight="fill" />
+              {heroAction.label}
             </button>
-          </div>
-        </div>
-
-        {/* ── CARD 4: PHỤC HỒI CƠ (CANVAS 3D + DANH SÁCH) ── */}
-        <div className="body-card" style={{ padding: 0, display: 'grid', gridTemplateColumns: '200px minmax(0,1fr)', overflow: 'hidden', minHeight: 0 }}>
-          <div className="body-2a-muscle-canvas-box">
-            {!isMobileLayout && (
-              <Suspense fallback={null}>
-                <MuscleBodyCanvas selectedId={null} mode="rec" viewSide="front" recoveryMap={recoveryData.map} />
-              </Suspense>
+            {state !== 'rest' && (
+              <button type="button" className="body-btn body-btn-secondary body-btn-lg" onClick={() => onNavigateTab?.('routine')}>
+                <AppIcon name="path" size={17} />
+                Xem lộ trình tuần
+              </button>
             )}
           </div>
+        </section>
 
-          <div style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px', minWidth: 0 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-              <span style={{ font: "600 14px/1 'Be Vietnam Pro',sans-serif", color: "var(--body-text-main)" }}>Phục hồi cơ</span>
-              <span
-                onClick={() => onNavigateTab?.('muscles')}
-                style={{ font: "600 12px/1 'Be Vietnam Pro',sans-serif", color: "#6949E8", cursor: 'pointer' }}
-              >
-                Bản đồ cơ
-              </span>
+        <section className="body-card body-ov-const" aria-label="Chòm sao tuần này">
+          <div className="body-card-head">
+            <div>
+              <h3 className="body-card-title">Chòm sao tuần này</h3>
+              <span className="body-card-sub">{weekData.dateRange} · mỗi buổi tập thắp một ngôi sao</span>
             </div>
-
-            {recoveryData.recGroups.map(g => (
-              <div key={g.id} style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                <span style={{ display: 'flex', alignItems: 'center', gap: '7px', font: `600 12px/1 'Be Vietnam Pro',sans-serif`, color: g.c }}>
-                  <span style={{ width: '8px', height: '8px', borderRadius: '4px', background: g.c }} />
-                  {g.n} ({g.items.length})
-                </span>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px' }}>
-                  {g.items.length === 0 ? (
-                    <span style={{ fontSize: '11.5px', color: 'var(--body-text-muted)' }}>—</span>
-                  ) : (
-                    g.items.map(item => (
-                      <span key={item} className="body-2a-chip">
-                        {item}
-                      </span>
-                    ))
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* ── CARD 5: TUẦN NÀY ── */}
-        <div className="body-card" style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px', minHeight: 0, minWidth: 0 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-            <span style={{ font: "600 14px/1 'Be Vietnam Pro',sans-serif", color: "var(--body-text-main)" }}>Tuần này</span>
-            <span style={{ font: "400 12px/1 'Be Vietnam Pro',sans-serif", color: "var(--body-text-muted)" }}>{weekData.dateRange}</span>
+            <span className="body-ov-const-count">
+              {weekData.targetSessions ? `${doneCount} / ${weekData.targetSessions} SAO` : `${doneCount} SAO`}
+            </span>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: '10px' }}>
+          <div className="body-ov-stats">
             {weekData.stats.map(s => (
-              <div key={s.n} style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                <span style={{ font: "400 11.5px/1 'Be Vietnam Pro',sans-serif", color: "var(--body-text-muted)" }}>{s.n}</span>
-                <span style={{ font: "600 19px/1 'Be Vietnam Pro',sans-serif", color: "var(--body-text-main)" }}>
-                  {s.v}<span style={{ font: "400 12px/1 'Be Vietnam Pro',sans-serif", color: "var(--body-text-muted)" }}>{s.u}</span>
-                </span>
+              <div key={s.n}>
+                <b>{s.v}<small>{s.u}</small></b>
+                <span>{s.n}</span>
               </div>
             ))}
           </div>
 
-          <div style={{ flex: 1, minHeight: '90px', display: 'grid', gridTemplateColumns: 'repeat(7, minmax(0, 1fr))', gap: '8px', alignItems: 'end' }}>
-            {weekData.columns.map((c, i) => (
-              <div key={i} style={{ height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', alignItems: 'center', gap: '7px' }}>
-                <span style={{ font: "500 10.5px/1 var(--body-mono)", color: "var(--body-text-muted)" }}>{c.lbl}</span>
-                <span style={{ width: '100%', height: c.h, minHeight: '4px', borderRadius: '6px', background: c.bg, border: c.bd, boxSizing: 'border-box' }} />
-                <span style={{ font: c.font, color: c.fg }}>{c.d}</span>
+          <div className="body-ov-const-stage">
+            <svg viewBox="0 0 834 190" preserveAspectRatio="xMidYMid meet" aria-hidden="true">
+              {links.map((l, i) => (
+                <line
+                  key={i}
+                  className={`body-ov-link${l.lit ? ' is-lit' : ''}`}
+                  x1={l.x1} y1={l.y1} x2={l.x2} y2={l.y2}
+                  strokeWidth={l.w}
+                  strokeDasharray={l.dash || undefined}
+                  opacity={l.op}
+                />
+              ))}
+              {stars.map(s => (
+                <g key={s.label} className={`body-ov-star is-${s.kind}`} style={{ '--star-c': s.color }}>
+                  {s.halo > 0 && (
+                    <circle
+                      className={`body-ov-star-halo${s.pulse ? ' body-deco-pulse' : ''}`}
+                      cx={s.x} cy={s.y} r={s.halo}
+                      opacity={s.hop}
+                    />
+                  )}
+                  <circle className="body-ov-star-core" cx={s.x} cy={s.y} r={s.r} />
+                </g>
+              ))}
+            </svg>
+            {stars.map(s => (
+              <div
+                key={s.label}
+                className={`body-ov-const-lb is-${s.kind}`}
+                style={{ left: `${(s.x / 834) * 100}%`, top: `${(s.ly / 190) * 100}%` }}
+              >
+                <span className="lb-day">{s.label}<span className="lb-date"> · {s.dateNum}</span></span>
+                <span className="lb-title">{s.title}</span>
+                {s.kind === 'done' && <span className="lb-sets">{s.sets} set</span>}
               </div>
             ))}
           </div>
 
-          <span style={{ font: "400 12px/1.4 'Be Vietnam Pro',sans-serif", color: "var(--body-text-muted)" }}>
-            Cột = số set mỗi ngày · nét đứt là buổi đã lên lịch
-          </span>
-        </div>
-
-        {/* ── CARD 6: CHECK-IN TUẦN + NGÀY MAI ── */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', minHeight: 0 }}>
-          {/* 6a: Check-in tuần */}
-          <div className="body-2a-checkin-card">
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ font: "600 14px/1 'Be Vietnam Pro',sans-serif", color: "var(--body-text-main)" }}>Check-in tuần</span>
-              <span style={{ font: "500 11.5px/1 var(--body-mono)", color: "#5238C9" }}>{checkinTomorrowData.checkinDate}</span>
-            </div>
-            <span style={{ font: "400 13px/1.5 'Be Vietnam Pro',sans-serif", color: "#4A3AA8" }}>
-              {checkinTomorrowData.daysLeft === 0
-                ? 'Hôm nay là ngày check-in! Cân buổi sáng và đo vòng eo.'
-                : `Còn ${checkinTomorrowData.daysLeft} ngày. Cần 2 thứ: cân buổi sáng Chủ nhật và số đo vòng eo.`}
-            </span>
-            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-              <span style={{ height: '28px', padding: '0 10px', borderRadius: '8px', background: 'var(--body-card-bg)', display: 'flex', alignItems: 'center', gap: '6px', font: "500 12px/1 'Be Vietnam Pro',sans-serif", color: "var(--body-text-main)" }}>
-                <AppIcon name="scales" size={13} /> Cân sáng CN
-              </span>
-              <span style={{ height: '28px', padding: '0 10px', borderRadius: '8px', background: 'var(--body-card-bg)', display: 'flex', alignItems: 'center', gap: '6px', font: "500 12px/1 'Be Vietnam Pro',sans-serif", color: "var(--body-text-main)" }}>
-                <AppIcon name="ruler" size={13} /> Vòng eo
-              </span>
-              <span style={{ height: '28px', padding: '0 10px', borderRadius: '8px', background: 'transparent', display: 'flex', alignItems: 'center', gap: '6px', font: "500 12px/1 'Be Vietnam Pro',sans-serif", color: "#5238C9" }}>
-                <AppIcon name="camera" size={13} /> Ảnh (tùy chọn)
-              </span>
-            </div>
+          <div className="body-ov-legend">
+            <span><i className="is-done" />Đã tập</span>
+            <span><i className="is-today" />Hôm nay</span>
+            <span><i className="is-next" />Sắp tới</span>
           </div>
-
-          {/* 6b: Ngày mai */}
-          <div className="body-card" style={{ flex: 1, padding: '20px', display: 'flex', flexDirection: 'column', gap: '12px', minHeight: 0 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-              <span style={{ font: "600 14px/1 'Be Vietnam Pro',sans-serif", color: "var(--body-text-main)" }}>Ngày mai</span>
-              <span style={{ font: "400 12px/1 'Be Vietnam Pro',sans-serif", color: "var(--body-text-muted)" }}>{checkinTomorrowData.tomorrowDate}</span>
-            </div>
-            <span style={{ font: "600 17px/1.2 'Be Vietnam Pro',sans-serif", color: "var(--body-text-main)" }}>
-              {checkinTomorrowData.tomorrowTitle}
-            </span>
-            <div style={{ display: 'flex', flexDirection: 'column' }}>
-              {checkinTomorrowData.tomorrowExercises.length === 0 ? (
-                <div style={{ padding: '8px 0', fontSize: '13px', color: 'var(--body-text-muted)' }}>
-                  Không có bài tập nào được lên lịch cho ngày mai.
-                </div>
-              ) : (
-                checkinTomorrowData.tomorrowExercises.map((e, idx) => (
-                  <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', padding: '8px 0', borderTop: '1px solid var(--body-card-border)' }}>
-                    <span style={{ font: "400 13px/1.2 'Be Vietnam Pro',sans-serif", color: "var(--body-text-sub)" }}>{e.n}</span>
-                    <span style={{ font: "500 12px/1 var(--body-mono)", color: "var(--body-text-muted)" }}>{e.rx}</span>
-                  </div>
-                ))
-              )}
-            </div>
-            <span style={{ marginTop: 'auto', font: "400 12px/1.4 'Be Vietnam Pro',sans-serif", color: "var(--body-green)" }}>
-              {checkinTomorrowData.recoveryNote}
-            </span>
-          </div>
-        </div>
-
+        </section>
       </div>
 
-      {/* ══════════════════════════════════════════════════════════════════
-          PHƯƠNG ÁN 2A: MOBILE CHUẨN THIẾT KẾ (DỮ LIỆU THẬT)
-          ══════════════════════════════════════════════════════════════════ */}
-      <div className="body-2a-mobile">
-
-        {/* 1. Thẻ Buổi tập hôm nay */}
-        <div className="body-2a-dark-card" style={{ padding: '16px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span style={{ font: "500 10px/1 var(--body-mono)", letterSpacing: "0.09em", color: "#9C9AA8" }}>
-              BUỔI TẬP HÔM NAY
-            </span>
-            {sessionStats.isInProgress ? (
-              <span style={{ padding: "4px 8px", borderRadius: "20px", background: "rgba(245,158,11,0.2)", font: "600 11px/1 'Be Vietnam Pro',sans-serif", color: "#F59E0B" }}>
-                Đang tập dở
-              </span>
-            ) : sessionStats.isDone ? (
-              <span style={{ padding: "4px 8px", borderRadius: "20px", background: "rgba(62,158,104,0.22)", font: "600 11px/1 'Be Vietnam Pro',sans-serif", color: "#7FD3A2" }}>
-                Xong {sessionStats.finishTime}
-              </span>
-            ) : sessionStats.hasPlan ? (
-              <span style={{ padding: "4px 8px", borderRadius: "20px", background: "rgba(105,73,232,0.25)", font: "600 11px/1 'Be Vietnam Pro',sans-serif", color: "#B3A2F0" }}>
-                Lên lịch hôm nay
-              </span>
-            ) : (
-              <span style={{ padding: "4px 8px", borderRadius: "20px", background: "rgba(255,255,255,0.1)", font: "600 11px/1 'Be Vietnam Pro',sans-serif", color: "#9C9AA8" }}>
-                Nghỉ ngơi
-              </span>
-            )}
+      {/* ── CỘT PHẢI ── */}
+      <div className="body-ov-col">
+        <section className="body-card body-ov-orbit" aria-label="Quỹ đạo hôm nay">
+          <div className="body-card-head">
+            <h3 className="body-card-title">
+              <span className="is-desk">Quỹ đạo hôm nay</span>
+              <span className="is-mob">Năng lượng</span>
+            </h3>
+            <button type="button" className="body-card-link" onClick={() => onNavigateTab?.('nutrition')}>Dinh dưỡng</button>
           </div>
-          <span style={{ font: "600 19px/1.2 'Be Vietnam Pro',sans-serif", color: "#FFFFFF" }}>
-            {sessionStats.title}
-          </span>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: '8px' }}>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
-              <span style={{ font: "400 11px/1 'Be Vietnam Pro',sans-serif", color: "#9C9AA8" }}>Thời gian</span>
-              <span style={{ font: "600 15px/1 'Be Vietnam Pro',sans-serif" }}>
-                {sessionStats.isDone || sessionStats.isInProgress ? `${sessionStats.durationMin}p` : (sessionStats.hasPlan ? `~${sessionStats.estMinutes}p` : '—')}
-              </span>
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
-              <span style={{ font: "400 11px/1 'Be Vietnam Pro',sans-serif", color: "#9C9AA8" }}>Bài</span>
-              <span style={{ font: "600 15px/1 'Be Vietnam Pro',sans-serif" }}>
-                {sessionStats.isDone || sessionStats.hasPlan ? sessionStats.exercisesCount : '—'}
-              </span>
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
-              <span style={{ font: "400 11px/1 'Be Vietnam Pro',sans-serif", color: "#9C9AA8" }}>Set</span>
-              <span style={{ font: "600 15px/1 'Be Vietnam Pro',sans-serif" }}>
-                {sessionStats.isDone || sessionStats.hasPlan ? sessionStats.setsCount : '—'}
-              </span>
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
-              <span style={{ font: "400 11px/1 'Be Vietnam Pro',sans-serif", color: "#9C9AA8" }}>Khối lượng</span>
-              <span style={{ font: "600 15px/1 'Be Vietnam Pro',sans-serif" }}>
-                {sessionStats.isDone ? `${sessionStats.volumeKg.toLocaleString('vi-VN')}` : '—'}
-              </span>
-            </div>
-          </div>
-          {/* Có buổi dở thì chỉ cho tập tiếp như desktop — "Bắt đầu" ở đây sẽ đòi hủy buổi đang dở */}
-          {!sessionStats.isDone && sessionStats.hasPlan && (
-            <button
-              onClick={sessionStats.isInProgress
-                ? () => onNavigateTab?.('session')
-                : () => onStartSession ? onStartSession(todayStartPayload) : onNavigateTab?.('routine')}
-              style={{
-                marginTop: '10px',
-                height: '36px',
-                width: '100%',
-                borderRadius: '8px',
-                background: sessionStats.isInProgress ? 'linear-gradient(135deg, #F59E0B, #D97706)' : '#6949E8',
-                color: '#FFF',
-                fontWeight: 600,
-                fontSize: '13px',
-                border: 'none',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '6px'
-              }}
-            >
-              <AppIcon name="play" size={14} weight="fill" />
-              {sessionStats.isInProgress ? 'Tiếp tục buổi tập' : 'Bắt đầu tập hôm nay'}
-            </button>
-          )}
-        </div>
 
-        {/* 2. Grid 2 cột: Cân nặng + Năng lượng */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '10px' }}>
-          {/* Cân nặng */}
-          <div className="body-card" style={{ padding: '14px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            <span style={{ font: "400 12px/1 'Be Vietnam Pro',sans-serif", color: "var(--body-text-muted)" }}>Cân nặng</span>
-            <span style={{ font: "600 22px/1 'Be Vietnam Pro',sans-serif", color: "var(--body-text-main)" }}>
-              {weightData.currentStr}<span style={{ font: "400 12px/1 'Be Vietnam Pro',sans-serif", color: "var(--body-text-muted)" }}> kg</span>
-            </span>
-            {weightData.hasData && weightData.spark ? (
-              <svg viewBox="0 0 300 80" preserveAspectRatio="none" style={{ width: '100%', height: '38px', display: 'block' }}>
-                <path d={weightData.spark.line} fill="none" stroke="#6949E8" strokeWidth="2" vectorEffect="non-scaling-stroke" />
+          <div className="body-ov-orbit-body">
+            <div className="body-ov-orbit-ring" aria-hidden="true">
+              <svg className="body-ov-orbit-svg" viewBox="0 0 176 176">
+                {ORBIT_R.map((r, i) => {
+                  const row = nutritionData.rows[i];
+                  return (
+                    <g key={row.key} className={`is-${row.key}`}>
+                      <circle className="is-track" cx="88" cy="88" r={r} />
+                      {row.ratio > 0 && (
+                        <circle className="is-arc" cx="88" cy="88" r={r} style={{ '--ring-c': row.c }} strokeDasharray={ringDash(r, row.ratio)} />
+                      )}
+                    </g>
+                  );
+                })}
               </svg>
+              <span className="body-ov-orbit-core"><AppIcon name="sparkle" size={20} weight="fill" /></span>
+              <span className="body-ov-orbit-kcal">
+                <b>{nutritionData.totalKcal.toLocaleString('vi-VN')}</b>
+                <small>kcal</small>
+              </span>
+            </div>
+
+            <ul className="body-ov-orbit-list">
+              {nutritionData.rows.map(r => (
+                <li key={r.key} className={`is-${r.key}`} style={{ '--ring-c': r.c }}>
+                  <span className="lb"><i />{r.n}</span>
+                  <span>
+                    <b>{r.key === 'kcal' ? r.total.toLocaleString('vi-VN') : Math.round(r.total)}</b>
+                    <small>{r.goal ? `/ ${r.goal.toLocaleString('vi-VN')} ${r.unit}` : r.unit}</small>
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          <p className="body-ov-orbit-note">
+            <span className="is-desk">{nutritionData.note}</span>
+            <span className="is-mob">{nutritionData.shortNote}</span>
+            <span className="body-ov-orbit-meals">{nutritionData.mealsCount} bữa đã ghi</span>
+          </p>
+        </section>
+
+        <div className="body-ov-pair">
+          <div
+            className={`body-card body-ov-weight${weightData.hasData ? ' body-card-press' : ''}`}
+            {...(weightData.hasData && {
+              role: 'button',
+              tabIndex: 0,
+              title: 'Mở trang Cơ thể',
+              onClick: openBiometrics,
+              onKeyDown: e => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  openBiometrics();
+                }
+              }
+            })}
+          >
+            <span className="body-ov-label">Cân nặng</span>
+            <span className="body-ov-big">{weightData.currentStr}<span className="body-unit">kg</span></span>
+            {weightData.hasData ? (
+              <>
+                <span className="body-ov-weight-diff">
+                  {weightData.diffText}{weightData.time && ` · ${weightData.time}`}
+                </span>
+                <div className="body-ov-spark" aria-hidden="true">
+                  <svg viewBox="0 0 300 80" preserveAspectRatio="none">
+                    {weightData.spark.goal && (
+                      <path className="is-goal" d={weightData.spark.goal} vectorEffect="non-scaling-stroke" />
+                    )}
+                    <path className="is-line" d={weightData.spark.line} vectorEffect="non-scaling-stroke" />
+                  </svg>
+                  <i style={{ top: `${weightData.spark.endY}%` }} />
+                </div>
+                <div className="body-ov-weight-goal">
+                  <div className="body-bar"><i style={{ width: `${weightData.progressPercent}%` }} /></div>
+                  <div className="body-ov-weight-goal-txt">
+                    <span>{weightData.startStr}</span>
+                    <span>{weightData.remainText}</span>
+                  </div>
+                </div>
+              </>
             ) : (
-              <div style={{ height: '38px', display: 'flex', alignItems: 'center', fontSize: '11px', color: 'var(--body-text-muted)' }}>
-                Chưa có số đo
+              <div className="body-ov-weight-empty">
+                <span>Ghi lần cân đầu tiên để bắt đầu vẽ biểu đồ tiến độ & tính BMI, TDEE</span>
+                <button type="button" className="body-btn body-btn-secondary" onClick={() => setQuickModal(true)}>
+                  + Ghi cân nặng ngay
+                </button>
               </div>
             )}
-            <span style={{ font: "600 11.5px/1 'Be Vietnam Pro',sans-serif", color: "var(--body-green)" }}>
-              {weightData.diffText || '—'}
-            </span>
           </div>
 
-          {/* Năng lượng */}
-          <div className="body-card" style={{ padding: '14px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            <span style={{ font: "400 12px/1 'Be Vietnam Pro',sans-serif", color: "var(--body-text-muted)" }}>Năng lượng</span>
-            <span style={{ font: "600 22px/1 'Be Vietnam Pro',sans-serif", color: "var(--body-text-main)" }}>
-              {nutritionData.totalKcal.toLocaleString('vi-VN')}<span style={{ font: "400 12px/1 'Be Vietnam Pro',sans-serif", color: "var(--body-text-muted)" }}> kcal</span>
+          <div className="body-card body-ov-checkin">
+            <span className="body-ov-checkin-head"><AppIcon name="clipboard" size={16} />Check-in tuần</span>
+            <span className="body-ov-big">{checkinTomorrowData.checkinDate}</span>
+            <span className="body-ov-checkin-left">
+              {checkinTomorrowData.daysLeft === 0 ? 'Hôm nay' : `Còn ${checkinTomorrowData.daysLeft} ngày`}
             </span>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '4px' }}>
-              {nutritionData.macros.map(m => (
-                <span key={m.n} style={{ height: '5px', borderRadius: '3px', background: 'var(--body-shell-bg)', overflow: 'hidden' }}>
-                  <span style={{ display: 'block', height: '100%', width: m.p, background: m.c, borderRadius: '3px' }} />
-                </span>
+            <span className="body-ov-checkin-prep">Cân sáng CN · Vòng eo · Ảnh (tùy chọn)</span>
+          </div>
+        </div>
+
+        {/* Cả thẻ bấm được bằng chuột; bàn phím dùng nút "Bản đồ cơ" (click của nút nổi lên thẻ) */}
+        <section className="body-card body-card-press body-ov-rec" aria-label="Phục hồi cơ" onClick={() => onNavigateTab?.('muscles')}>
+          <div className="body-ov-rec-fig">
+            <MuscleAnatomy2D side="both" height="var(--ov-fig-h)" {...recoveryFigure} />
+          </div>
+          <div className="body-ov-rec-main">
+            <div className="body-card-head">
+              <h3 className="body-card-title">Phục hồi cơ</h3>
+              <button type="button" className="body-card-link">Bản đồ cơ</button>
+            </div>
+            <div className="body-ov-rec-counts">
+              {recoveryData.recGroups.map(g => (
+                <div key={g.id} className={`is-${g.id}`}>
+                  <b>{g.items.length}</b>
+                  <span>{g.n}</span>
+                </div>
               ))}
             </div>
-            <span style={{ font: "400 11.5px/1 'Be Vietnam Pro',sans-serif", color: "var(--body-text-muted)" }}>
-              {!nutritionData.goalKcal
-                ? 'chưa có mục tiêu calo'
-                : nutritionData.goalKcal > nutritionData.totalKcal
-                  ? `còn ${nutritionData.goalKcal - nutritionData.totalKcal} kcal`
-                  : `vượt ${nutritionData.totalKcal - nutritionData.goalKcal} kcal`}
-            </span>
+            <ul className="body-ov-rec-chips">
+              {recoveryData.recGroups.flatMap(g => g.items.map(name => (
+                <li key={name} className={`is-${g.id}`}><i />{name}</li>
+              )))}
+            </ul>
+            {lowGroup.items.length > 0 && <p className="body-ov-rec-avoid">Tránh {lowGroup.joined} hôm nay.</p>}
           </div>
-        </div>
+        </section>
 
-        {/* 3. Phục hồi cơ */}
-        <div className="body-card" style={{ padding: 0, display: 'grid', gridTemplateColumns: '132px minmax(0, 1fr)', overflow: 'hidden', height: '220px' }}>
-          <div className="body-2a-muscle-canvas-box">
-            {isMobileLayout && (
-              <Suspense fallback={null}>
-                <MuscleBodyCanvas selectedId={null} mode="rec" viewSide="front" recoveryMap={recoveryData.map} />
-              </Suspense>
-            )}
+        <section className="body-card body-ov-tomorrow" aria-label="Ngày mai">
+          <div className="body-card-head">
+            <h3 className="body-card-title">Ngày mai</h3>
+            <span className="body-card-sub">{checkinTomorrowData.tomorrowDate}</span>
           </div>
-          <div style={{ padding: '14px', display: 'flex', flexDirection: 'column', gap: '12px', minWidth: 0 }}>
-            <span style={{ font: "600 13.5px/1 'Be Vietnam Pro',sans-serif", color: "var(--body-text-main)" }}>Phục hồi cơ</span>
-            {recoveryData.recGroups.map(g => (
-              <div key={g.id} style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
-                <span style={{ display: 'flex', alignItems: 'center', gap: '6px', font: "600 11.5px/1 'Be Vietnam Pro',sans-serif", color: g.c }}>
-                  <span style={{ width: '7px', height: '7px', borderRadius: '4px', background: g.c }} />
-                  {g.n} ({g.items.length})
-                </span>
-                <span style={{ font: "400 12px/1.35 'Be Vietnam Pro',sans-serif", color: "var(--body-text-sub)" }}>
-                  {g.items.length === 0 ? '—' : g.joined}
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* 4. Tuần này */}
-        <div className="body-card" style={{ padding: '14px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-            <span style={{ font: "600 13.5px/1 'Be Vietnam Pro',sans-serif", color: "var(--body-text-main)" }}>Tuần này</span>
-            <span style={{ font: "400 11.5px/1 'Be Vietnam Pro',sans-serif", color: "var(--body-text-muted)" }}>
-              {weekData.stats[0].v}{weekData.stats[0].u} buổi · {weekData.stats[1].v} set
-            </span>
-          </div>
-          <div style={{ height: '96px', display: 'grid', gridTemplateColumns: 'repeat(7, minmax(0, 1fr))', gap: '6px', alignItems: 'end' }}>
-            {weekData.columns.map((c, i) => (
-              <div key={i} style={{ height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', alignItems: 'center', gap: '6px' }}>
-                <span style={{ width: '100%', height: c.h, minHeight: '4px', borderRadius: '5px', background: c.bg, border: c.bd, boxSizing: 'border-box' }} />
-                <span style={{ font: c.font, color: c.fg }}>{c.d}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* 5. Check-in tuần */}
-        <div className="body-2a-checkin-card" style={{ padding: '14px 16px', display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <AppIcon name="clipboard" size={22} style={{ color: "#5238C9", flexShrink: 0 }} />
-          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
-            <span style={{ font: "600 13px/1.2 'Be Vietnam Pro',sans-serif", color: "var(--body-text-main)" }}>
-              Check-in tuần · {checkinTomorrowData.checkinDate}
-            </span>
-            <span style={{ font: "400 12px/1.3 'Be Vietnam Pro',sans-serif", color: "#4A3AA8" }}>
-              {checkinTomorrowData.daysLeft === 0
-                ? 'Hôm nay check-in: cân sáng và vòng eo'
-                : `Còn ${checkinTomorrowData.daysLeft} ngày · cần cân sáng và vòng eo`}
-            </span>
-          </div>
-          <AppIcon name="caretRight" size={14} style={{ color: "#5238C9", flexShrink: 0 }} />
-        </div>
-
+          <span className="body-ov-tomorrow-title">{checkinTomorrowData.tomorrowTitle}</span>
+          {checkinTomorrowData.tomorrowExercises.length === 0 ? (
+            <p className="body-ov-empty">Không có bài tập nào được lên lịch cho ngày mai.</p>
+          ) : (
+            <ul className="body-ov-tomorrow-list">
+              {checkinTomorrowData.tomorrowExercises.map((e, idx) => (
+                <li key={idx}>
+                  <span>{e.n}</span>
+                  <span>{e.rx}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+          <span className="body-ov-tomorrow-note">{checkinTomorrowData.recoveryNote}</span>
+        </section>
       </div>
 
-      {/* ── MODAL GHI NHANH HOẠT ĐỘNG (CÂN NẶNG / BỮA ĂN) ── */}
+      {/* ── MODAL GHI NHANH (CÂN NẶNG / BỮA ĂN) ── */}
       {quickModal && (
         <div className="body-modal-backdrop" onClick={() => setQuickModal(false)}>
-          <div className="body-modal-panel" onClick={e => e.stopPropagation()} style={{ maxWidth: '440px', width: '100%' }}>
-            
-            {/* Header Modal */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span style={{ fontSize: '18px' }}>⚡</span>
-                <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 700, color: 'var(--body-text-main)' }}>
-                  Ghi nhanh hoạt động
-                </h3>
-              </div>
-              <button
-                type="button"
-                onClick={() => setQuickModal(false)}
-                style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--body-text-muted)', display: 'grid', placeItems: 'center', padding: '4px' }}
-              >
-                <AppIcon name="x" size={18} />
+          <div
+            className="body-modal-panel body-ov-quick"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Ghi nhanh hoạt động"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="body-ov-quick-head">
+              <h3><AppIcon name="lightning" size={18} weight="fill" />Ghi nhanh hoạt động</h3>
+              <button type="button" className="body-icon-btn" onClick={() => setQuickModal(false)} aria-label="Đóng">
+                <AppIcon name="x" size={16} />
               </button>
             </div>
 
-            {/* 2 Tab chuyển đổi mục đích: Cân nặng & Bữa ăn */}
-            <div style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(2, 1fr)',
-              gap: '6px',
-              padding: '4px',
-              borderRadius: '10px',
-              background: 'var(--body-shell-bg)',
-              marginBottom: '18px'
-            }}>
-              {[
-                { key: 'weight', label: 'Cân nặng', icon: '⚖️' },
-                { key: 'meal', label: 'Bữa ăn', icon: '🥗' }
-              ].map(t => (
+            <div className="body-ov-seg" role="tablist" aria-label="Loại ghi nhanh">
+              {QUICK_TABS.map(t => (
                 <button
                   key={t.key}
                   type="button"
+                  role="tab"
+                  aria-selected={quickTab === t.key}
+                  className="body-chip"
                   onClick={() => setQuickTab(t.key)}
-                  style={{
-                    height: '34px',
-                    borderRadius: '8px',
-                    border: 'none',
-                    background: quickTab === t.key ? 'var(--body-card-bg)' : 'transparent',
-                    color: quickTab === t.key ? 'var(--body-text-main)' : 'var(--body-text-muted)',
-                    fontWeight: quickTab === t.key ? 700 : 500,
-                    fontSize: '12.5px',
-                    cursor: 'pointer',
-                    boxShadow: quickTab === t.key ? '0 2px 6px rgba(0,0,0,0.08)' : 'none',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '5px',
-                    transition: 'all 0.15s ease'
-                  }}
                 >
-                  <span>{t.icon}</span>
-                  <span>{t.label}</span>
+                  <AppIcon name={t.icon} size={15} />
+                  {t.label}
                 </button>
               ))}
             </div>
 
             {/* FORM 1: CÂN NẶNG */}
             {quickTab === 'weight' && (
-              <form onSubmit={handleSaveQuick} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                  <label style={{ fontSize: '12.5px', fontWeight: 600, color: 'var(--body-text-sub)' }}>
-                    Cân nặng hôm nay (kg) *
-                  </label>
+              <form onSubmit={handleSaveQuick} className="body-ov-quick-form">
+                <label className="body-ov-field">
+                  <span>Cân nặng hôm nay (kg) *</span>
                   <input
                     type="number"
                     step="0.05"
@@ -1247,67 +888,33 @@ export default function OverviewScreen({ onNavigateTab, onStartSession }) {
                     onChange={e => setWeightInput(e.target.value)}
                   />
                   {latestWeight?.weight && (
-                    <span style={{ fontSize: '11px', color: 'var(--body-text-muted)' }}>
-                      Số đo gần nhất: {latestWeight.weight} kg ({latestWeight.local_date})
-                    </span>
+                    <small>Số đo gần nhất: {latestWeight.weight} kg ({latestWeight.local_date})</small>
                   )}
-                </div>
+                </label>
 
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                  <label style={{ fontSize: '12.5px', fontWeight: 600, color: 'var(--body-text-sub)' }}>
-                    Thời điểm đo
-                  </label>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-                    <button
-                      type="button"
-                      onClick={() => setWeightTimeSlot('morning')}
-                      style={{
-                        height: '38px',
-                        borderRadius: '8px',
-                        border: `1.5px solid ${weightTimeSlot === 'morning' ? 'var(--body-accent)' : 'var(--body-card-border)'}`,
-                        background: weightTimeSlot === 'morning' ? 'var(--body-accent-soft)' : 'var(--body-card-bg)',
-                        fontSize: '12.5px',
-                        fontWeight: 600,
-                        color: 'var(--body-text-main)',
-                        cursor: 'pointer'
-                      }}
-                    >
-                      🌅 Sáng sớm (đói)
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setWeightTimeSlot('evening')}
-                      style={{
-                        height: '38px',
-                        borderRadius: '8px',
-                        border: `1.5px solid ${weightTimeSlot === 'evening' ? 'var(--body-accent)' : 'var(--body-card-border)'}`,
-                        background: weightTimeSlot === 'evening' ? 'var(--body-accent-soft)' : 'var(--body-card-bg)',
-                        fontSize: '12.5px',
-                        fontWeight: 600,
-                        color: 'var(--body-text-main)',
-                        cursor: 'pointer'
-                      }}
-                    >
-                      🌙 Buổi tối (sau ăn)
-                    </button>
+                <div className="body-ov-field">
+                  <span>Thời điểm đo</span>
+                  <div className="body-ov-seg">
+                    {WEIGHT_SLOTS.map(s => (
+                      <button
+                        key={s.key}
+                        type="button"
+                        className="body-chip"
+                        aria-pressed={weightTimeSlot === s.key}
+                        onClick={() => setWeightTimeSlot(s.key)}
+                      >
+                        <AppIcon name={s.icon} size={15} />
+                        {s.label}
+                      </button>
+                    ))}
                   </div>
                 </div>
 
-                <div style={{ display: 'flex', gap: '10px', marginTop: '6px' }}>
-                  <button
-                    type="button"
-                    className="body-btn body-btn-secondary"
-                    onClick={() => setQuickModal(false)}
-                    style={{ flex: 1, height: '42px' }}
-                  >
+                <div className="body-ov-quick-actions">
+                  <button type="button" className="body-btn body-btn-secondary" onClick={() => setQuickModal(false)}>
                     Đóng
                   </button>
-                  <button
-                    type="submit"
-                    disabled={quickLoading}
-                    className="body-btn body-btn-primary"
-                    style={{ flex: 1, height: '42px' }}
-                  >
+                  <button type="submit" disabled={quickLoading} className="body-btn body-btn-primary">
                     {quickLoading ? 'Đang lưu...' : 'Lưu cân nặng'}
                   </button>
                 </div>
@@ -1316,11 +923,9 @@ export default function OverviewScreen({ onNavigateTab, onStartSession }) {
 
             {/* FORM 2: BỮA ĂN */}
             {quickTab === 'meal' && (
-              <form onSubmit={handleSaveQuick} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                  <label style={{ fontSize: '12.5px', fontWeight: 600, color: 'var(--body-text-sub)' }}>
-                    Tên món / Bữa ăn *
-                  </label>
+              <form onSubmit={handleSaveQuick} className="body-ov-quick-form">
+                <label className="body-ov-field">
+                  <span>Tên món / Bữa ăn *</span>
                   <input
                     type="text"
                     required
@@ -1330,33 +935,18 @@ export default function OverviewScreen({ onNavigateTab, onStartSession }) {
                     value={mealNameInput}
                     onChange={e => setMealNameInput(e.target.value)}
                   />
-                </div>
+                </label>
 
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                  <label style={{ fontSize: '12.5px', fontWeight: 600, color: 'var(--body-text-sub)' }}>
-                    Bữa ăn
-                  </label>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '6px' }}>
-                    {[
-                      { key: 'breakfast', label: 'Sáng' },
-                      { key: 'lunch', label: 'Trưa' },
-                      { key: 'dinner', label: 'Tối' },
-                      { key: 'snack', label: 'Phụ' }
-                    ].map(m => (
+                <div className="body-ov-field">
+                  <span>Bữa ăn</span>
+                  <div className="body-ov-seg">
+                    {MEAL_TYPES.map(m => (
                       <button
                         key={m.key}
                         type="button"
+                        className="body-chip"
+                        aria-pressed={mealTypeInput === m.key}
                         onClick={() => setMealTypeInput(m.key)}
-                        style={{
-                          height: '34px',
-                          borderRadius: '8px',
-                          border: `1.5px solid ${mealTypeInput === m.key ? 'var(--body-accent)' : 'var(--body-card-border)'}`,
-                          background: mealTypeInput === m.key ? 'var(--body-accent-soft)' : 'var(--body-card-bg)',
-                          fontSize: '12px',
-                          fontWeight: 600,
-                          color: 'var(--body-text-main)',
-                          cursor: 'pointer'
-                        }}
                       >
                         {m.label}
                       </button>
@@ -1364,10 +954,8 @@ export default function OverviewScreen({ onNavigateTab, onStartSession }) {
                   </div>
                 </div>
 
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                  <label style={{ fontSize: '12.5px', fontWeight: 600, color: 'var(--body-text-sub)' }}>
-                    Calo ước tính (kcal)
-                  </label>
+                <label className="body-ov-field">
+                  <span>Calo ước tính (kcal)</span>
                   <input
                     type="number"
                     step="10"
@@ -1376,30 +964,18 @@ export default function OverviewScreen({ onNavigateTab, onStartSession }) {
                     value={kcalInput}
                     onChange={e => setKcalInput(e.target.value)}
                   />
-                </div>
+                </label>
 
-                <div style={{ display: 'flex', gap: '10px', marginTop: '6px' }}>
-                  <button
-                    type="button"
-                    className="body-btn body-btn-secondary"
-                    onClick={() => setQuickModal(false)}
-                    style={{ flex: 1, height: '42px' }}
-                  >
+                <div className="body-ov-quick-actions">
+                  <button type="button" className="body-btn body-btn-secondary" onClick={() => setQuickModal(false)}>
                     Đóng
                   </button>
-                  <button
-                    type="submit"
-                    disabled={quickLoading}
-                    className="body-btn body-btn-primary"
-                    style={{ flex: 1, height: '42px' }}
-                  >
+                  <button type="submit" disabled={quickLoading} className="body-btn body-btn-primary">
                     {quickLoading ? 'Đang lưu...' : 'Lưu bữa ăn'}
                   </button>
                 </div>
               </form>
             )}
-
-
           </div>
         </div>
       )}

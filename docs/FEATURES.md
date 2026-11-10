@@ -393,9 +393,9 @@ Giao diện "Cực quang" trên nền trời đêm dùng chung với Nhiệm v�
 
 **Files:** `src/pages/BodyPage.jsx`, `src/components/body/*`, `src/hooks/useWorkouts.js`, `src/hooks/useBiometrics.js`, `src/hooks/useNutrition.js`, `src/hooks/useExerciseVideo.js`, `src/utils/workoutLogic.js`, `src/utils/bodyMetrics.js`
 
-Module quản lý toàn diện thể trạng và rèn luyện thể chất, tuân thủ nguyên tắc tối giản và không ngụy tạo số liệu:
+Module quản lý toàn diện thể trạng và rèn luyện thể chất, tuân thủ nguyên tắc tối giản và không ngụy tạo số liệu. Giao diện "Ngân hà" (tối: đêm sao kính mờ; sáng: Bình minh pastel) — xem `DESIGN.md` mục Body (Ngân hà):
 
-- **Điều hướng:** desktop có dải tab 7 màn trên header + viên "Buổi dở" (tên buổi, số set đã xong, Tiếp tục). Mobile (≤840px): header gồm nút về Life Hub, tiêu đề, nút + theo màn (Cơ thể: thêm cân đo; Tổng quan: ghi nhanh), đổi theme và dải chip 7 màn cuộn ngang — không có bottom nav. Khi đang tập, sidebar Life Hub ẩn để màn tập chiếm trọn chiều ngang.
+- **Điều hướng:** desktop có lời chào + dải tab 7 màn trên header và **nút trạng thái hôm nay** 4 kiểu: Buổi dở (tên buổi, số set đã xong, Tiếp tục) / Bắt đầu buổi tập / Đã tập hôm nay (mờ, không bấm) / Mở lộ trình (ngày nghỉ). Mobile (≤840px): header gồm nút về Life Hub, tiêu đề, nút + theo màn (Cơ thể: thêm cân đo; Tổng quan: ghi nhanh), đổi theme và dải chip 7 màn cuộn ngang — không có bottom nav. Khi đang tập, sidebar Life Hub ẩn để màn tập chiếm trọn chiều ngang.
 
 ### Lộ trình & Tập luyện (Core Workout)
 - **Lộ trình theo thứ trong tuần (D1):** Gán bài tập cố định theo thứ trong tuần (T2..CN). Nếu bỏ buổi không tự dời ngày làm lệch tuần; cho phép tập bù buổi đã bỏ bất kỳ lúc nào.
@@ -410,6 +410,8 @@ Module quản lý toàn diện thể trạng và rèn luyện thể chất, tuâ
   - Quay lại sửa set: "Sửa set vừa ghi" ở màn nghỉ, "‹ Set trước", hoặc bấm ô set bất kỳ. Ghi lại set đã có cập nhật bản ghi cũ, không tạo bản ghi trùng; số từng set vẫn sửa được ở màn kết quả.
   - Màn kết quả: bấm hàng "Hôm nay" (hoặc "Sửa") của từng bài mở sheet sửa số đã ghi — đổi rep/giây từng set bằng − / + hoặc gõ số, ghi lại set đã bỏ, bỏ set, thêm set ngoài mục tiêu. Tổng rep, gợi ý buổi sau và kỷ lục (PR) tính lại theo số mới.
   - Mỗi bài mới có màn hướng dẫn và "Lần trước" (buổi gần nhất của bài đó); chip trạng thái từng set; nút "Bỏ bài"; bài tính giây có vòng đếm và gợi ý tư thế.
+  - Thanh đoạn tiến độ dưới header (mỗi bài một ô: vạch từng set + "01 · tên bài"). Màn ghi set: vòng lớn theo số set đã xong của bài, số rep giữa vòng với − / +, chọn nhanh 7 số; cột phải tên bài, chấm set (bấm để nhảy / sửa), Xong set, Bỏ qua bài, bài kế tiếp. Màn nghỉ: vòng đếm ngược, set kế tiếp, −15 / +15 giây, Tập tiếp.
+  - Màn xong buổi: "Sao {thứ} đã sáng" + pháo sao một lần (tắt khi bật Giảm chuyển động), 4 ô số (bài / set / thời gian / tổng rep · giây), rồi bảng kết quả như cũ.
   - Video thị phạm: link tự gắn lưu trên Supabase (`body_exercise_videos`), đồng bộ giữa các máy; gỡ link tự gắn thì quay về video mặc định.
   - Đồng hồ đếm giờ delta timestamp chống lệch giờ khi khóa màn hình điện thoại hoặc chuyển tab.
   - Chuông beep dùng Web Audio API tổng hợp âm tần OscillatorNode báo hiệu khi kết thúc thời gian nghỉ mà không phụ thuộc tài nguyên mạng.
@@ -423,15 +425,17 @@ Module quản lý toàn diện thể trạng và rèn luyện thể chất, tuâ
 - Lọc theo dụng cụ (Tay không / Tạ đơn / Xà / Máy) và vùng cơ, tìm không dấu tên Việt/Anh. Bài tự tạo cũng hiện trong thư viện và ô thêm bài của Lộ trình.
 - Chi tiết 4 tab: Tổng quan (video, mức tác động từng nhóm cơ, nhịp thở, tempo), Kỹ thuật, An toàn (rủi ro, không nên tập khi, bài thay thế), Biến thể (bậc thang dễ → khó, bài đang xem được đánh dấu). "Thêm vào kế hoạch" chọn thứ trong tuần (hiện số bài đã có / ngày nghỉ), số hiệp và mục tiêu; "Tập bài này ngay" mở buổi tập lẻ. Mobile: chi tiết mở toàn màn với thanh nút đáy.
 
-### Bản đồ cơ 3D (Three.js Canvas - D5)
-- Đóng gói Three.js từ npm package, render mô hình khối cầu giải phẫu 14 nhóm cơ xoay 360°, cuộn zoom, tooltip tên tiếng Việt.
-- Cơ chế giải phóng tài nguyên triệt để khi unmount (dispose geometries, materials, textures, force context loss) chống memory leak trên mobile và WebGL crash.
+### Bản đồ cơ 2D (`MuscleAnatomy2D` - D5)
+- Hình cơ thể SVG 2D dùng chung (nguồn hình `react-body-highlighter` v2.0.5, MIT): desktop hai mặt trước / sau trên bệ sáng, điện thoại một mặt + nút Lật mặt. Rê chuột hiện tên cơ tiếng Việt; bấm cơ (cả Tab + Enter) đổi chi tiết. Thay bản 3D three.js cũ (đã gỡ `three` và `MuscleBodyCanvas`).
 - 3 chế độ tô màu: **Nhóm cơ** (chọn & phụ trợ), **Tải 7 ngày** (thang màu nhiệt tính từ khối lượng tập thật trong 7 ngày gần nhất), **Phục hồi** (3 trạng thái: Sẵn sàng, Đang hồi, Cần nghỉ suy từ thời gian nghỉ sau buổi tập gần nhất; chỉ hiện trạng thái + số giờ, không hiện % — D4).
-- Fallback 2D canvas mượt mà khi thiết bị không hỗ trợ WebGL.
+- Desktop: thẻ kính nổi (thông tin cơ + vòng 3 trạng thái, tuần, kỷ lục, cơ phụ, dải bài tập có nút Tập), ẩn / hiện bảng. Điện thoại: bottom sheet 3 tab.
+
+### Tổng quan
+- **Chòm sao tuần:** mỗi ngày trong tuần là một ngôi sao (đã tập sáng, nối với nhau), **Quỹ đạo hôm nay:** vòng kcal / đạm / tinh bột của ngày.
 
 ### Sinh trắc học & Dinh dưỡng (Biometrics & Nutrition)
-- **Sinh trắc học:** Tính toán BMI chuẩn WHO châu Á kèm kim đồng hồ gauge (dải cân theo chiều cao thật; chưa có chiều cao thì không có kim), BMR (Mifflin-St Jeor, cần chiều cao + giới tính + năm sinh trong Hồ sơ), TDEE và Body Score (0-100) trên dữ liệu thực tế; lưới 9 chỉ số ghi rõ Đã đo / Công thức / Chưa đo (không tự điền giá trị đoán); xu hướng lọc 7 ngày / 30 ngày / 3 tháng / năm, cần ≥ 2 lần đo; mục tiêu chỉ có cân nặng (`goal_weight_kg`); đo thước dây US Navy ra % mỡ và tỉ lệ eo/cao; đánh dấu các lần cân đo lệch giờ (outlier). Màn chia 3 tab: Phân tích (gauge BMI, xu hướng, 9 chỉ số, thành phần cơ thể), Lịch sử (nhóm theo ngày, bấm một lần đo để xem chi tiết / đánh dấu lệch giờ / xóa — mobile là bottom sheet), Hồ sơ (BMR/TDEE, tiến độ mục tiêu cân, form hồ sơ). Thêm cân đo: chỉ bắt buộc cân nặng, Ctrl+Enter để lưu, mobile là bottom sheet.
-- **Dinh dưỡng tối giản:** Ghi nhận 4 bữa ăn với calo & macro (đạm, carb, béo) tự động cân đối theo TDEE, chọn nhanh từ danh sách món mẫu đã lưu, theo dõi mục tiêu 8 ly nước (2.000ml) theo múi giờ địa phương GMT+7 (`toDateStr`).
+- **Sinh trắc học:** Tính toán BMI chuẩn WHO châu Á kèm kim đồng hồ gauge (dải cân theo chiều cao thật; chưa có chiều cao thì không có kim), BMR (Mifflin-St Jeor, cần chiều cao + giới tính + năm sinh trong Hồ sơ), TDEE và Body Score (0-100) trên dữ liệu thực tế; lưới 9 chỉ số ghi rõ Đã đo / Công thức / Chưa đo (không tự điền giá trị đoán); xu hướng lọc 7 ngày / 30 ngày / 3 tháng / năm, cần ≥ 2 lần đo; mục tiêu chỉ có cân nặng (`goal_weight_kg`); đo thước dây US Navy ra % mỡ và tỉ lệ eo/cao; đánh dấu các lần cân đo lệch giờ (outlier). Màn chia 3 tab: Phân tích (đồng hồ BMI theo vùng, xu hướng, 9 chỉ số, thành phần cơ thể), Lịch sử (nhóm theo ngày, bấm một lần đo để xem chi tiết / đánh dấu lệch giờ / xóa — mobile là bottom sheet), Hồ sơ (BMR/TDEE, tiến độ mục tiêu cân, form hồ sơ). Thêm cân đo: chỉ bắt buộc cân nặng, Ctrl+Enter để lưu, mobile là bottom sheet.
+- **Dinh dưỡng tối giản:** Ghi nhận 4 bữa ăn với calo & macro (đạm, carb, béo) tự động cân đối theo TDEE, chọn nhanh từ danh sách món mẫu đã lưu, ngày theo múi giờ địa phương (`toDateStr`). Biểu đồ **7 ngày qua** (kcal từng ngày tới hôm nay, đường mục tiêu; ngày chưa ghi tính 0, trung bình chỉ tính ngày có ghi — `sumKcalByDay`). Theo dõi nước uống chưa làm.
 - **Check-in tuần:** Đánh giá thể trạng 4 tiêu chí (1-5 sao, khởi tạo 0 để tránh gửi điểm giả), cân nặng trung bình tuần và số đo vòng eo; tính số tuần theo chuẩn ISO-8601.
 
 ## 10. Media, widget và PWA

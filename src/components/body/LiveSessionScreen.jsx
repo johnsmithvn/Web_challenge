@@ -34,8 +34,32 @@ const MODES = [
 
 const LETTERS = 'ABCDEFGHIJKLMNOP';
 const PREP_OPTIONS = [0, 5, 10, 15];
-const RING_REST = 2 * Math.PI * 116;
-const RING_TIMED = 2 * Math.PI * 104;
+const RING_SET = 2 * Math.PI * 182; // vòng set / bài giây (khung 400)
+const RING_REST = 2 * Math.PI * 130; // vòng nghỉ (khung 340)
+const WEEKDAY_SHORT = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
+const BURST_COLORS = ['amber', 'accent', 'blue', 'pink', 'green'];
+
+// Pháo sao màn xong buổi: RNG hạt cố định (seed 3) → vị trí không nhảy khi re-render
+const BURST = (() => {
+  let s = 3;
+  const rnd = () => { s = s * 16807 % 2147483647; return (s - 1) / 2147483646; };
+  return Array.from({ length: 48 }, (_, i) => {
+    const a = rnd() * Math.PI * 2;
+    const t = rnd().toFixed(3);
+    const dist = `(var(--burst-min) + ${t} * var(--burst-span))`;
+    return {
+      i,
+      cls: `body-burst-dot${i % 3 === 2 ? ' is-lg' : ''}${i % 4 === 3 ? ' is-sq' : ''}`,
+      style: {
+        '--dc': `var(--body-${BURST_COLORS[i % BURST_COLORS.length]})`,
+        '--dx': `calc(${Math.cos(a).toFixed(3)} * ${dist})`,
+        '--dy': `calc(${Math.sin(a).toFixed(3)} * ${dist})`,
+        '--dur': `${(1.2 + rnd() * 0.9).toFixed(2)}s`,
+        '--delay': `${(rnd() * 0.25).toFixed(2)}s`
+      }
+    };
+  });
+})();
 
 const slotOfRecord = (r) => getSlotKey(r.routineItemId, r.exerciseKey, r.setNo);
 const slotOfItem = (q) => getSlotKey(q.routine_item_id, q.exercise_key, q.set_no);
@@ -647,6 +671,8 @@ export default function LiveSessionScreen({
   const doneStats = useMemo(() => {
     const completedCount = loggedSets.filter(s => s.actualVal != null).length;
     const totalReps = loggedSets.reduce((acc, s) => acc + (s.actualVal != null && s.unit !== 's' ? Number(s.actualVal) : 0), 0);
+    const totalSecs = loggedSets.reduce((acc, s) => acc + (s.actualVal != null && s.unit === 's' ? Number(s.actualVal) : 0), 0);
+    const doneExercises = dayItems.filter(it => loggedSets.some(s => s.exerciseKey === it.exercise_key && s.actualVal != null)).length;
 
     // Auto-progression evaluation for each day item (tắt "Tăng tiến tự động" → không đề xuất bài nào)
     const progressionCandidates = dayItems.map(item => {
@@ -678,6 +704,8 @@ export default function LiveSessionScreen({
       completedCount,
       totalSets: queue.length,
       totalReps,
+      totalSecs,
+      doneExercises,
       progressionCandidates,
       prevComparison
     };
@@ -725,7 +753,7 @@ export default function LiveSessionScreen({
         <p>
           Hôm nay là ngày nghỉ hoặc chưa có bài tập nào được gán cho thứ này. Bạn có thể chọn ngày khác hoặc quay lại Lộ trình.
         </p>
-        <button className="body-btn body-btn-primary" onClick={onCancel} style={{ padding: '0 20px', height: '38px' }}>
+        <button className="body-btn body-btn-primary" onClick={onCancel}>
           Quay lại Lộ trình
         </button>
       </div>
@@ -752,6 +780,12 @@ export default function LiveSessionScreen({
   const canFinishAll = !isTimed && !isEditing && openSetsOfCurrent.length > 1;
   const curPrev = prevLine(currentItem.exercise_key);
   const restProgress = restTotal ? restRemaining / restTotal : 0;
+  const curGroup = groups[currentItem.exerciseIndex] || [];
+  const curDoneSets = curGroup.filter(q => recordBySlot.has(slotOfItem(q))).length;
+  const doneSlots = queue.filter(q => doneKeys.has(slotOfItem(q))).length;
+  const nextExItem = dayItems[currentItem.exerciseIndex + 1];
+  const muscleName = MUSCLE_MAP[exDef?.primary]?.name || exDef?.primary;
+  const ringDash = (frac) => `${(RING_SET * Math.max(0, Math.min(1, frac))).toFixed(1)} ${RING_SET.toFixed(1)}`;
 
   // Trạng thái 1 ô set: đang mở / chưa ghi / bỏ / đạt / chưa đạt mục tiêu
   const slotState = (q) => {
@@ -808,11 +842,15 @@ export default function LiveSessionScreen({
     }, Number(item.target_val) || 0);
   };
 
+  // Thanh đoạn tiến độ: mỗi bài một ô (vạch theo từng set + "01 · tên bài")
   const segments = (
-    <div className="body-ls-segs" aria-hidden="true">
+    <div className="body-ls-segs" style={{ '--n': groups.length }} aria-hidden="true">
       {groups.map((g, e) => (
-        <span key={e} style={{ flex: g.length }}>
-          {g.map(q => <i key={q.set_no} className={`is-${slotState(q)}`} />)}
+        <span key={e} className={screenState !== 'done' && currentItem.exerciseIndex === e ? 'is-cur' : ''}>
+          <span className="body-ls-seg-bar">
+            {g.map(q => <i key={q.set_no} className={`is-${slotState(q)}`} />)}
+          </span>
+          <small>{String(e + 1).padStart(2, '0')} · {splitExerciseName(nameOf(dayItems[e].exercise_key)).vn}</small>
         </span>
       ))}
     </div>
@@ -971,10 +1009,35 @@ export default function LiveSessionScreen({
     </>
   );
 
-  // ── GHI SET (đếm rep hoặc bấm giờ) ─────────────────────────────────
+  const guideButton = (
+    <button
+      type="button"
+      className="body-ls-btn is-guide"
+      onClick={() => { pauseTimer(); setScreenState('guide'); }}
+      aria-label="Xem hướng dẫn"
+    >
+      <AppIcon name="book" size={15} /><span className="body-ls-d-text">Xem hướng dẫn</span>
+    </button>
+  );
+
+  const logButton = (cls) => (
+    <button
+      type="button"
+      className={`body-ls-btn is-primary${cls}`}
+      disabled={isTimed && tSec === 0}
+      title={isTimed && tSec === 0 ? 'Bấm "Bắt đầu" đếm giờ trước khi hoàn thành' : undefined}
+      onClick={() => handleLogSet(isTimed ? tSec : currentVal)}
+    >
+      <AppIcon name="checkCircle" size={18} weight="fill" />
+      {isEditing ? `Lưu set ${currentItem.set_no}` : `Xong set ${currentItem.set_no}`}
+    </button>
+  );
+
+  // ── GHI SET: vòng lớn (rep / giây) bên trái · thông tin + nút bên phải (desktop) ──
   const setView = (
     <>
       <div className="body-ls-scroll is-set">
+        {/* Mobile: tên bài + nút hướng dẫn trên đầu (desktop nằm ở cột phải) */}
         <div className="body-ls-set-head">
           <div>
             <span className="body-ls-eyebrow is-accent">
@@ -983,180 +1046,221 @@ export default function LiveSessionScreen({
             <h2 className="body-ls-set-title">{exName.vn}</h2>
             {curPrev && <span className="body-ls-mono-sub">lần trước {curPrev}</span>}
           </div>
-          <button
-            type="button"
-            className="body-ls-btn is-guide"
-            onClick={() => { pauseTimer(); setScreenState('guide'); }}
-            aria-label="Xem hướng dẫn"
-          >
-            <AppIcon name="book" size={15} /><span className="body-ls-d-text">Xem hướng dẫn</span>
-          </button>
+          {guideButton}
         </div>
 
-        <div className="body-ls-set-center">
-          <div className="body-ls-set-chips">
-            {(groups[currentItem.exerciseIndex] || []).map(q => {
-              const st = slotState(q);
-              const r = recordBySlot.get(slotOfItem(q));
-              return (
-                <button
-                  key={q.set_no}
-                  type="button"
-                  className={`body-ls-schip is-${st}`}
-                  onClick={() => jumpToSlot(q)}
-                  disabled={st === 'cur'}
-                  title={r ? `Sửa set ${q.set_no}` : `Sang set ${q.set_no}`}
-                >
-                  S{q.set_no} · {st === 'cur' ? '…' : r ? slotLabel(q) : fmtVal(q.target_val, q.unit)}
-                </button>
-              );
-            })}
-          </div>
+        <div className="body-ls-set-grid">
+          <div className="body-ls-set-left">
+            {/* Mobile: ô set bấm để nhảy / sửa (desktop dùng chấm set ở cột phải + cột trái) */}
+            <div className="body-ls-set-chips">
+              {curGroup.map(q => {
+                const st = slotState(q);
+                const r = recordBySlot.get(slotOfItem(q));
+                return (
+                  <button
+                    key={q.set_no}
+                    type="button"
+                    className={`body-ls-schip is-${st}`}
+                    onClick={() => jumpToSlot(q)}
+                    disabled={st === 'cur'}
+                    title={r ? `Sửa set ${q.set_no}` : `Sang set ${q.set_no}`}
+                  >
+                    S{q.set_no} · {st === 'cur' ? '…' : r ? slotLabel(q) : fmtVal(q.target_val, q.unit)}
+                  </button>
+                );
+              })}
+            </div>
 
-          {!isTimed ? (
-            <>
-              <div className="body-ls-counter">
-                <button type="button" className="body-ls-round" onClick={() => setCurrentVal(prev => Math.max(0, prev - 1))} aria-label="Giảm 1 rep">
-                  <AppIcon name="minus" size={26} />
-                </button>
-                <div className="body-ls-counter-val">
-                  <b className={met ? 'is-met' : ''}>{currentVal}</b>
-                  <span className={met ? 'is-met' : ''}>
-                    <AppIcon name={met ? 'checkCircle' : 'flag'} size={15} weight={met ? 'fill' : 'regular'} />
-                    {met ? 'đạt' : ''} mục tiêu {currentItem.target_val} rep{currentItem.kg ? ` · ${currentItem.kg} kg` : ''}
+            <div className={`body-ls-ring is-set${isTimed ? ' is-timed' : ''}${preparing ? ' is-prep' : ''}`}>
+              <span className="body-ls-ring-deco body-deco-orbit" aria-hidden="true" />
+              <svg viewBox="0 0 400 400" aria-hidden="true">
+                <circle cx="200" cy="200" r="182" className="body-ls-ring-track" />
+                <circle
+                  cx="200"
+                  cy="200"
+                  r="182"
+                  className="body-ls-ring-bar"
+                  strokeDasharray={isTimed
+                    ? ringDash(preparing ? prepLeft / (prepSec || 1) : 1 - timedProgress)
+                    : ringDash(curDoneSets / (curGroup.length || 1))}
+                />
+              </svg>
+              {!isTimed ? (
+                <div className="body-ls-ring-in">
+                  <span className="body-ls-ring-cap">
+                    MỤC TIÊU {currentItem.target_val} REP{currentItem.kg ? ` · ${currentItem.kg} KG` : ''}
                   </span>
+                  <b className={met ? 'is-met' : ''}>{currentVal}</b>
+                  <div className="body-ls-counter">
+                    <button type="button" className="body-ls-round" onClick={() => setCurrentVal(prev => Math.max(0, prev - 1))} aria-label="Giảm 1 rep">
+                      <AppIcon name="minus" size={20} />
+                    </button>
+                    <span className={met ? 'is-met' : ''}>
+                      <AppIcon name={met ? 'checkCircle' : 'flag'} size={14} weight={met ? 'fill' : 'regular'} />
+                      {met ? 'đạt mục tiêu' : 'rep'}
+                    </span>
+                    <button type="button" className="body-ls-round" onClick={() => setCurrentVal(prev => prev + 1)} aria-label="Tăng 1 rep">
+                      <AppIcon name="plus" size={20} />
+                    </button>
+                  </div>
                 </div>
-                <button type="button" className="body-ls-round" onClick={() => setCurrentVal(prev => prev + 1)} aria-label="Tăng 1 rep">
-                  <AppIcon name="plus" size={26} />
-                </button>
-              </div>
+              ) : (
+                /* Bài đếm giây (Plank / Dead Hang) */
+                <div className="body-ls-ring-in">
+                  <span className="body-ls-ring-cap">{preparing ? 'CHUẨN BỊ' : `MỤC TIÊU ${timedTarget} GIÂY`}</span>
+                  <b>{preparing ? prepLeft : formatClock(Math.max(0, timedTarget - tSec))}</b>
+                  <span className="body-ls-ring-sub">{preparing ? 'giây' : `/ ${formatClock(timedTarget)}`}</span>
+                </div>
+              )}
+            </div>
 
-              {/* Chọn nhanh 7 số liên tiếp quanh mục tiêu (−4 … +2) */}
+            {!isTimed ? (
+              /* Chọn nhanh 7 số liên tiếp quanh mục tiêu (−4 … +2) */
               <div className="body-ls-quick">
                 {Array.from({ length: 7 }, (_, i) => Math.max(0, Number(currentItem.target_val) - 4) + i).map(v => (
-                  <button key={v} type="button" className={v === currentVal ? 'is-on' : ''} onClick={() => setCurrentVal(v)}>
+                  <button key={v} type="button" className={v === currentVal ? 'is-on' : ''} onClick={() => setCurrentVal(v)} aria-pressed={v === currentVal}>
                     {v}
                   </button>
                 ))}
               </div>
-            </>
-          ) : (
-            /* Bài đếm giây (Plank / Dead Hang) */
-            <div className="body-ls-timed">
-              <div className={`body-ls-ring is-timed${preparing ? ' is-prep' : ''}`}>
-                <svg viewBox="0 0 230 230">
-                  <circle cx="115" cy="115" r="104" className="body-ls-ring-track" />
-                  <circle
-                    cx="115"
-                    cy="115"
-                    r="104"
-                    className="body-ls-ring-bar"
-                    strokeDasharray={`${(RING_TIMED * (preparing ? prepLeft / (prepSec || 1) : 1 - timedProgress)).toFixed(1)} ${RING_TIMED.toFixed(1)}`}
-                  />
-                </svg>
-                <div>
-                  <b>{preparing ? prepLeft : formatClock(Math.max(0, timedTarget - tSec))}</b>
-                  <span>{preparing ? 'chuẩn bị' : `/ ${formatClock(timedTarget)}`}</span>
-                </div>
-              </div>
-
-              <div className="body-ls-timed-actions">
-                <button type="button" className="body-ls-btn" onClick={() => (tRunning || preparing ? pauseTimer() : startTimer(tSec))}>
-                  <AppIcon name={tRunning || preparing ? 'pause' : 'play'} size={16} />
-                  {tRunning || preparing ? 'Tạm dừng' : tSec > 0 ? 'Tiếp tục' : 'Bắt đầu'}
-                </button>
-                {tSec > 0 && !tRunning && (
-                  <button type="button" className="body-ls-btn" onClick={() => { setTSec(0); plankStartTimeRef.current = null; }}>
-                    Đặt lại
+            ) : (
+              <div className="body-ls-timed">
+                <div className="body-ls-timed-actions">
+                  <button type="button" className="body-ls-btn" onClick={() => (tRunning || preparing ? pauseTimer() : startTimer(tSec))}>
+                    <AppIcon name={tRunning || preparing ? 'pause' : 'play'} size={16} />
+                    {tRunning || preparing ? 'Tạm dừng' : tSec > 0 ? 'Tiếp tục' : 'Bắt đầu'}
                   </button>
+                  {tSec > 0 && !tRunning && (
+                    <button type="button" className="body-ls-btn" onClick={() => { setTSec(0); plankStartTimeRef.current = null; }}>
+                      Đặt lại
+                    </button>
+                  )}
+                </div>
+
+                {formCues.length > 0 && (
+                  <div className="body-ls-cues">
+                    {formCues.map((cue, i) => (
+                      <div key={i} className={i === activeCueIdx ? 'is-on' : ''}>
+                        <AppIcon name={i === activeCueIdx ? 'checkCircle' : 'check'} size={14} />
+                        <span>{cue}</span>
+                      </div>
+                    ))}
+                  </div>
                 )}
               </div>
+            )}
 
-              {formCues.length > 0 && (
-                <div className="body-ls-cues">
-                  {formCues.map((cue, i) => (
-                    <div key={i} className={i === activeCueIdx ? 'is-on' : ''}>
-                      <AppIcon name={i === activeCueIdx ? 'checkCircle' : 'check'} size={14} />
-                      <span>{cue}</span>
-                    </div>
-                  ))}
-                </div>
-              )}
+            {canFinishAll && (
+              <button type="button" className="body-ls-finish-all" onClick={handleFinishExercise}>
+                <AppIcon name="check" size={14} />Xong cả bài (các set sau đủ mục tiêu)
+              </button>
+            )}
+          </div>
+
+          {/* Desktop: thông tin bài + nút */}
+          <div className="body-ls-set-info">
+            <span className="body-ls-set-eyebrow">
+              BÀI {currentExerciseIdx} / {uniqueExerciseKeys.length}{muscleName ? ` · ${String(muscleName).toUpperCase()}` : ''}
+            </span>
+            <h2>{exName.vn}</h2>
+            <p>
+              {exName.en ? `${exName.en} · ` : ''}{currentItem.total_sets} × {formatValWithUnit(currentItem.target_val, currentItem.unit)}
+              {currentItem.kg ? ` · ${currentItem.kg} kg` : ''}
+            </p>
+            {curPrev && <span className="body-ls-mono-sub">lần trước {curPrev}</span>}
+
+            <div className="body-ls-dots">
+              {curGroup.map(q => {
+                const st = slotState(q);
+                const r = recordBySlot.get(slotOfItem(q));
+                const label = r ? `Sửa set ${q.set_no} (${slotLabel(q)})` : `Sang set ${q.set_no}`;
+                return (
+                  <button
+                    key={q.set_no}
+                    type="button"
+                    className={`is-${st}`}
+                    onClick={() => jumpToSlot(q)}
+                    disabled={st === 'cur'}
+                    title={label}
+                    aria-label={label}
+                  />
+                );
+              })}
+              <span>SET {currentItem.set_no} / {currentItem.total_sets}{isEditing ? ' · ĐANG SỬA' : ''}</span>
             </div>
-          )}
 
-          {canFinishAll && (
-            <button type="button" className="body-ls-finish-all" onClick={handleFinishExercise}>
-              <AppIcon name="check" size={14} />Xong cả bài (các set sau đủ mục tiêu)
-            </button>
-          )}
+            <div className="body-ls-set-actions">
+              {logButton(' is-xl')}
+              <button type="button" className="body-ls-btn is-xl-2" onClick={handleSkipExercise} title="Bỏ các set còn lại của bài này">
+                <AppIcon name="skip" size={16} />Bỏ qua bài
+              </button>
+            </div>
+
+            <div className="body-ls-set-more">
+              {backButton}
+              <button type="button" className="body-ls-btn" onClick={() => handleLogSet(null)}>Bỏ set</button>
+              {canFinishAll && (
+                <button
+                  type="button"
+                  className="body-ls-btn is-green"
+                  onClick={handleFinishExercise}
+                  title="Set này theo số đang chọn, các set còn lại đủ mục tiêu"
+                >
+                  <AppIcon name="check" size={15} />Xong cả bài
+                </button>
+              )}
+              {guideButton}
+            </div>
+
+            <p className="body-ls-set-foot">
+              Đã xong {doneSlots} / {queue.length} set · sau bài này:{' '}
+              <b>{nextExItem ? splitExerciseName(nameOf(nextExItem.exercise_key)).vn : 'Hết bài, về đích'}</b>
+            </p>
+          </div>
         </div>
       </div>
-      <div className="body-ls-foot">
+      <div className="body-ls-foot is-set">
         <div className="body-ls-foot-group">
           {backButton}
           <button type="button" className="body-ls-btn" onClick={() => handleLogSet(null)}>Bỏ set</button>
-          <button type="button" className="body-ls-btn body-ls-d-only" onClick={handleSkipExercise} title="Bỏ các set còn lại của bài này">
-            Bỏ bài
-          </button>
         </div>
         <div className="body-ls-foot-group is-grow">
-          {canFinishAll && (
-            <button
-              type="button"
-              className="body-ls-btn is-green body-ls-d-only"
-              onClick={handleFinishExercise}
-              title="Set này theo số đang chọn, các set còn lại đủ mục tiêu"
-            >
-              <AppIcon name="check" size={16} />Xong cả bài
-            </button>
-          )}
-          <button
-            type="button"
-            className="body-ls-btn is-primary"
-            disabled={isTimed && tSec === 0}
-            title={isTimed && tSec === 0 ? 'Bấm "Bắt đầu" đếm giờ trước khi hoàn thành' : undefined}
-            onClick={() => handleLogSet(isTimed ? tSec : currentVal)}
-          >
-            <AppIcon name="checkCircle" size={18} weight="fill" />
-            {isEditing ? `Lưu set ${currentItem.set_no}` : `Xong set ${currentItem.set_no}`}
-          </button>
+          {logButton('')}
         </div>
       </div>
     </>
   );
 
-  // ── NGHỈ ─────────────────────────────────────────────────────────────
+  // ── NGHỈ: vòng đếm ngược giữa màn · set kế tiếp · chỉnh thời gian nghỉ ──
   const restView = (
     <>
       <div className="body-ls-scroll is-rest-view">
         <span className="body-ls-rest-kind">{REST_KIND_LABELS[restKind] || 'Nghỉ giữa set'}</span>
         <div className={`body-ls-ring is-rest${restRemaining <= 10 ? ' is-ending' : ''}`}>
-          <svg viewBox="0 0 260 260">
-            <circle cx="130" cy="130" r="116" className="body-ls-ring-track" />
+          <svg viewBox="0 0 340 340" aria-hidden="true">
+            <circle cx="170" cy="170" r="130" className="body-ls-ring-track" />
             <circle
-              cx="130"
-              cy="130"
-              r="116"
+              cx="170"
+              cy="170"
+              r="130"
               className="body-ls-ring-bar"
               strokeDasharray={`${(RING_REST * restProgress).toFixed(1)} ${RING_REST.toFixed(1)}`}
             />
           </svg>
-          <div>
+          <div className="body-ls-ring-in">
+            <span className="body-ls-ring-cap">NGHỈ</span>
             <b>{formatClock(restRemaining)}</b>
-            <span>/ {formatClock(restTotal)}</span>
+            <span className="body-ls-ring-sub">/ {formatClock(restTotal)}</span>
           </div>
         </div>
-        <div className="body-ls-rest-actions">
-          <button type="button" className="body-ls-btn is-glass" onClick={() => handleAdjustRest(-15)} disabled={paused}>−15s</button>
-          <button type="button" className="body-ls-btn is-glass" onClick={() => handleAdjustRest(15)} disabled={paused}>+15s</button>
-          <button type="button" className="body-ls-btn is-primary is-sm body-ls-d-only" onClick={handleEndRest}>
-            Bỏ qua nghỉ<AppIcon name="arrowRight" size={14} />
-          </button>
-        </div>
+
         <div className="body-ls-next">
-          <span>TIẾP THEO</span>
-          <b>{nextItem ? `Set ${nextItem.set_no} / ${nextItem.total_sets} · ${splitExerciseName(nameOf(nextItem.exercise_key)).vn}` : 'Hoàn thành buổi'}</b>
+          <span>{nextItem ? `Tiếp theo · Set ${nextItem.set_no} / ${nextItem.total_sets}` : 'Tiếp theo'}</span>
+          <b>
+            {nextItem
+              ? `${splitExerciseName(nameOf(nextItem.exercise_key)).vn} · ${nextItem.total_sets} × ${formatValWithUnit(nextItem.target_val, nextItem.unit)}`
+              : 'Hoàn thành buổi'}
+          </b>
           {nextItem && (
             <small>
               Mục tiêu {formatValWithUnit(nextItem.target_val, nextItem.unit)}
@@ -1167,13 +1271,21 @@ export default function LiveSessionScreen({
             </small>
           )}
         </div>
+
+        <div className="body-ls-rest-actions">
+          <button type="button" className="body-ls-btn" onClick={() => handleAdjustRest(-15)} disabled={paused}>−15 giây</button>
+          <button type="button" className="body-ls-btn" onClick={() => handleAdjustRest(15)} disabled={paused}>+15 giây</button>
+          <button type="button" className="body-ls-btn is-primary body-ls-d-only" onClick={handleEndRest}>
+            <AppIcon name="fastForward" size={16} />Tập tiếp
+          </button>
+        </div>
         <button type="button" className="body-ls-undo" onClick={editJustLogged}>
           <AppIcon name="back" size={14} />Sửa set vừa ghi
         </button>
       </div>
       <div className="body-ls-foot is-rest">
         <button type="button" className="body-ls-btn is-primary is-block" onClick={handleEndRest}>
-          Bỏ qua nghỉ<AppIcon name="arrowRight" size={16} />
+          <AppIcon name="fastForward" size={16} />Tập tiếp
         </button>
       </div>
     </>
@@ -1184,19 +1296,32 @@ export default function LiveSessionScreen({
     <>
       <div className="body-ls-scroll">
         <div className="body-ls-done">
+          {/* Pháo sao một lần khi vào màn (giảm chuyển động thì ẩn) */}
+          <div className="body-ls-burst" aria-hidden="true">
+            {BURST.map(p => <i key={p.i} className={p.cls} style={p.style} />)}
+          </div>
+
           <div className="body-ls-done-head">
-            <span><AppIcon name="checkCircle" size={28} weight="fill" /></span>
-            <div>
-              <h2>Xong buổi {day.tag || sessionTitle}</h2>
-              <p>Kiểm tra số đã ghi và duyệt mục tiêu cho buổi sau</p>
-            </div>
+            <span className="body-ls-done-star body-deco-floaty" aria-hidden="true">
+              <AppIcon name="starFour" size={96} weight="fill" />
+            </span>
+            <h2>Sao {WEEKDAY_SHORT[today.getDay()]} đã sáng</h2>
+            <p>
+              Xong buổi {day.tag ? `${day.tag} · ${sessionTitle}` : sessionTitle}. Chòm sao tuần này có thêm một ngôi sao.
+            </p>
           </div>
 
           <div className="body-ls-stats">
-            <div><span>Thời gian</span><b>{formatClock(elapsed)}</b></div>
-            <div><span>Set hoàn thành</span><b>{doneStats.completedCount}/{doneStats.totalSets}</b></div>
-            <div><span>Tổng rep</span><b>{doneStats.totalReps}</b></div>
+            <div className="body-card"><span>Bài</span><b>{doneStats.doneExercises}/{dayItems.length}</b></div>
+            <div className="body-card"><span>Set</span><b>{doneStats.completedCount}/{doneStats.totalSets}</b></div>
+            <div className="body-card"><span>Thời gian</span><b>{formatClock(elapsed)}</b></div>
+            <div className="body-card">
+              <span>Tổng rep · giây</span>
+              <b>{doneStats.totalReps}{doneStats.totalSecs > 0 ? ` · ${doneStats.totalSecs}s` : ''}</b>
+            </div>
           </div>
+
+          <p className="body-ls-done-hint">Kiểm tra số đã ghi và duyệt mục tiêu cho buổi sau</p>
 
           <div className="body-ls-table">
             <div className="body-ls-trow is-head">
@@ -1272,7 +1397,7 @@ export default function LiveSessionScreen({
           )}
           <button
             type="button"
-            className="body-ls-btn is-dark is-save"
+            className="body-ls-btn is-primary is-save"
             onClick={() => {
               const progressionsToApply = doneStats.progressionCandidates
                 .filter(c => c.shouldProgress && isUuid(c.routineItemId) && approvedProgressions[c.routineItemId || c.exercise_key])
@@ -1290,7 +1415,7 @@ export default function LiveSessionScreen({
               });
             }}
           >
-            Lưu buổi tập
+            <AppIcon name="planet" size={17} />Lưu buổi tập
           </button>
         </div>
       </div>
@@ -1306,28 +1431,35 @@ export default function LiveSessionScreen({
             <AppIcon name="caretLeft" size={16} />
           </button>
           <div className="body-ls-head-title">
-            <span className="body-ls-eyebrow" style={{ color: eyebrowColor }}>{sessionEyebrow}</span>
+            <span className="body-ls-eyebrow" style={{ '--dc': eyebrowColor }}>CHẾ ĐỘ TẬP · {sessionEyebrow}</span>
             <span className="body-ls-title">{sessionTitle}</span>
           </div>
         </div>
         <div className="body-ls-head-center">
           <span className="body-ls-pos">{positionLabel}</span>
-          {segments}
         </div>
         <div className="body-ls-head-right">
           {paused && <span className="body-ls-paused-badge">Đã tạm dừng</span>}
-          <span className="body-ls-clock"><AppIcon name="timer" size={19} /><b>{formatClock(elapsed)}</b></span>
+          <span className="body-ls-clock"><AppIcon name="timer" size={17} /><b>{formatClock(elapsed)}</b></span>
           {screenState !== 'done' && (
             <>
-              <button type="button" className={`body-ls-btn${paused ? ' is-dark' : ''}`} onClick={togglePause}>
-                <AppIcon name={paused ? 'play' : 'pause'} size={14} weight={paused ? 'fill' : 'regular'} />
-                {paused ? 'Tiếp tục' : 'Tạm dừng'}
+              <button
+                type="button"
+                className={`body-ls-icon-btn${paused ? ' is-dark' : ''}`}
+                onClick={togglePause}
+                title={paused ? 'Tiếp tục' : 'Tạm dừng'}
+                aria-label={paused ? 'Tiếp tục buổi tập' : 'Tạm dừng buổi tập'}
+              >
+                <AppIcon name={paused ? 'play' : 'pause'} size={16} weight={paused ? 'fill' : 'regular'} />
               </button>
-              <button type="button" className="body-ls-btn is-danger" onClick={handleEnd}>Kết thúc</button>
+              <button type="button" className="body-ls-icon-btn is-danger" onClick={handleEnd} title="Kết thúc buổi" aria-label="Kết thúc buổi">
+                <AppIcon name="x" size={16} />
+              </button>
             </>
           )}
         </div>
       </header>
+      <div className="body-ls-progress">{segments}</div>
 
       {/* ── HEADER MOBILE ──────────────────────────────────────────── */}
       <header className="body-ls-mhead">

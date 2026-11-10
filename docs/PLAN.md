@@ -22,6 +22,8 @@ PLAN chỉ giữ thứ tự roadmap hiện tại. Checklist có thể chạy n�
 **Làm trước** (nhỏ, độc lập, không chờ ai):
 
 1. **Đối chiếu 4 màn Finance với handoff** — Bắt đầu từ Tổng quan.
+2. ~~**Body · Ngân hà**~~ ✅ xong (v6.37.0, 2026-11-10) — đổi giao diện toàn module Body, giữ đủ tính năng. Plan:
+   [`PLAN_BODY_NGAN_HA.md`](PLAN_BODY_NGAN_HA.md); mockup gốc ở `design/body-ngan-ha/`.
 
 **Làm sau** (mỗi mục một sprint riêng, không trộn):
 

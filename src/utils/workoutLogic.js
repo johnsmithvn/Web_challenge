@@ -12,14 +12,14 @@ export const RECOVERY_STATUS = {
 };
 
 export const DAY_TYPE_COLORS = {
-  'Chân': '#2E9D8F',
-  'Đẩy': '#6949E8',
-  'Kéo': '#E0822C',
-  'Toàn thân': '#4C8DE0'
+  'Chân': 'var(--body-blue)',
+  'Đẩy': 'var(--body-accent)',
+  'Kéo': 'var(--body-amber)',
+  'Toàn thân': 'var(--body-pink)'
 };
 
 // Màu nhãn "Ngày A/B" của lộ trình A/B
-export const DAY_TAG_COLORS = { A: 'var(--body-accent)', B: '#2E9D8F' };
+export const DAY_TAG_COLORS = { A: 'var(--body-accent)', B: 'var(--body-blue)' };
 
 /**
  * "Chống đẩy (Push-up)" → { vn: 'Chống đẩy', en: 'Push-up' }
@@ -35,6 +35,14 @@ export function splitExerciseName(name = '') {
 export function splitDayName(name = '') {
   const m = String(name).match(/^Ngày\s+([A-Z])\s*[-–:]\s*(.+)$/);
   return m ? { tag: `Ngày ${m[1]}`, letter: m[1], title: m[2] } : { tag: '', letter: '', title: String(name) };
+}
+
+/** Màu buổi theo tên: "Ngày A - …" theo chữ cái, còn lại theo Chân/Đẩy/Kéo/Toàn thân có trong tên, mặc định accent. */
+export function dayColorOf(name = '') {
+  const { letter } = splitDayName(name);
+  if (letter) return DAY_TAG_COLORS[letter] || 'var(--body-accent)';
+  const key = Object.keys(DAY_TYPE_COLORS).find(k => String(name).includes(k));
+  return key ? DAY_TYPE_COLORS[key] : 'var(--body-accent)';
 }
 
 /**
@@ -718,8 +726,8 @@ export function calculateRecoveryMetrics({
     return {
       state: RECOVERY_STATUS.READY,
       label: 'Sẵn sàng',
-      bg: '#E6F2EA',
-      fg: '#2F7A50',
+      bg: 'var(--body-green-soft)',
+      fg: 'var(--body-green-text)',
       text: 'Chưa có buổi tập nào tác động nhóm cơ này trong dữ liệu gần đây.',
       hoursSince: null
     };
@@ -734,8 +742,8 @@ export function calculateRecoveryMetrics({
     return {
       state: RECOVERY_STATUS.LOW,
       label: 'Cần nghỉ',
-      bg: '#FBE5E0',
-      fg: '#B23A22',
+      bg: 'var(--body-red-soft)',
+      fg: 'var(--body-red-text)',
       text: `Vừa tập ${hours} giờ trước (${sets} set trong 7 ngày). Nên nghỉ nhóm cơ này.`,
       hoursSince: hours
     };
@@ -744,8 +752,8 @@ export function calculateRecoveryMetrics({
     return {
       state: RECOVERY_STATUS.MID,
       label: 'Đang hồi',
-      bg: '#FBF0DC',
-      fg: '#9A6514',
+      bg: 'var(--body-amber-soft)',
+      fg: 'var(--body-amber-text)',
       text: `Đã qua ${hours} giờ kể từ buổi tập. Có thể tập nhẹ hoặc đổi nhóm cơ khác.`,
       hoursSince: hours
     };
@@ -753,9 +761,101 @@ export function calculateRecoveryMetrics({
   return {
     state: RECOVERY_STATUS.READY,
     label: 'Sẵn sàng',
-    bg: '#E6F2EA',
-    fg: '#2F7A50',
+    bg: 'var(--body-green-soft)',
+    fg: 'var(--body-green-text)',
     text: `Đã qua ${hours} giờ kể từ buổi tập. Sẵn sàng cho buổi tiếp theo.`,
     hoursSince: hours
+  };
+}
+
+/**
+ * Màu từng nhóm cơ cho hình 2D (MuscleAnatomy2D). Trả { fills: {id: cssColor}, glow: {id: true} }.
+ * - group: cơ chính = accent + glow, cơ phụ = xanh ngọc.
+ * - heat (mức tập 7 ngày 0…1): 0 không tô, ≤.35 xanh ngọc, ≤.7 amber, >.7 đỏ + glow.
+ * - rec (ready|mid|low): xanh lá / amber / đỏ + glow; nhóm thiếu trong map coi là ready.
+ */
+export function muscleFigureFills({
+  mode = 'group',
+  selected = null,
+  secondary = [],
+  heatMap = {},
+  recoveryMap = {},
+  ids = Object.keys(recoveryMap)
+} = {}) {
+  const fills = {};
+  const glow = {};
+  if (mode === 'heat') {
+    Object.entries(heatMap).forEach(([id, v]) => {
+      const r = Number(v) || 0;
+      if (r <= 0) return;
+      fills[id] = r <= 0.35 ? 'var(--body-blue)' : r <= 0.7 ? 'var(--body-amber)' : 'var(--body-red)';
+      if (r > 0.7) glow[id] = true;
+    });
+  } else if (mode === 'rec') {
+    const REC = { ready: 'var(--body-green)', mid: 'var(--body-amber)', low: 'var(--body-red)' };
+    ids.forEach(id => {
+      const state = REC[recoveryMap[id]] ? recoveryMap[id] : RECOVERY_STATUS.READY;
+      fills[id] = REC[state];
+      if (state === RECOVERY_STATUS.LOW) glow[id] = true;
+    });
+  } else {
+    (secondary || []).forEach(id => {
+      if (id !== selected) fills[id] = 'var(--body-blue)';
+    });
+    if (selected) {
+      fills[selected] = 'var(--body-accent)';
+      glow[selected] = true;
+    }
+  }
+  return { fills, glow };
+}
+
+/**
+ * Trạng thái nút "hôm nay" trên header Body. Ưu tiên: buổi dở (mọi ngày) → đã xong hôm nay → có lịch → nghỉ.
+ * weekday: 1 = T2 … 7 = CN.
+ */
+export function getTodayTrainingState({ sessions = [], routineItems = [], today = new Date() } = {}) {
+  const jsDay = today.getDay();
+  const weekday = jsDay === 0 ? 7 : jsDay;
+  const live = (sessions || []).find(s => s.status === 'in_progress');
+  if (live) return { state: 'resume', session: live, weekday };
+  const todayStr = toDateStr(today);
+  const done = (sessions || []).find(s => s.status === 'completed' && s.local_date === todayStr);
+  if (done) return { state: 'done', session: done, weekday };
+  const items = (routineItems || []).filter(it => it.weekday === weekday);
+  if (items.length) return { state: 'start', weekday, dayName: items[0].day_name || 'Buổi tập hôm nay' };
+  return { state: 'rest', weekday };
+}
+
+const CONSTELLATION_XS = [44, 168, 292, 416, 540, 664, 788];
+const CONSTELLATION_YS = [112, 58, 96, 40, 84, 122, 66];
+const STAR_STYLE = {
+  done: { r: 9, halo: 20, hop: 0.2, pulse: false },
+  today: { r: 10, halo: 22, hop: 0.28, pulse: true },
+  rest: { r: 4.5, halo: 0, hop: 0, pulse: false },
+  planned: { r: 7, halo: 0, hop: 0, pulse: false }
+};
+
+/**
+ * Toạ độ "Chòm sao tuần này" trên khung 834×190. days: 7 phần tử { status: done|today|planned|rest, … }.
+ * Trả { stars, links, doneCount, plannedCount }; đoạn nối sáng khi cả hai đầu đã tập.
+ */
+export function buildWeekConstellation(days) {
+  if (!Array.isArray(days) || days.length !== 7) throw new Error('days must have 7 items');
+  const stars = days.map((d, i) => {
+    const kind = STAR_STYLE[d.status] ? d.status : 'planned';
+    const y = CONSTELLATION_YS[i];
+    return { ...d, ...STAR_STYLE[kind], kind, x: CONSTELLATION_XS[i], y, ly: y + 24 };
+  });
+  const links = stars.slice(1).map((b, i) => {
+    const a = stars[i];
+    const lit = a.kind === 'done' && b.kind === 'done';
+    return { x1: a.x, y1: a.y, x2: b.x, y2: b.y, lit, w: lit ? 1.8 : 1.2, dash: lit ? null : '3 6', op: lit ? 0.85 : 0.5 };
+  });
+  return {
+    stars,
+    links,
+    doneCount: stars.filter(s => s.kind === 'done').length,
+    plannedCount: stars.filter(s => s.kind !== 'rest').length
   };
 }

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { toDateStr } from '../utils/dateUtils';
@@ -18,6 +18,7 @@ export function useNutrition() {
   const [mealLogs, setMealLogs] = useState([]);
   const [savedMeals, setSavedMeals] = useState([]);
   const [weeklyCheckins, setWeeklyCheckins] = useState([]);
+  const [weekRows, setWeekRows] = useState([]); // log 7 ngày gần nhất (chỉ đọc) cho biểu đồ "7 ngày qua"
   const [loading, setLoading] = useState(false);
   // Lần tải đầu đã xong chưa — `loading` còn false ở frame đầu nên không phân biệt được "đang tải" với "không có gì".
   const [hasLoaded, setHasLoaded] = useState(false);
@@ -28,6 +29,7 @@ export function useNutrition() {
       setMealLogs([]);
       setSavedMeals([]);
       setWeeklyCheckins([]);
+      setWeekRows([]);
       setHasLoaded(true);
       return;
     }
@@ -36,7 +38,9 @@ export function useNutrition() {
     async function fetchNutritionData() {
       try {
         setLoading(true);
-        const [mealsRes, savedRes, checkinsRes] = await Promise.all([
+        const weekEnd = new Date();
+        const weekStart = new Date(weekEnd.getFullYear(), weekEnd.getMonth(), weekEnd.getDate() - 6);
+        const [mealsRes, savedRes, checkinsRes, weekRes] = await Promise.all([
           supabase
             .from('body_meal_logs')
             .select('*')
@@ -53,7 +57,13 @@ export function useNutrition() {
             .select('*')
             .eq('user_id', user.id)
             .order('year', { ascending: false })
-            .order('week_number', { ascending: false })
+            .order('week_number', { ascending: false }),
+          supabase
+            .from('body_meal_logs')
+            .select('local_date, calories')
+            .eq('user_id', user.id)
+            .gte('local_date', toDateStr(weekStart))
+            .lte('local_date', toDateStr(weekEnd))
         ]);
 
         if (isMounted) {
@@ -62,6 +72,7 @@ export function useNutrition() {
             setSavedMeals(savedRes.data && savedRes.data.length > 0 ? savedRes.data : DEFAULT_SAVED_TEMPLATES);
           }
           if (!checkinsRes.error) setWeeklyCheckins(checkinsRes.data || []);
+          if (!weekRes.error) setWeekRows(weekRes.data || []);
         }
       } catch (err) {
         console.warn('Failed to load nutrition data:', err);
@@ -233,12 +244,19 @@ export function useNutrition() {
     }
   }, [user]);
 
+  // Ngày đang xem lấy từ mealLogs (đã cập nhật lạc quan khi thêm/xoá), các ngày khác lấy từ lần tải gần nhất
+  const weekLogs = useMemo(
+    () => weekRows.filter(r => r.local_date !== selectedDate).concat(mealLogs),
+    [weekRows, mealLogs, selectedDate]
+  );
+
   return {
     selectedDate,
     setSelectedDate,
     mealLogs,
     savedMeals,
     weeklyCheckins,
+    weekLogs,
     loading,
     hasLoaded,
     addMealLog,

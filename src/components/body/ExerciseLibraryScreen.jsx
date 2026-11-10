@@ -39,9 +39,18 @@ const WEEKDAYS = [
   { d: 6, label: 'T7', full: 'Thứ Bảy' },
   { d: 7, label: 'CN', full: 'Chủ Nhật' }
 ];
-const MUSCLE_BAR_COLORS = ['#6949E8', '#A894F2', '#C9BDF7', '#DAD3F9'];
+const SECONDARY_COLORS = ['var(--body-blue)', 'var(--body-pink)', 'var(--body-text-muted)'];
 
 const muscleName = key => MUSCLE_MAP[key]?.name || key;
+
+function Stars({ level, size }) {
+  const n = LEVEL_NUM[level] || 1;
+  return (
+    <span className="body-lib-stars" title={`Cấp độ ${level || 'Cơ bản'}`} aria-label={`Cấp độ ${level || 'Cơ bản'}`}>
+      {[1, 2, 3].map(i => <AppIcon key={i} name="starFour" size={size} weight="fill" className={i <= n ? 'is-on' : undefined} />)}
+    </span>
+  );
+}
 const unitText = metric => (metric === 's' ? 'giây' : 'rep');
 const suggestText = ex => `${ex.defaultSets || 3} × ${ex.defaultTarget || 10} ${unitText(ex.metric)}${ex.defaultKg ? ` · ${ex.defaultKg} kg` : ''}`;
 const warnOf = ex => {
@@ -86,17 +95,21 @@ export default function ExerciseLibraryScreen({
   const [addSets, setAddSets] = useState(3);
   const [addTarget, setAddTarget] = useState(12);
 
-  const filtered = useMemo(() => {
+  // Lọc theo ô tìm + dụng cụ; vùng cơ lọc sau để đếm số bài cho từng chip vùng
+  const searched = useMemo(() => {
     const q = normVi(search.trim());
-    const reg = REGIONS.find(r => r.key === region);
     return allExercises.filter(ex => {
-      if (reg?.muscles && !reg.muscles.includes(ex.primary)) return false;
       if (eqFilter !== 'all' && ex.equipment !== eqFilter) return false;
       if (!q) return true;
       const hay = normVi([ex.name, muscleName(ex.primary), regionOf(ex.primary)?.label, ...(ex.secondary || []).map(muscleName)].join(' '));
       return hay.includes(q);
     });
-  }, [allExercises, search, region, eqFilter]);
+  }, [allExercises, search, eqFilter]);
+  const regionCount = r => (r.muscles ? searched.filter(ex => r.muscles.includes(ex.primary)).length : searched.length);
+  const filtered = useMemo(() => {
+    const reg = REGIONS.find(r => r.key === region);
+    return reg?.muscles ? searched.filter(ex => reg.muscles.includes(ex.primary)) : searched;
+  }, [searched, region]);
 
   const ex = findEx(selectedKey) || filtered[0] || allExercises[0];
   const names = splitExerciseName(ex?.name || '');
@@ -123,9 +136,10 @@ export default function ExerciseLibraryScreen({
     ...(chain ? [{ key: 'var', label: 'Biến thể', icon: 'stairs' }] : [])
   ];
 
+  // Độ nhấn minh hoạ (không phải số đo): cơ chính đầy, cơ phụ một nửa
   const muscles = ex ? [
-    { name: muscleName(ex.primary), role: 'Chính', w: 100 },
-    ...(ex.secondary || []).map((m, i) => ({ name: muscleName(m), role: 'Phụ', w: Math.max(30, 60 - i * 10) }))
+    { name: muscleName(ex.primary), role: 'Chính', w: 100, color: 'var(--body-accent)' },
+    ...(ex.secondary || []).map((m, i) => ({ name: muscleName(m), role: 'Phụ', w: 50, color: SECONDARY_COLORS[Math.min(i, 2)] }))
   ] : [];
   const tempo = splitTempo(ex?.tempo || '');
   const facts = [];
@@ -217,45 +231,42 @@ export default function ExerciseLibraryScreen({
           </label>
           <div className="body-lib-seg" role="group" aria-label="Dụng cụ">
             {EQUIPMENTS.map(e => (
-              <button key={e.key} type="button" className={eqFilter === e.key ? 'is-on' : ''} onClick={() => setEqFilter(e.key)} aria-pressed={eqFilter === e.key} title={e.label}>
+              <button key={e.key} type="button" onClick={() => setEqFilter(e.key)} aria-pressed={eqFilter === e.key} title={e.label}>
                 {e.short}
               </button>
             ))}
           </div>
           <div className="body-lib-regions" role="group" aria-label="Vùng cơ">
             {REGIONS.map(r => (
-              <button key={r.key} type="button" className={region === r.key ? 'is-on' : ''} onClick={() => setRegion(r.key)} aria-pressed={region === r.key}>
-                {r.label}
+              <button key={r.key} type="button" className="body-chip" onClick={() => setRegion(r.key)} aria-pressed={region === r.key}>
+                {r.label}<span className="body-chip-count">{regionCount(r)}</span>
               </button>
             ))}
           </div>
         </div>
         <span className="body-lib-count is-desktop">{filtered.length} BÀI TẬP PHÙ HỢP</span>
         <div className="body-lib-items">
-          {filtered.map(item => {
+          {filtered.map((item, idx) => {
             const nm = splitExerciseName(item.name);
-            const lv = LEVEL_NUM[item.level] || 1;
             const warn = warnOf(item);
             const on = item.key === ex.key;
             return (
               <button key={item.key} type="button" className={`body-lib-item${on ? ' is-on' : ''}`} onClick={() => pickEx(item.key)} aria-pressed={on}>
-                <span className="body-lib-item-main">
-                  <b>{nm.vn}</b>
-                  {nm.en && <small>{nm.en}</small>}
-                  <span className="body-lib-item-tags">
-                    <em>{regionOf(item.primary)?.label || muscleName(item.primary)} · {EQ_SHORT[item.equipment] || 'Bodyweight'}</em>
-                    {warn && <em className="is-warn"><AppIcon name="warning" size={11} weight="fill" /><span>{warn}</span></em>}
+                <span className="body-lib-item-top">
+                  <span className="body-lib-item-no">{String(idx + 1).padStart(2, '0')}</span>
+                  <span className="body-lib-item-main">
+                    <b>{nm.vn}</b>
+                    {nm.en && <small>{nm.en}</small>}
                   </span>
+                  <Stars level={item.level} size={11} />
+                  <AppIcon name="caretRight" size={15} className="body-lib-caret" />
                 </span>
-                <span className="body-lib-level" aria-label={`Cấp độ ${item.level || 'Cơ bản'}`}>
-                  <span className="body-lib-bars">
-                    <i className="is-on" />
-                    <i className={lv >= 2 ? 'is-on' : ''} />
-                    <i className={lv >= 3 ? 'is-on' : ''} />
-                  </span>
-                  <small>{item.level || 'Cơ bản'}</small>
+                <span className="body-lib-item-tags">
+                  <em>{regionOf(item.primary)?.label || muscleName(item.primary)}</em>
+                  <em>{EQ_SHORT[item.equipment] || 'Bodyweight'}</em>
+                  {warn && <em className="is-warn"><AppIcon name="warning" size={11} weight="fill" /><span>{warn}</span></em>}
+                  <span className="body-lib-item-sets">{item.defaultSets || 3} × {item.defaultTarget || 10} {unitText(item.metric)}</span>
                 </span>
-                <AppIcon name="caretRight" size={15} className="body-lib-caret" />
               </button>
             );
           })}
@@ -288,38 +299,32 @@ export default function ExerciseLibraryScreen({
           )}
 
           <div className="body-lib-dhead">
-            <div className="body-lib-dtitles">
-              <div className="body-lib-dchips">
-                <em className="is-level">{ex.level || 'Cơ bản'}</em>
-                <em>{EQ_NAME[ex.equipment] || 'Không dụng cụ'}</em>
-              </div>
-              <h2>{names.vn}</h2>
-              <p>
-                {names.en ? `${names.en} · ` : ''}Nhóm cơ chính <b>{muscleName(ex.primary)}</b>
-                <span className="body-lib-d-text">{secondaryText ? ` · Phụ: ${secondaryText}` : ''}</span>
-              </p>
-              <div className="body-lib-mfacts">
-                <div><span>Nhóm cơ chính</span><b>{muscleName(ex.primary)}</b></div>
-                <div><span>Gợi ý</span><b className="is-accent">{suggestText(ex)}</b></div>
-              </div>
+            <div className="body-lib-dmeta">
+              <Stars level={ex.level} size={14} />
+              <span>{ex.level || 'Cơ bản'} · {EQ_NAME[ex.equipment] || 'Không dụng cụ'} · {regionOf(ex.primary)?.label || muscleName(ex.primary)}</span>
+              <button type="button" className="body-icon-btn body-lib-dmap" onClick={() => setDetailEx(ex)} aria-label="Mở bản đồ cơ" title="Bản đồ cơ & hướng dẫn đầy đủ">
+                <AppIcon name="personSimple" size={16} />
+              </button>
             </div>
-            <div className="body-lib-dactions">
-              <span className="body-lib-suggest">
-                <small>GỢI Ý</small>
-                <b>{suggestText(ex)}</b>
-              </span>
-              <button type="button" className="body-lib-btn" onClick={openAdd}>
-                <AppIcon name="plus" size={14} />Thêm vào kế hoạch
-              </button>
-              <button type="button" className="body-lib-btn is-dark" onClick={() => onStartExercise?.(ex)}>
-                <AppIcon name="play" size={13} weight="fill" />Tập bài này ngay
-              </button>
+            <h2>{names.vn}</h2>
+            <p>
+              {names.en ? `${names.en} · ` : ''}gợi ý <b>{suggestText(ex)}</b>
+            </p>
+            <p className="body-lib-d-text">
+              Nhóm cơ chính <b>{muscleName(ex.primary)}</b>{secondaryText ? ` · Phụ: ${secondaryText}` : ''}
+            </p>
+            {contra.length > 0 && (
+              <span className="body-lib-injury"><AppIcon name="firstAid" size={15} />Chú ý {contra.join(', ').toLowerCase()}</span>
+            )}
+            <div className="body-lib-mfacts">
+              <div><span>Nhóm cơ chính</span><b>{muscleName(ex.primary)}</b></div>
+              <div><span>Gợi ý</span><b className="is-accent">{suggestText(ex)}</b></div>
             </div>
           </div>
 
           <div className="body-lib-tabs" role="tablist" aria-label="Nội dung bài tập">
             {tabs.map(t => (
-              <button key={t.key} type="button" role="tab" aria-selected={curTab === t.key} className={curTab === t.key ? 'is-on' : ''} onClick={() => setTab(t.key)}>
+              <button key={t.key} type="button" role="tab" aria-selected={curTab === t.key} className="body-chip" onClick={() => setTab(t.key)}>
                 <AppIcon name={t.icon} size={15} />
                 {t.label}
                 {t.badge ? <i>{t.badge}</i> : null}
@@ -338,11 +343,12 @@ export default function ExerciseLibraryScreen({
                 </div>
                 <div className="body-lib-ov-side">
                   <div className="body-lib-muscles">
-                    <b>Vùng cơ tác động</b>
-                    {muscles.map((m, i) => (
-                      <div key={m.name}>
-                        <span><span>{m.name}</span><small>{m.role}</small></span>
-                        <span className="body-lib-mbar"><i style={{ width: `${m.w}%`, background: MUSCLE_BAR_COLORS[Math.min(i, 3)] }} /></span>
+                    <b>Cơ tham gia</b>
+                    {muscles.map(m => (
+                      <div key={m.name} className="body-lib-muscle" style={{ '--dc': m.color }}>
+                        <span>{m.name}</span>
+                        <span className="body-lib-mbar"><i style={{ width: `${m.w}%` }} /></span>
+                        <small>{m.role}</small>
                       </div>
                     ))}
                   </div>
@@ -381,8 +387,8 @@ export default function ExerciseLibraryScreen({
                   )}
                   {ex.tip && (
                     <div className="body-lib-mistake">
-                      <b><AppIcon name="xCircle" size={15} />Lỗi sai hay gặp</b>
-                      <p>{ex.tip}</p>
+                      <AppIcon name="warningDiamond" size={17} />
+                      <p><b>Lỗi hay gặp:</b> {ex.tip}</p>
                     </div>
                   )}
                 </div>
@@ -485,13 +491,13 @@ export default function ExerciseLibraryScreen({
           </div>
         </div>
 
-        {/* Mobile: thanh hành động đáy màn chi tiết */}
-        <div className="body-lib-mbar-actions">
-          <button type="button" className="body-lib-btn is-square" onClick={openAdd} aria-label="Thêm vào kế hoạch">
-            <AppIcon name="plus" size={19} />
+        {/* Chân chi tiết (mobile: thanh ghim đáy màn chi tiết) */}
+        <div className="body-lib-dfoot">
+          <button type="button" className="body-btn" onClick={openAdd} aria-label="Thêm vào kế hoạch">
+            <AppIcon name="plus" size={16} /><span className="body-lib-d-text">Thêm vào kế hoạch</span>
           </button>
-          <button type="button" className="body-lib-btn is-dark" onClick={() => onStartExercise?.(ex)}>
-            <AppIcon name="play" size={14} weight="fill" />Tập bài này ngay
+          <button type="button" className="body-btn body-btn-primary" onClick={() => onStartExercise?.(ex)}>
+            <AppIcon name="play" size={14} weight="fill" />Tập ngay
           </button>
         </div>
       </section>
@@ -507,7 +513,7 @@ export default function ExerciseLibraryScreen({
                 <small>THÊM VÀO {activeRoutine?.name ? activeRoutine.name.toUpperCase() : 'LỘ TRÌNH'}</small>
                 <b>{names.vn}</b>
               </span>
-              <button type="button" className="body-lib-icon-btn" onClick={() => setShowAdd(false)} aria-label="Đóng">
+              <button type="button" className="body-icon-btn" onClick={() => setShowAdd(false)} aria-label="Đóng">
                 <AppIcon name="x" size={15} />
               </button>
             </div>
@@ -526,7 +532,7 @@ export default function ExerciseLibraryScreen({
                     {WEEKDAYS.map(w => {
                       const info = dayInfo.get(w.d);
                       return (
-                        <button key={w.d} type="button" className={addDay === w.d ? 'is-on' : ''} onClick={() => setAddDay(w.d)} aria-pressed={addDay === w.d}>
+                        <button key={w.d} type="button" className="body-chip" onClick={() => setAddDay(w.d)} aria-pressed={addDay === w.d}>
                           <b>{w.label}</b>
                           <small>{info?.has ? 'đã có' : info?.count ? `${info.count} bài` : 'nghỉ'}</small>
                         </button>
@@ -556,8 +562,8 @@ export default function ExerciseLibraryScreen({
               </div>
             )}
             <div className="body-lib-modal-foot">
-              <button type="button" className="body-lib-btn" onClick={() => setShowAdd(false)}>Hủy</button>
-              <button type="button" className="body-lib-btn is-dark" onClick={handleConfirmAdd} disabled={!activeRoutine}>
+              <button type="button" className="body-btn" onClick={() => setShowAdd(false)}>Hủy</button>
+              <button type="button" className="body-btn body-btn-primary" onClick={handleConfirmAdd} disabled={!activeRoutine}>
                 Thêm vào {addDayFull}
               </button>
             </div>

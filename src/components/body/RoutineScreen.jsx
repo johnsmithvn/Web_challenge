@@ -15,7 +15,7 @@ import {
   mapWeekSessions,
   splitExerciseName,
   splitDayName,
-  DAY_TAG_COLORS
+  dayColorOf
 } from '../../utils/workoutLogic';
 import { normVi } from '../../utils/kanbanUtils';
 import { toDateStr } from '../../utils/dateUtils';
@@ -48,6 +48,15 @@ const ddmm = dateStr => { const [, m, d] = dateStr.split('-'); return `${Number(
 const mmss = sec => `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')}`;
 const minutesOf = items => estimateQueueMinutes(items.flatMap(it => Array.from({ length: Number(it.target_sets) || 0 }, () => it)));
 const levelOf = t => t.level || (t.key.includes('calisthenics') ? 'Trung cấp' : 'Cơ bản');
+
+// Nhãn trạng thái ngày: [icon, chữ, tông màu]
+const DAY_STATUS = {
+  done: ['checkCircle', 'Đã tập', 'is-green'],
+  today: ['lightning', 'Hôm nay', 'is-accent'],
+  check: ['clipboard', 'Check-in', 'is-amber'],
+  rest: ['coffee', 'Nghỉ', 'is-muted'],
+  next: ['circleDashed', 'Sắp tới', 'is-muted']
+};
 
 export default function RoutineScreen({
   routine,
@@ -246,13 +255,14 @@ export default function RoutineScreen({
           items,
           isTrain: false,
           isCheck,
+          color: isCheck ? 'var(--body-amber)' : 'var(--body-text-muted)',
           name: isCheck ? 'Check-in' : 'Nghỉ',
           title: isCheck ? 'Check-in tuần' : 'Nghỉ',
           meta: isCheck ? 'Cân sáng, đo vòng eo' : 'Phục hồi'
         };
       }
       const name = items[0].day_name || def.defaultName;
-      const { tag, letter, title } = splitDayName(name);
+      const { tag, title } = splitDayName(name);
       const muscles = [...new Set(items.map(it => muscleOf(exOf(it.exercise_key))).filter(Boolean))];
       return {
         ...def,
@@ -260,7 +270,7 @@ export default function RoutineScreen({
         isTrain: true,
         name,
         tag,
-        tagColor: DAY_TAG_COLORS[letter] || 'var(--body-accent)',
+        color: dayColorOf(name),
         title,
         totalSets: items.reduce((sum, it) => sum + (Number(it.target_sets) || 0), 0),
         est: minutesOf(items),
@@ -346,10 +356,6 @@ export default function RoutineScreen({
     () => (isPreviewing ? {} : mapWeekSessions(sessions, weekDays, routine?.id)),
     [isPreviewing, sessions, weekDays, routine]
   );
-  const thisWeekDone = useMemo(
-    () => Object.keys(mapWeekSessions(sessions, getWeekDays(0, today), routine?.id)).length,
-    [sessions, today, routine]
-  );
   const ongoingWeekday = !isPreviewing && isCurrentWeek ? Number(currentActiveSession?.planned_weekday) || null : null;
   const ongoingSets = useMemo(
     () => (currentActiveSession ? recentSets.filter(s => s.session_id === currentActiveSession.id) : []),
@@ -417,7 +423,8 @@ export default function RoutineScreen({
     rests.length === 1 && rests[0] ? `Nghỉ ${rests[0]}s giữa hiệp` : null,
     equipText || null
   ].filter(Boolean);
-  const weekFill = trainDayCount ? Math.min(1, thisWeekDone / trainDayCount) : 0;
+  const viewDone = Object.keys(doneByWeekday).length;
+  const viewPct = trainDayCount ? Math.min(100, Math.round((viewDone / trainDayCount) * 100)) : 0;
   const showStats = Boolean(routine?.id) && !isPreviewing;
   const canEdit = showStats;
   const routineName = activeRoutineData?.name || 'Chọn một lộ trình';
@@ -425,6 +432,10 @@ export default function RoutineScreen({
     ? `${weekDays[0].day} – ${weekDays[6].day}/${weekDays[6].month}`
     : `${weekDays[0].day}/${weekDays[0].month} – ${weekDays[6].day}/${weekDays[6].month}`;
   const weekTitle = { 0: 'Lịch tuần này', '-1': 'Tuần trước', 1: 'Tuần sau' }[weekOffset] || 'Lịch tuần';
+  const weekHead = isCurrentWeek && showStats
+    ? (cycleOver ? 'Hết chu kỳ' : `Tuần ${currentWeekNumber} / ${routineWeeksTotal}`)
+    : weekTitle;
+  const dayType = activeDay.isTrain ? (activeDay.tag || 'Buổi tập') : activeDay.isCheck ? 'Check-in' : 'Nghỉ';
 
   // ── Bảng thêm bài ─────────────────────────────────────────────
   const pickQuery = normVi(pickerSearch.trim());
@@ -853,7 +864,7 @@ export default function RoutineScreen({
         <b>Đã xong chu kỳ {routineWeeksTotal} tuần</b>
         <span>Xem kết quả, rồi chọn lặp lại, tập nhẹ hoặc đổi lộ trình. Vẫn tập tiếp được như cũ.</span>
       </span>
-      <button type="button" className="body-rt-btn-dark" onClick={openCycleSummary}>Xem tổng kết</button>
+      <button type="button" className="body-btn body-btn-primary" onClick={openCycleSummary}>Xem tổng kết</button>
     </div>
   );
 
@@ -871,13 +882,18 @@ export default function RoutineScreen({
     />
   );
 
-  const statusIcon = st => {
-    if (st === 'done') return <AppIcon name="checkCircle" size={19} weight="fill" className="body-rt-ic-done" />;
+  // Nhãn trạng thái ngày (lịch tuần + đầu chi tiết). Ngày tập đã qua mà chưa tập thì để trống.
+  const dayStatusTag = (wd, date) => {
+    const st = dayStatus(wd);
     if (st === 'ong') return <span className="body-rt-badge is-ong"><i />Đang dở</span>;
-    if (st === 'today') return <span className="body-rt-badge is-today">Hôm nay</span>;
-    if (st === 'rest') return <AppIcon name="moon" size={16} className="body-rt-ic-faint" />;
-    if (st === 'check') return <AppIcon name="scales" size={16} className="body-rt-ic-faint" />;
-    return null;
+    const key = st || (date >= toDateStr(today) ? 'next' : null);
+    if (!key) return null;
+    const [icon, label, tone] = DAY_STATUS[key];
+    return (
+      <span className={`body-rt-st ${tone}`}>
+        <AppIcon name={icon} size={14} weight={key === 'done' ? 'fill' : 'regular'} />{label}
+      </span>
+    );
   };
 
   const setsStepper = (item, lg) => (
@@ -960,9 +976,9 @@ export default function RoutineScreen({
   );
 
   const emptyState = (
-    <div className="body-rt-empty">
-      <span className={`body-rt-empty-ic${activeDay.isCheck ? ' is-green' : ''}`}>
-        <AppIcon name={activeDay.isCheck ? 'scales' : 'moon'} size={24} />
+    <div className="body-rt-empty" style={{ '--dc': activeDay.color }}>
+      <span className="body-rt-empty-ic">
+        <AppIcon name={activeDay.isCheck ? 'clipboard' : 'coffee'} size={36} />
       </span>
       <span className="body-rt-empty-title">{activeDay.isCheck ? 'Check-in tuần' : 'Không có bài theo lịch'}</span>
       <span className="body-rt-empty-text">
@@ -972,13 +988,13 @@ export default function RoutineScreen({
       </span>
       {activeDay.isCheck ? (
         <>
-          <button type="button" className="body-rt-btn-dark" onClick={() => onNavigate?.('biometrics')}>
+          <button type="button" className="body-btn body-btn-primary" onClick={() => onNavigate?.('biometrics')}>
             <AppIcon name="plus" size={14} />Ghi cân đo
           </button>
           <button type="button" className="body-rt-link" onClick={openPicker}>Thêm bài tập</button>
         </>
       ) : (
-        <button type="button" className="body-rt-btn-outline" onClick={openPicker}>
+        <button type="button" className="body-btn" onClick={openPicker}>
           <AppIcon name="plus" size={14} />Thêm bài tập bù
         </button>
       )}
@@ -989,107 +1005,28 @@ export default function RoutineScreen({
     <div className="body-routine-screen">
       {/* ── BANNER KHI ĐANG XEM TRƯỚC (PREVIEW MODE) ──────────────── */}
       {isPreviewing && (
-        <div style={{
-          background: 'var(--body-accent-soft)',
-          border: '1.5px solid var(--body-accent-border)',
-          borderRadius: '14px',
-          padding: '12px 18px',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          flexWrap: 'wrap',
-          gap: '12px'
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <span style={{
-              width: '28px',
-              height: '28px',
-              borderRadius: '8px',
-              background: 'var(--body-accent)',
-              color: '#fff',
-              display: 'grid',
-              placeItems: 'center'
-            }}>
-              <AppIcon name="eye" size={16} />
-            </span>
-            <div>
-              <div style={{ fontSize: '13.5px', fontWeight: 600, color: 'var(--body-text-main)' }}>
-                Đang xem trước mẫu: <span style={{ color: 'var(--body-accent)' }}>{previewTemplate.name}</span>
-                <span style={{ marginLeft: '8px', fontSize: '12px', fontWeight: 400, color: 'var(--body-text-sub)' }}>
-                  (Bạn có thể chỉnh sửa số hiệp, số rep trực tiếp ở bảng bên dưới)
-                </span>
-              </div>
-              <div style={{ fontSize: '12px', color: 'var(--body-text-muted)' }}>
+        <div className="body-rt-preview">
+          <div className="body-rt-preview-info">
+            <span className="body-rt-preview-ic"><AppIcon name="eye" size={16} /></span>
+            <span className="body-rt-preview-text">
+              <span className="body-rt-preview-title">
+                Đang xem trước mẫu: <b>{previewTemplate.name}</b>
+                <small>(Bạn có thể chỉnh sửa số hiệp, số rep trực tiếp ở danh sách bên dưới)</small>
+              </span>
+              <span className="body-rt-preview-meta">
                 {previewTemplate.weeks} tuần · {previewTemplate.days?.length || 4} buổi/tuần · {previewTemplate.goal}
-              </div>
-            </div>
+              </span>
+            </span>
           </div>
-
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <button
-              type="button"
-              onClick={handleStopPreview}
-              style={{
-                height: '34px',
-                padding: '0 14px',
-                borderRadius: '8px',
-                border: '1px solid var(--body-border-subtle)',
-                background: 'var(--body-card-bg)',
-                color: 'var(--body-text-main)',
-                fontSize: '12.5px',
-                fontWeight: 600,
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px',
-                cursor: 'pointer'
-              }}
-            >
-              <AppIcon name="back" size={13} />
-              <span>Quay lại lộ trình của tôi</span>
+          <div className="body-rt-preview-actions">
+            <button type="button" className="body-btn" onClick={handleStopPreview}>
+              <AppIcon name="back" size={13} />Quay lại lộ trình của tôi
             </button>
-
-            <button
-              type="button"
-              onClick={() => handleOpenCustomizeTemplate(previewTemplate)}
-              style={{
-                height: '34px',
-                padding: '0 12px',
-                borderRadius: '8px',
-                border: '1px solid var(--body-accent)',
-                background: 'var(--body-card-bg)',
-                color: 'var(--body-accent)',
-                fontSize: '12.5px',
-                fontWeight: 600,
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px',
-                cursor: 'pointer'
-              }}
-            >
-              <AppIcon name="pencil" size={13} />
-              <span>Tùy chỉnh số hiệp & rep</span>
+            <button type="button" className="body-btn" onClick={() => handleOpenCustomizeTemplate(previewTemplate)}>
+              <AppIcon name="pencil" size={13} />Tùy chỉnh số hiệp & rep
             </button>
-
-            <button
-              type="button"
-              onClick={handleApplyPreviewTemplate}
-              style={{
-                height: '34px',
-                padding: '0 16px',
-                borderRadius: '8px',
-                border: 'none',
-                background: 'var(--body-accent)',
-                color: '#fff',
-                fontSize: '12.5px',
-                fontWeight: 600,
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px',
-                cursor: 'pointer'
-              }}
-            >
-              <AppIcon name="check" size={13} />
-              <span>Dùng mẫu này</span>
+            <button type="button" className="body-btn body-btn-primary" onClick={handleApplyPreviewTemplate}>
+              <AppIcon name="check" size={13} />Dùng mẫu này
             </button>
           </div>
         </div>
@@ -1129,57 +1066,26 @@ export default function RoutineScreen({
           </div>
 
           {showStats && (
-            <>
-              <div className="body-rt-bar-sec">
-                <span className="body-rt-label">TIẾN ĐỘ</span>
+            <div className="body-rt-bar-sec body-rt-stats">
+              <div>
+                <span className="body-rt-label">ĐÃ TẬP</span>
+                <span className="body-rt-big">{completedSessionsCount}<small>buổi</small></span>
+              </div>
+              <div>
+                <span className="body-rt-label">ĐÚNG LỊCH</span>
                 <span className="body-rt-big">
-                  {cycleOver ? 'Hết chu kỳ' : <>Tuần {currentWeekNumber}<small>/ {routineWeeksTotal}</small></>}
+                  {adherenceText}
+                  {adherence.planned ? <small>{adherence.done}/{adherence.planned}</small> : null}
                 </span>
-                <div className="body-rt-weeks">
-                  {Array.from({ length: routineWeeksTotal }, (_, i) => {
-                    const isCur = i === currentWeekNumber - 1;
-                    return (
-                      <span
-                        key={i}
-                        className={i < currentWeekNumber - 1 ? 'is-done' : isCur ? 'is-cur' : ''}
-                        style={isCur ? { '--fill': `${Math.round(weekFill * 100)}%` } : undefined}
-                      />
-                    );
-                  })}
-                </div>
               </div>
-              <div className="body-rt-bar-sec body-rt-stats">
-                <div>
-                  <span className="body-rt-label">ĐÃ TẬP</span>
-                  <span className="body-rt-big">{completedSessionsCount}<small>buổi</small></span>
-                </div>
-                <div>
-                  <span className="body-rt-label">ĐÚNG LỊCH</span>
-                  <span className="body-rt-big">
-                    {adherenceText}
-                    {adherence.planned ? <small>{adherence.done}/{adherence.planned}</small> : null}
-                  </span>
-                </div>
-                <div>
-                  <span className="body-rt-label">KỶ LỤC</span>
-                  <span className="body-rt-big">{prTotalCount}<small>PR</small></span>
-                </div>
+              <div>
+                <span className="body-rt-label">KỶ LỤC</span>
+                <span className="body-rt-big">{prTotalCount}<small>PR</small></span>
               </div>
-            </>
+            </div>
           )}
 
           <div className="body-rt-bar-actions">
-            {canEdit && (
-              <button
-                type="button"
-                className="body-rt-icon-btn"
-                onClick={() => setShowEditModal(true)}
-                title="Sửa lộ trình"
-                aria-label="Sửa lộ trình"
-              >
-                <AppIcon name="pencil" size={16} />
-              </button>
-            )}
             <div className="body-rt-menu-wrap">{menuButton}{menuPanel}</div>
           </div>
         </section>
@@ -1190,15 +1096,34 @@ export default function RoutineScreen({
           <div className="body-rt-left">
             <div className="body-rt-card body-rt-week">
               <div className="body-rt-week-head">
-                <span className="body-rt-week-title">{weekTitle}<small>{weekRange}</small></span>
-                <span className="body-rt-week-nav">
-                  <button type="button" className="body-rt-icon-btn is-sm" onClick={() => setWeekOffset(w => w - 1)} aria-label="Tuần trước">
-                    <AppIcon name="caretLeft" size={13} />
-                  </button>
-                  <button type="button" className="body-rt-icon-btn is-sm" onClick={() => setWeekOffset(w => w + 1)} aria-label="Tuần sau">
-                    <AppIcon name="caretRight" size={13} />
-                  </button>
-                </span>
+                <div className="body-rt-week-top">
+                  <span className="body-rt-week-title">{weekHead}<small>{weekRange}</small></span>
+                  <span className="body-rt-week-nav">
+                    <button type="button" className="body-icon-btn" onClick={() => setWeekOffset(w => w - 1)} aria-label="Tuần trước">
+                      <AppIcon name="caretLeft" size={13} />
+                    </button>
+                    <button type="button" className="body-icon-btn" onClick={() => setWeekOffset(w => w + 1)} aria-label="Tuần sau">
+                      <AppIcon name="caretRight" size={13} />
+                    </button>
+                    {canEdit && (
+                      <button
+                        type="button"
+                        className="body-icon-btn"
+                        onClick={() => setShowEditModal(true)}
+                        title="Sửa lộ trình"
+                        aria-label="Sửa lộ trình"
+                      >
+                        <AppIcon name="pencil" size={13} />
+                      </button>
+                    )}
+                  </span>
+                </div>
+                {trainDayCount > 0 && (
+                  <>
+                    <div className="body-rt-week-bar"><i style={{ width: `${viewPct}%` }} /></div>
+                    <span className="body-rt-week-sum">{viewDone} / {trainDayCount} buổi đã xong</span>
+                  </>
+                )}
               </div>
               <div className="body-rt-days">
                 {weekdaysData.map((wd, i) => (
@@ -1206,22 +1131,23 @@ export default function RoutineScreen({
                     key={wd.day}
                     type="button"
                     className={`body-rt-day${selectedDay === wd.day ? ' is-selected' : ''}${wd.isTrain ? '' : ' is-rest'}${isCurrentWeek && wd.day === todayWeekday ? ' is-today' : ''}`}
+                    style={{ '--dc': wd.color }}
                     onClick={() => selectDay(wd.day)}
                     aria-pressed={selectedDay === wd.day}
                   >
-                    <span className="body-rt-day-label"><b>{wd.label}</b><small>{ddmm(weekDays[i].date)}</small></span>
+                    <span className="body-rt-day-ring">{weekDays[i].day}</span>
                     <span className="body-rt-day-info">
                       <span className="body-rt-day-title">{wd.title}</span>
                       <span className="body-rt-day-meta">
-                        {wd.isTrain ? (
+                        {wd.label} · {wd.isTrain ? (
                           <>
-                            {wd.tag && <><b style={{ color: wd.tagColor }}>{wd.tag}</b> · </>}
+                            {wd.tag && <><b>{wd.tag}</b> · </>}
                             {wd.items.length} bài · ~{wd.est} phút
                           </>
                         ) : wd.meta}
                       </span>
                     </span>
-                    <span className="body-rt-day-status">{statusIcon(dayStatus(wd))}</span>
+                    <span className="body-rt-day-status">{dayStatusTag(wd, weekDays[i].date)}</span>
                   </button>
                 ))}
               </div>
@@ -1236,119 +1162,193 @@ export default function RoutineScreen({
             </div>
           </div>
 
-          <div className="body-rt-card body-rt-detail">
-            <div className="body-rt-detail-head">
-              <div className="body-rt-detail-info">
-                <span className="body-rt-eyebrow" style={activeDay.isTrain ? { color: activeDay.tagColor } : undefined}>{dayEyebrow}</span>
-                <h2 className="body-rt-detail-title">{activeDay.title}</h2>
-                <div className="body-rt-detail-meta">
-                  <span>{dayMeta}</span>
-                  {activeDay.muscles?.map(m => <span key={m} className="body-rt-mchip">{m}</span>)}
+          <div className="body-rt-right">
+            <section className="body-hero body-rt-detail" style={{ '--dc': activeDay.color }}>
+              <span className="body-rt-hero-orbit body-deco-orbit" aria-hidden="true"><i /></span>
+              <span className="body-rt-hero-orb" aria-hidden="true" />
+
+              <div className="body-rt-detail-head">
+                <div className="body-rt-detail-tags">
+                  <span className="body-rt-type">{dayType}</span>
+                  <span className="body-rt-detail-date">{activeDay.short} · {ddmm(selectedDate.date)}</span>
+                  {dayStatusTag(activeDay, selectedDate.date)}
                 </div>
+                <h2 className="body-rt-detail-title">{activeDay.title}</h2>
               </div>
 
-              {cta === 'cont' && (
-                <div className="body-rt-ongoing">
-                  <div className="body-rt-ongoing-head">
-                    <span><i />Buổi đang dở</span>
-                    <span className="body-rt-mono">{dayDoneSets}/{dayTotalSets} set{ongoingTime}</span>
+              {activeDay.isTrain ? (
+                <>
+                  <div className="body-rt-detail-meta">
+                    <span><AppIcon name="timer" size={16} />~{activeDay.est} phút</span>
+                    <span><AppIcon name="barbell" size={16} />{dayItems.length} bài</span>
+                    <span><AppIcon name="stack" size={16} />{dayTotalSets} set</span>
+                    {activeDay.muscles.length > 0 && (
+                      <span className="body-rt-mchips">
+                        {activeDay.muscles.map(m => <span key={m} className="body-rt-mchip">{m}</span>)}
+                      </span>
+                    )}
                   </div>
-                  <div className="body-rt-prog"><span style={{ width: `${ongoingPct}%` }} /></div>
-                  <button type="button" className="body-rt-btn-dark" onClick={() => onResumeSession?.(currentActiveSession)}>
-                    <AppIcon name="play" size={12} weight="fill" />Tiếp tục buổi
-                  </button>
-                </div>
-              )}
-              {cta === 'start' && (
-                <div className="body-rt-cta-col">
-                  <button type="button" className="body-rt-btn-dark is-lg" onClick={() => onStartSession?.(startPayload)}>
-                    Bắt đầu buổi<AppIcon name="arrowRight" size={15} />
-                  </button>
-                  <span className="body-rt-hint">Chọn cách tập ở bước sau</span>
-                </div>
-              )}
-              {cta === 'other' && (
-                <button type="button" className="body-rt-btn-outline" onClick={() => onStartSession?.(startPayload)}>
-                  <AppIcon name="play" size={13} />Tập buổi này hôm nay
-                </button>
-              )}
-              {cta === 'done' && (
-                <div className="body-rt-cta-col">
-                  <span className="body-rt-done-pill"><AppIcon name="checkCircle" size={14} weight="fill" />Đã tập · {doneText}</span>
-                  <button type="button" className="body-rt-link" onClick={() => onNavigate?.('history')}>
-                    Xem kết quả buổi<AppIcon name="arrowRight" size={13} />
-                  </button>
-                </div>
-              )}
-            </div>
 
-            {activeDay.isTrain ? (
-              <div className="body-rt-table">
-                <div className="body-rt-row is-head">
-                  <span /><span>BÀI TẬP</span><span>HIỆP</span><span>MỤC TIÊU</span><span>TẠ</span><span>NGHỈ</span><span />
-                </div>
-                {dayRows.map(({ item, idx, vn, en, muscle, dn, isCur }) => (
-                  <div
-                    key={item.id}
-                    className={`body-rt-row${isCur ? ' is-current' : ''}${dragId === item.id ? ' is-dragging' : ''}${dragOverId === item.id && dragId && dragId !== item.id ? ' is-over' : ''}`}
-                    draggable
-                    onDragStart={e => {
-                      e.dataTransfer.effectAllowed = 'move';
-                      e.dataTransfer.setData('text/plain', item.id);
-                      setDragId(item.id);
-                    }}
-                    onDragOver={e => {
-                      e.preventDefault();
-                      if (dragOverId !== item.id) setDragOverId(item.id);
-                    }}
-                    onDrop={e => {
-                      e.preventDefault();
-                      handleDrop(item.id);
-                    }}
-                    onDragEnd={() => {
-                      setDragId(null);
-                      setDragOverId(null);
+                  <div className="body-rt-list">
+                    {dayRows.map(({ item, idx, vn, en, muscle, dn, isCur }) => (
+                      <div
+                        key={item.id}
+                        className={`body-tile body-rt-row${isCur ? ' is-current' : ''}${dragId === item.id ? ' is-dragging' : ''}${dragOverId === item.id && dragId && dragId !== item.id ? ' is-over' : ''}`}
+                        draggable
+                        onDragStart={e => {
+                          e.dataTransfer.effectAllowed = 'move';
+                          e.dataTransfer.setData('text/plain', item.id);
+                          setDragId(item.id);
+                        }}
+                        onDragOver={e => {
+                          e.preventDefault();
+                          if (dragOverId !== item.id) setDragOverId(item.id);
+                        }}
+                        onDrop={e => {
+                          e.preventDefault();
+                          handleDrop(item.id);
+                        }}
+                        onDragEnd={() => {
+                          setDragId(null);
+                          setDragOverId(null);
+                        }}
+                      >
+                        <span className="body-rt-row-no" title="Kéo để đổi thứ tự">
+                          <AppIcon name="dotsSix" size={14} />
+                          <b>{String(idx + 1).padStart(2, '0')}</b>
+                        </span>
+                        <div className="body-rt-row-name">
+                          <span className="body-rt-row-title">
+                            {vn}
+                            {isCur && <span className="body-rt-badge-sm">Đang tập</span>}
+                          </span>
+                          <span className="body-rt-row-sub">
+                            <span className="body-rt-row-en">{[en, muscle].filter(Boolean).join(' · ')}</span>
+                            <span className="body-rt-row-sets">
+                              {Array.from({ length: Number(item.target_sets) || 0 }, (_, j) => <i key={j} className={j < dn ? 'on' : ''} />)}
+                              {showProg && <b className={dn ? 'on' : ''}>{dn}/{item.target_sets}</b>}
+                            </span>
+                          </span>
+                        </div>
+                        <div className="body-rt-ctl">
+                          <div className="body-rt-ctl-cell"><small>HIỆP</small>{setsStepper(item)}</div>
+                          <div className="body-rt-ctl-cell"><small>MỤC TIÊU</small>{targetStepper(item)}</div>
+                          <div className="body-rt-ctl-cell">
+                            <small>TẠ</small>
+                            <span className={`body-rt-kg${item.kg ? '' : ' is-bw'}`}>{item.kg ? `${item.kg} kg` : 'BW'}</span>
+                          </div>
+                          <div className="body-rt-ctl-cell"><small>NGHỈ</small>{restStepper(item)}</div>
+                          <button
+                            type="button"
+                            className="body-rt-del"
+                            onClick={() => handleDeleteItem(item.id)}
+                            title="Xóa bài"
+                            aria-label={`Xóa ${vn}`}
+                          >
+                            <AppIcon name="trash" size={14} />
+                          </button>
+                        </div>
+                        <span className="body-rt-row-sum">
+                          {item.target_sets} × {item.target_val}{item.unit === 's' ? 's' : ''}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="body-rt-table-foot">
+                    <button type="button" className="body-btn" onClick={openPicker}>
+                      <AppIcon name="plus" size={14} />Thêm bài tập
+                    </button>
+                    <span className="body-rt-hint">
+                      Bấm chữ <em>rep</em> / <em>giây</em> để đổi kiểu mục tiêu · kéo ⋮⋮ để đổi thứ tự
+                    </span>
+                  </div>
+
+                  {cta === 'cont' && (
+                    <div className="body-rt-ongoing">
+                      <div className="body-rt-ongoing-head">
+                        <span><i />Buổi đang dở</span>
+                        <span className="body-rt-mono">{dayDoneSets}/{dayTotalSets} set{ongoingTime}</span>
+                      </div>
+                      <div className="body-rt-prog"><span style={{ width: `${ongoingPct}%` }} /></div>
+                      <button type="button" className="body-btn body-btn-primary" onClick={() => onResumeSession?.(currentActiveSession)}>
+                        <AppIcon name="play" size={12} weight="fill" />Tiếp tục buổi
+                      </button>
+                    </div>
+                  )}
+                  {cta === 'start' && (
+                    <div className="body-rt-cta">
+                      <button type="button" className="body-btn body-btn-primary body-btn-lg" onClick={() => onStartSession?.(startPayload)}>
+                        <AppIcon name="rocketLaunch" size={17} weight="fill" />Bắt đầu buổi này
+                      </button>
+                      <span className="body-rt-hint">Chọn cách tập ở bước sau</span>
+                    </div>
+                  )}
+                  {cta === 'other' && (
+                    <div className="body-rt-cta">
+                      <button type="button" className="body-btn body-btn-lg" onClick={() => onStartSession?.(startPayload)}>
+                        <AppIcon name="play" size={14} />Tập buổi này hôm nay
+                      </button>
+                    </div>
+                  )}
+                  {cta === 'done' && (
+                    <div className="body-rt-cta">
+                      <span className="body-rt-done-pill"><AppIcon name="checkCircle" size={14} weight="fill" />Đã tập · {doneText}</span>
+                      <button type="button" className="body-rt-link" onClick={() => onNavigate?.('history')}>
+                        Xem kết quả buổi<AppIcon name="arrowRight" size={13} />
+                      </button>
+                    </div>
+                  )}
+                </>
+              ) : emptyState}
+            </section>
+
+            <div className="body-rt-plans">
+              {routines.map(r => {
+                const cur = r.id === routine?.id;
+                const on = cur && !isPreviewing;
+                return (
+                  <button
+                    key={r.id}
+                    type="button"
+                    className={`body-rt-plan${on ? ' is-on' : ''}`}
+                    aria-pressed={on}
+                    onClick={() => {
+                      handleStopPreview();
+                      if (!cur) onSwitchRoutine?.(r.id);
                     }}
                   >
-                    <span className="body-rt-row-no" title="Kéo để đổi thứ tự">
-                      <AppIcon name="dotsSix" size={14} />
-                      <span>{String(idx + 1).padStart(2, '0')}</span>
+                    <span className={`body-rt-plan-eyebrow${on ? ' is-accent' : ''}`}>
+                      <AppIcon name={on ? 'play' : 'checkCircle'} size={13} weight={on ? 'fill' : 'regular'} />
+                      {on ? 'ĐANG DÙNG' : 'ĐÃ LƯU'}
                     </span>
-                    <div className="body-rt-row-name">
-                      <span className="body-rt-row-title">
-                        {vn}
-                        {isCur && <span className="body-rt-badge-sm">Đang tập</span>}
-                      </span>
-                      <span className="body-rt-row-sub">
-                        {[en, muscle].filter(Boolean).join(' · ')}
-                        {showProg && progDots(item, dn)}
-                      </span>
-                    </div>
-                    {setsStepper(item)}
-                    {targetStepper(item)}
-                    <span className={`body-rt-kg${item.kg ? '' : ' is-bw'}`}>{item.kg ? `${item.kg} kg` : 'BW'}</span>
-                    {restStepper(item)}
-                    <button
-                      type="button"
-                      className="body-rt-del"
-                      onClick={() => handleDeleteItem(item.id)}
-                      title="Xóa bài"
-                      aria-label={`Xóa ${vn}`}
-                    >
-                      <AppIcon name="trash" size={14} />
-                    </button>
-                  </div>
-                ))}
-                <div className="body-rt-table-foot">
-                  <button type="button" className="body-rt-btn-soft" onClick={openPicker}>
-                    <AppIcon name="plus" size={14} />Thêm bài tập
+                    <span className="body-rt-plan-name">{r.name}</span>
+                    <span className="body-rt-plan-meta">
+                      {r.weeks || 8} tuần{cur ? ` · tuần ${currentWeekNumber}/${routineWeeksTotal}` : ''}
+                    </span>
                   </button>
-                  <span className="body-rt-hint">
-                    Bấm chữ <em>rep</em> / <em>giây</em> để đổi kiểu mục tiêu · kéo ⋮⋮ để đổi thứ tự
+                );
+              })}
+              {(routineTemplates || []).map(t => (
+                <button
+                  key={t.key}
+                  type="button"
+                  className={`body-rt-plan is-tpl${previewTemplate?.key === t.key ? ' is-on' : ''}`}
+                  onClick={() => handleOpenCustomizeTemplate(t)}
+                >
+                  <span className="body-rt-plan-eyebrow is-blue">
+                    <AppIcon name="plusCircle" size={13} />MẪU · {levelOf(t).toUpperCase()}
                   </span>
-                </div>
-              </div>
-            ) : emptyState}
+                  <span className="body-rt-plan-name">{t.name}</span>
+                  <span className="body-rt-plan-meta">{t.weeks} tuần · {t.days?.length || 0} buổi/tuần</span>
+                </button>
+              ))}
+              <button type="button" className="body-rt-plan is-tpl" onClick={() => setShowCreateModal(true)}>
+                <span className="body-rt-plan-eyebrow is-accent"><AppIcon name="plus" size={13} />TỰ DO</span>
+                <span className="body-rt-plan-name">Tạo lộ trình mới</span>
+                <span className="body-rt-plan-meta">Tự chọn bài, hoặc bắt đầu từ lịch trống</span>
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -1394,6 +1394,7 @@ export default function RoutineScreen({
                   key={wd.day}
                   type="button"
                   className={`${selectedDay === wd.day ? 'is-selected' : ''}${isCurrentWeek && wd.day === todayWeekday ? ' is-today' : ''}${wd.isTrain ? '' : ' is-rest'}`}
+                  style={{ '--dc': wd.color }}
                   onClick={() => selectDay(wd.day)}
                   aria-pressed={selectedDay === wd.day}
                   aria-label={`${wd.short} ${ddmm(weekDays[i].date)}`}
@@ -1410,8 +1411,8 @@ export default function RoutineScreen({
 
         {cycleCard}
 
-        <div className="body-rt-m-dayhead">
-          <span className="body-rt-eyebrow" style={activeDay.isTrain ? { color: activeDay.tagColor } : undefined}>{dayEyebrow}</span>
+        <div className="body-hero body-rt-m-dayhead" style={{ '--dc': activeDay.color }}>
+          <span className={`body-rt-eyebrow${activeDay.isTrain ? ' is-day' : ''}`}>{dayEyebrow}</span>
           <span className="body-rt-m-daytitle">{activeDay.title}</span>
           <span className="body-rt-m-daymeta">{dayMeta}</span>
         </div>
@@ -1485,18 +1486,18 @@ export default function RoutineScreen({
                       </div>
                       <div className="body-rt-prog is-thin"><span style={{ width: `${ongoingPct}%` }} /></div>
                     </div>
-                    <button type="button" className="body-rt-btn-dark is-xl" onClick={() => onResumeSession?.(currentActiveSession)}>
+                    <button type="button" className="body-btn body-btn-primary body-rt-xl" onClick={() => onResumeSession?.(currentActiveSession)}>
                       <AppIcon name="play" size={12} weight="fill" />Tiếp tục
                     </button>
                   </div>
                 )}
                 {cta === 'start' && (
-                  <button type="button" className="body-rt-btn-dark is-xl is-block" onClick={() => onStartSession?.(startPayload)}>
+                  <button type="button" className="body-btn body-btn-primary body-rt-xl body-rt-block" onClick={() => onStartSession?.(startPayload)}>
                     Bắt đầu buổi<span className="body-rt-mono is-dim">~{activeDay.est} phút</span><AppIcon name="arrowRight" size={15} />
                   </button>
                 )}
                 {cta === 'other' && (
-                  <button type="button" className="body-rt-btn-outline is-xl is-block" onClick={() => onStartSession?.(startPayload)}>
+                  <button type="button" className="body-btn body-rt-xl body-rt-block" onClick={() => onStartSession?.(startPayload)}>
                     <AppIcon name="play" size={13} />Tập buổi này hôm nay
                   </button>
                 )}
@@ -1631,7 +1632,7 @@ export default function RoutineScreen({
                 <b>{activeDay.short}{activeDay.isTrain ? ` · ${activeDay.title}` : ''}</b>
                 <small>{dayItems.length} bài · {dayTotalSets} set · ~{activeDay.est || 0} phút</small>
               </span>
-              <button type="button" className="body-rt-btn-dark is-xl" onClick={() => setShowPicker(false)}>Xong</button>
+              <button type="button" className="body-btn body-btn-primary body-rt-xl" onClick={() => setShowPicker(false)}>Xong</button>
             </div>
           </aside>
         </>
@@ -1640,127 +1641,61 @@ export default function RoutineScreen({
       {/* ── MODAL TÙY CHỈNH HIỆP & REP CỦA TEMPLATE TRƯỚC KHI ÁP DỤNG ─ */}
       {showCustomizeModal && (
         <div className="body-modal-backdrop" onClick={() => setShowCustomizeModal(false)}>
-          <div
-            className="body-modal-box"
-            style={{ maxWidth: '640px' }}
-            onClick={e => e.stopPropagation()}
-          >
-            <div style={{
-              padding: '18px 22px',
-              borderBottom: '1px solid var(--body-card-border)',
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center'
-            }}>
-              <div>
-                <span style={{ fontSize: '17px', fontWeight: 700, color: 'var(--body-text-main)' }}>
-                  Tùy chỉnh số hiệp & rep khi áp dụng
-                </span>
-                <div style={{ fontSize: '12px', color: 'var(--body-text-muted)', marginTop: '2px' }}>
-                  {customizingTpl?.name} · Tự do tăng giảm theo thể trạng của bạn
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setShowCustomizeModal(false)}
-                style={{
-                  border: 'none',
-                  background: 'transparent',
-                  color: 'var(--body-text-muted)',
-                  cursor: 'pointer',
-                  padding: '4px'
-                }}
-              >
-                <AppIcon name="x" size={18} />
+          <div className="body-modal-box is-wide" role="dialog" aria-label="Tùy chỉnh số hiệp & rep" onClick={e => e.stopPropagation()}>
+            <div className="body-rt-modal-head">
+              <span className="body-rt-modal-titles">
+                <span className="body-rt-modal-title">Tùy chỉnh số hiệp & rep khi áp dụng</span>
+                <span className="body-rt-modal-sub">{customizingTpl?.name} · Tự do tăng giảm theo thể trạng của bạn</span>
+              </span>
+              <button type="button" className="body-icon-btn" onClick={() => setShowCustomizeModal(false)} aria-label="Đóng">
+                <AppIcon name="x" size={15} />
               </button>
             </div>
 
-            <form onSubmit={handleSaveCustomizedTemplate} style={{ display: 'flex', flexDirection: 'column', minHeight: 0 }}>
-              <div style={{ padding: '18px 22px', overflowY: 'auto', maxHeight: '60vh', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-
+            <form onSubmit={handleSaveCustomizedTemplate} className="body-rt-modal-form">
+              <div className="body-rt-modal-body">
                 {/* Thông tin chung */}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 120px', gap: '12px' }}>
-                  <div>
-                    <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, marginBottom: '5px', color: 'var(--body-text-main)' }}>
-                      Tên lộ trình
-                    </label>
+                <div className="body-rt-cz-grid">
+                  <label className="body-rt-field">
+                    <span>Tên lộ trình</span>
                     <input
                       type="text"
                       required
+                      className="body-input"
                       value={customizedName}
                       onChange={e => setCustomizedName(e.target.value)}
-                      style={{
-                        width: '100%',
-                        height: '36px',
-                        borderRadius: '8px',
-                        border: '1px solid var(--body-border-subtle)',
-                        padding: '0 10px',
-                        fontSize: '13px',
-                        background: 'var(--body-card-bg)',
-                        color: 'var(--body-text-main)',
-                        boxSizing: 'border-box'
-                      }}
                     />
-                  </div>
-
-                  <div>
-                    <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, marginBottom: '5px', color: 'var(--body-text-main)' }}>
-                      Số tuần
-                    </label>
+                  </label>
+                  <label className="body-rt-field">
+                    <span>Số tuần</span>
                     <select
+                      className="body-input"
                       value={customizedWeeks}
                       onChange={e => setCustomizedWeeks(Number(e.target.value))}
-                      style={{
-                        width: '100%',
-                        height: '36px',
-                        borderRadius: '8px',
-                        border: '1px solid var(--body-border-subtle)',
-                        padding: '0 8px',
-                        fontSize: '13px',
-                        background: 'var(--body-card-bg)',
-                        color: 'var(--body-text-main)',
-                        boxSizing: 'border-box'
-                      }}
                     >
                       <option value={4}>4 tuần</option>
                       <option value={6}>6 tuần</option>
                       <option value={8}>8 tuần</option>
                       <option value={12}>12 tuần</option>
                     </select>
-                  </div>
+                  </label>
                 </div>
 
                 {/* Danh sách các buổi tập và bài tập */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                  <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--body-text-main)' }}>
-                    Cấu hình bài tập theo từng thứ:
-                  </span>
+                <div className="body-rt-cz-days">
+                  <span className="body-rt-cz-label">Cấu hình bài tập theo từng thứ:</span>
 
                   {customizedDays.map((day, dIdx) => {
                     const dayDef = BASE_WEEKDAY_DEFS.find(w => w.day === day.weekday) || { short: `Thứ ${day.weekday}` };
 
                     return (
-                      <div
-                        key={day.weekday}
-                        style={{
-                          background: 'var(--body-shell-bg)',
-                          borderRadius: '12px',
-                          padding: '12px 14px',
-                          display: 'flex',
-                          flexDirection: 'column',
-                          gap: '10px'
-                        }}
-                      >
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                          <span style={{ fontSize: '13.5px', fontWeight: 600, color: 'var(--body-text-main)' }}>
-                            {dayDef.short}: {day.day_name}
-                          </span>
-                          <span style={{ fontSize: '11.5px', color: 'var(--body-text-muted)' }}>
-                            {day.items.length} bài
-                          </span>
+                      <div key={day.weekday} className="body-tile body-rt-cz-day">
+                        <div className="body-rt-cz-day-head">
+                          <b>{dayDef.short}: {day.day_name}</b>
+                          <small>{day.items.length} bài</small>
                         </div>
 
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                        <div className="body-rt-cz-list">
                           {day.items.map((it, itIdx) => {
                             const ex = exOf(it.exercise_key);
 
@@ -1792,43 +1727,28 @@ export default function RoutineScreen({
                             };
 
                             return (
-                              <div
-                                key={it.exercise_key + itIdx}
-                                style={{
-                                  background: 'var(--body-card-bg)',
-                                  borderRadius: '8px',
-                                  padding: '8px 10px',
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  justifyContent: 'space-between',
-                                  gap: '8px'
-                                }}
-                              >
-                                <span style={{ flex: 1, fontSize: '13px', fontWeight: 600, color: 'var(--body-text-main)' }}>
-                                  {ex?.name || it.exercise_key}
-                                </span>
+                              <div key={it.exercise_key + itIdx} className="body-rt-cz-ex">
+                                <span className="body-rt-cz-name">{ex?.name || it.exercise_key}</span>
 
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <div className="body-rt-cz-ctls">
                                   {/* Sửa Hiệp */}
-                                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                    <span style={{ fontSize: '11px', color: 'var(--body-text-muted)' }}>Hiệp:</span>
-                                    <div className="body-routine-counter" style={{ height: '28px' }}>
+                                  <div className="body-rt-cz-ctl">
+                                    <span>Hiệp:</span>
+                                    <div className="body-routine-counter">
                                       <button
                                         type="button"
                                         className="body-routine-counter-btn"
-                                        style={{ width: '24px' }}
                                         onClick={() => updateItem(it.target_sets - 1, undefined)}
+                                        aria-label="Giảm 1 hiệp"
                                       >
                                         −
                                       </button>
-                                      <span style={{ width: '22px', textAlign: 'center', fontSize: '12px', fontWeight: 600, fontFamily: 'var(--body-mono)' }}>
-                                        {it.target_sets}
-                                      </span>
+                                      <span className="body-routine-counter-val">{it.target_sets}</span>
                                       <button
                                         type="button"
                                         className="body-routine-counter-btn"
-                                        style={{ width: '24px' }}
                                         onClick={() => updateItem(it.target_sets + 1, undefined)}
+                                        aria-label="Tăng 1 hiệp"
                                       >
                                         +
                                       </button>
@@ -1836,25 +1756,23 @@ export default function RoutineScreen({
                                   </div>
 
                                   {/* Sửa Rep/s */}
-                                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                    <span style={{ fontSize: '11px', color: 'var(--body-text-muted)' }}>Mục tiêu:</span>
-                                    <div className="body-routine-counter-target" style={{ height: '28px' }}>
+                                  <div className="body-rt-cz-ctl">
+                                    <span>Mục tiêu:</span>
+                                    <div className="body-routine-counter body-routine-counter-target">
                                       <button
                                         type="button"
                                         className="body-routine-counter-btn"
-                                        style={{ width: '24px' }}
                                         onClick={() => updateItem(undefined, it.target_val - (it.unit === 's' ? 5 : 1))}
+                                        aria-label="Giảm mục tiêu"
                                       >
                                         −
                                       </button>
-                                      <span style={{ minWidth: '40px', textAlign: 'center', fontSize: '12px', fontWeight: 600, fontFamily: 'var(--body-mono)', color: 'var(--body-accent)' }}>
-                                        {it.target_val} {it.unit}
-                                      </span>
+                                      <span className="body-routine-counter-val">{it.target_val} {it.unit}</span>
                                       <button
                                         type="button"
                                         className="body-routine-counter-btn"
-                                        style={{ width: '24px' }}
                                         onClick={() => updateItem(undefined, it.target_val + (it.unit === 's' ? 5 : 1))}
+                                        aria-label="Tăng mục tiêu"
                                       >
                                         +
                                       </button>
@@ -1864,15 +1782,10 @@ export default function RoutineScreen({
                                   {/* Nút Xoá */}
                                   <button
                                     type="button"
+                                    className="body-rt-del"
                                     onClick={removeItem}
-                                    style={{
-                                      border: 'none',
-                                      background: 'transparent',
-                                      color: '#B5B4AE',
-                                      cursor: 'pointer',
-                                      padding: '4px'
-                                    }}
                                     title="Xóa bài khỏi ngày này"
+                                    aria-label="Xóa bài khỏi ngày này"
                                   >
                                     <AppIcon name="trash" size={13} />
                                   </button>
@@ -1887,44 +1800,11 @@ export default function RoutineScreen({
                 </div>
               </div>
 
-              <div style={{
-                padding: '14px 22px',
-                borderTop: '1px solid var(--body-card-border)',
-                display: 'flex',
-                gap: '8px',
-                background: 'var(--body-card-bg)'
-              }}>
-                <button
-                  type="button"
-                  onClick={() => setShowCustomizeModal(false)}
-                  style={{
-                    flex: 1,
-                    height: '38px',
-                    borderRadius: '9px',
-                    border: '1px solid var(--body-border-subtle)',
-                    background: 'var(--body-shell-bg)',
-                    color: 'var(--body-text-main)',
-                    fontSize: '12.5px',
-                    fontWeight: 600,
-                    cursor: 'pointer'
-                  }}
-                >
+              <div className="body-rt-modal-foot">
+                <button type="button" className="body-btn" onClick={() => setShowCustomizeModal(false)}>
                   Hủy
                 </button>
-                <button
-                  type="submit"
-                  style={{
-                    flex: 1.5,
-                    height: '38px',
-                    borderRadius: '9px',
-                    border: 'none',
-                    background: 'var(--body-accent)',
-                    color: '#fff',
-                    fontSize: '12.5px',
-                    fontWeight: 600,
-                    cursor: 'pointer'
-                  }}
-                >
+                <button type="submit" className="body-btn body-btn-primary">
                   Lưu & Bắt đầu lộ trình này
                 </button>
               </div>
@@ -1936,102 +1816,48 @@ export default function RoutineScreen({
       {/* ── MODAL TẠO LỘ TRÌNH MỚI TỰ DO ─────────────────────────── */}
       {showCreateModal && (
         <div className="body-modal-backdrop" onClick={() => setShowCreateModal(false)}>
-          <div className="body-modal-box" onClick={e => e.stopPropagation()}>
-            <div style={{
-              padding: '18px 22px',
-              borderBottom: '1px solid var(--body-card-border)',
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center'
-            }}>
-              <span style={{ fontSize: '17px', fontWeight: 700, color: 'var(--body-text-main)' }}>
-                Tạo lộ trình mới
-              </span>
-              <button
-                type="button"
-                onClick={() => setShowCreateModal(false)}
-                style={{
-                  border: 'none',
-                  background: 'transparent',
-                  color: 'var(--body-text-muted)',
-                  cursor: 'pointer',
-                  padding: '4px'
-                }}
-              >
-                <AppIcon name="x" size={18} />
+          <div className="body-modal-box" role="dialog" aria-label="Tạo lộ trình mới" onClick={e => e.stopPropagation()}>
+            <div className="body-rt-modal-head">
+              <span className="body-rt-modal-title">Tạo lộ trình mới</span>
+              <button type="button" className="body-icon-btn" onClick={() => setShowCreateModal(false)} aria-label="Đóng">
+                <AppIcon name="x" size={15} />
               </button>
             </div>
 
-            <form onSubmit={handleCreateCustomSubmit} style={{ padding: '20px 22px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              <div>
-                <label style={{ display: 'block', fontSize: '12.5px', fontWeight: 600, marginBottom: '6px', color: 'var(--body-text-main)' }}>
-                  Tên lộ trình
-                </label>
+            <form onSubmit={handleCreateCustomSubmit} className="body-rt-modal-body">
+              <label className="body-rt-field">
+                <span>Tên lộ trình</span>
                 <input
                   type="text"
                   required
+                  className="body-input"
                   value={customName}
                   onChange={e => setCustomName(e.target.value)}
                   placeholder="Ví dụ: Lịch tập A/B buổi sáng"
-                  style={{
-                    width: '100%',
-                    height: '38px',
-                    borderRadius: '9px',
-                    border: '1px solid var(--body-border-subtle)',
-                    padding: '0 12px',
-                    fontSize: '13.5px',
-                    boxSizing: 'border-box',
-                    background: 'var(--body-card-bg)',
-                    color: 'var(--body-text-main)',
-                    outline: 'none'
-                  }}
                 />
-              </div>
+              </label>
 
-              <div>
-                <label style={{ display: 'block', fontSize: '12.5px', fontWeight: 600, marginBottom: '6px', color: 'var(--body-text-main)' }}>
-                  Mục tiêu chính
-                </label>
+              <label className="body-rt-field">
+                <span>Mục tiêu chính</span>
                 <input
                   type="text"
+                  className="body-input"
                   value={customGoal}
                   onChange={e => setCustomGoal(e.target.value)}
                   placeholder="Ví dụ: Tăng cơ ngực vai, bảo vệ khớp gối"
-                  style={{
-                    width: '100%',
-                    height: '38px',
-                    borderRadius: '9px',
-                    border: '1px solid var(--body-border-subtle)',
-                    padding: '0 12px',
-                    fontSize: '13.5px',
-                    boxSizing: 'border-box',
-                    background: 'var(--body-card-bg)',
-                    color: 'var(--body-text-main)',
-                    outline: 'none'
-                  }}
                 />
-              </div>
+              </label>
 
-              <div>
-                <label style={{ display: 'block', fontSize: '12.5px', fontWeight: 600, marginBottom: '6px', color: 'var(--body-text-main)' }}>
-                  Thời lượng kế hoạch
-                </label>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '8px' }}>
+              <div className="body-rt-field">
+                <span>Thời lượng kế hoạch</span>
+                <div className="body-rt-weeks-pick">
                   {[4, 6, 8, 12].map(w => (
                     <button
                       key={w}
                       type="button"
+                      className="body-chip"
+                      aria-pressed={customWeeks === w}
                       onClick={() => setCustomWeeks(w)}
-                      style={{
-                        height: '34px',
-                        borderRadius: '8px',
-                        border: `1.5px solid ${customWeeks === w ? 'var(--body-accent)' : 'var(--body-border-subtle)'}`,
-                        background: customWeeks === w ? 'var(--body-accent-soft)' : 'var(--body-card-bg)',
-                        color: customWeeks === w ? 'var(--body-accent)' : 'var(--body-text-main)',
-                        fontSize: '12.5px',
-                        fontWeight: 600,
-                        cursor: 'pointer'
-                      }}
                     >
                       {w} tuần
                     </button>
@@ -2039,74 +1865,34 @@ export default function RoutineScreen({
                 </div>
               </div>
 
-              <div>
-                <label style={{ display: 'block', fontSize: '12.5px', fontWeight: 600, marginBottom: '6px', color: 'var(--body-text-main)' }}>
-                  Khung lịch ban đầu (Split)
-                </label>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <div className="body-rt-field">
+                <span>Khung lịch ban đầu (Split)</span>
+                <div className="body-rt-splits">
                   {[
                     { key: 'upper-lower', label: 'Thân trên / Thân dưới (4 buổi)', desc: 'T2 Thân trên, T3 Thân dưới, T5 Thân trên B, T6 Thân dưới & Lõi' },
                     { key: 'fullbody', label: 'Toàn thân (Full Body 3 buổi)', desc: 'T2, T4, T6 tập toàn thân. Nghỉ ngơi T3, T5, T7, CN' },
                     { key: 'ppl', label: 'Đẩy / Kéo / Chân (Push Pull Legs)', desc: 'T2 Đẩy, T4 Kéo, T6 Chân' },
                     { key: 'empty', label: 'Lịch trống hoàn toàn', desc: '7 ngày nghỉ sẵn, tự lên bài tập từ đầu' }
                   ].map(s => (
-                    <div
+                    <button
                       key={s.key}
+                      type="button"
+                      className="body-rt-split"
+                      aria-pressed={customSplit === s.key}
                       onClick={() => setCustomSplit(s.key)}
-                      style={{
-                        padding: '10px 12px',
-                        borderRadius: '10px',
-                        border: `1.5px solid ${customSplit === s.key ? 'var(--body-accent)' : 'var(--body-card-border)'}`,
-                        background: customSplit === s.key ? 'var(--body-accent-tint)' : 'var(--body-card-bg)',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        gap: '3px'
-                      }}
                     >
-                      <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--body-text-main)' }}>
-                        {s.label}
-                      </span>
-                      <span style={{ fontSize: '11.5px', color: 'var(--body-text-muted)' }}>
-                        {s.desc}
-                      </span>
-                    </div>
+                      <b>{s.label}</b>
+                      <small>{s.desc}</small>
+                    </button>
                   ))}
                 </div>
               </div>
 
-              <div style={{ display: 'flex', gap: '8px', paddingTop: '10px', marginTop: 'auto' }}>
-                <button
-                  type="button"
-                  onClick={() => setShowCreateModal(false)}
-                  style={{
-                    flex: 1,
-                    height: '40px',
-                    borderRadius: '10px',
-                    border: '1px solid var(--body-border-subtle)',
-                    background: 'var(--body-shell-bg)',
-                    color: 'var(--body-text-main)',
-                    fontSize: '13px',
-                    fontWeight: 600,
-                    cursor: 'pointer'
-                  }}
-                >
+              <div className="body-rt-modal-actions">
+                <button type="button" className="body-btn" onClick={() => setShowCreateModal(false)}>
                   Hủy
                 </button>
-                <button
-                  type="submit"
-                  style={{
-                    flex: 1.5,
-                    height: '40px',
-                    borderRadius: '10px',
-                    border: 'none',
-                    background: 'var(--body-accent)',
-                    color: '#fff',
-                    fontSize: '13px',
-                    fontWeight: 600,
-                    cursor: 'pointer'
-                  }}
-                >
+                <button type="submit" className="body-btn body-btn-primary">
                   Tạo lộ trình & Bắt đầu
                 </button>
               </div>
@@ -2218,158 +2004,58 @@ export default function RoutineScreen({
       {/* ── MODAL CHỈNH SỬA LỘ TRÌNH HIỆN TẠI ─────────────────────── */}
       {showEditModal && (
         <div className="body-modal-backdrop" onClick={() => setShowEditModal(false)}>
-          <div className="body-modal-box" onClick={e => e.stopPropagation()}>
-            <div style={{
-              padding: '18px 22px',
-              borderBottom: '1px solid var(--body-card-border)',
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center'
-            }}>
-              <span style={{ fontSize: '17px', fontWeight: 700, color: 'var(--body-text-main)' }}>
-                Chỉnh sửa lộ trình
-              </span>
-              <button
-                type="button"
-                onClick={() => setShowEditModal(false)}
-                style={{
-                  border: 'none',
-                  background: 'transparent',
-                  color: 'var(--body-text-muted)',
-                  cursor: 'pointer',
-                  padding: '4px'
-                }}
-              >
-                <AppIcon name="x" size={18} />
+          <div className="body-modal-box" role="dialog" aria-label="Chỉnh sửa lộ trình" onClick={e => e.stopPropagation()}>
+            <div className="body-rt-modal-head">
+              <span className="body-rt-modal-title">Chỉnh sửa lộ trình</span>
+              <button type="button" className="body-icon-btn" onClick={() => setShowEditModal(false)} aria-label="Đóng">
+                <AppIcon name="x" size={15} />
               </button>
             </div>
 
-            <form onSubmit={handleSaveEditSubmit} style={{ padding: '20px 22px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              <div>
-                <label style={{ display: 'block', fontSize: '12.5px', fontWeight: 600, marginBottom: '6px', color: 'var(--body-text-main)' }}>
-                  Tên lộ trình
-                </label>
+            <form onSubmit={handleSaveEditSubmit} className="body-rt-modal-body">
+              <label className="body-rt-field">
+                <span>Tên lộ trình</span>
                 <input
                   type="text"
                   required
+                  className="body-input"
                   value={editName}
                   onChange={e => setEditName(e.target.value)}
-                  style={{
-                    width: '100%',
-                    height: '38px',
-                    borderRadius: '9px',
-                    border: '1px solid var(--body-border-subtle)',
-                    padding: '0 12px',
-                    fontSize: '13.5px',
-                    boxSizing: 'border-box',
-                    background: 'var(--body-card-bg)',
-                    color: 'var(--body-text-main)',
-                    outline: 'none'
-                  }}
                 />
-              </div>
+              </label>
 
-              <div>
-                <label style={{ display: 'block', fontSize: '12.5px', fontWeight: 600, marginBottom: '6px', color: 'var(--body-text-main)' }}>
-                  Mục tiêu
-                </label>
+              <label className="body-rt-field">
+                <span>Mục tiêu</span>
                 <input
                   type="text"
+                  className="body-input"
                   value={editGoal}
                   onChange={e => setEditGoal(e.target.value)}
-                  style={{
-                    width: '100%',
-                    height: '38px',
-                    borderRadius: '9px',
-                    border: '1px solid var(--body-border-subtle)',
-                    padding: '0 12px',
-                    fontSize: '13.5px',
-                    boxSizing: 'border-box',
-                    background: 'var(--body-card-bg)',
-                    color: 'var(--body-text-main)',
-                    outline: 'none'
-                  }}
                 />
-              </div>
+              </label>
 
-              <div>
-                <label style={{ display: 'block', fontSize: '12.5px', fontWeight: 600, marginBottom: '6px', color: 'var(--body-text-main)' }}>
-                  Số tuần
-                </label>
+              <label className="body-rt-field">
+                <span>Số tuần</span>
                 <input
                   type="number"
                   min="1"
                   max="52"
+                  className="body-input"
                   value={editWeeks}
                   onChange={e => setEditWeeks(Number(e.target.value))}
-                  style={{
-                    width: '100%',
-                    height: '38px',
-                    borderRadius: '9px',
-                    border: '1px solid var(--body-border-subtle)',
-                    padding: '0 12px',
-                    fontSize: '13.5px',
-                    boxSizing: 'border-box',
-                    background: 'var(--body-card-bg)',
-                    color: 'var(--body-text-main)',
-                    outline: 'none'
-                  }}
                 />
-              </div>
+              </label>
 
-              <div style={{ display: 'flex', gap: '8px', paddingTop: '10px' }}>
+              <div className="body-rt-modal-actions">
                 {routines.length > 1 && (
-                  <button
-                    type="button"
-                    onClick={() => setConfirmDeleteOpen(true)}
-                    style={{
-                      height: '40px',
-                      padding: '0 14px',
-                      borderRadius: '10px',
-                      border: '1px solid var(--body-red)',
-                      background: 'var(--body-red-soft)',
-                      color: 'var(--body-red)',
-                      fontSize: '13px',
-                      fontWeight: 600,
-                      cursor: 'pointer'
-                    }}
-                  >
+                  <button type="button" className="body-btn body-btn-danger" onClick={() => setConfirmDeleteOpen(true)}>
                     Xoá
                   </button>
                 )}
-
-                <button
-                  type="button"
-                  onClick={() => setShowEditModal(false)}
-                  style={{
-                    flex: 1,
-                    height: '40px',
-                    borderRadius: '10px',
-                    border: '1px solid var(--body-border-subtle)',
-                    background: 'var(--body-shell-bg)',
-                    color: 'var(--body-text-main)',
-                    fontSize: '13px',
-                    fontWeight: 600,
-                    cursor: 'pointer'
-                  }}
-                >
+                <button type="button" className="body-btn" onClick={() => setShowEditModal(false)}>
                   Hủy
                 </button>
-
-                <button
-                  type="submit"
-                  style={{
-                    flex: 1.5,
-                    height: '40px',
-                    borderRadius: '10px',
-                    border: 'none',
-                    background: 'var(--body-accent)',
-                    color: '#fff',
-                    fontSize: '13px',
-                    fontWeight: 600,
-                    cursor: 'pointer'
-                  }}
-                >
+                <button type="submit" className="body-btn body-btn-primary">
                   Lưu thay đổi
                 </button>
               </div>

@@ -1,10 +1,9 @@
-import { useState, useMemo, lazy, Suspense } from 'react';
+import { useState, useMemo } from 'react';
 import AppIcon from '../AppIcon';
+import MuscleAnatomy2D from './MuscleAnatomy2D';
 import BASE_EXERCISES from '../../data/body-exercises.json';
 import { useWorkouts } from '../../hooks/useWorkouts';
-import { calculateRecoveryMetrics, RECOVERY_STATUS } from '../../utils/workoutLogic';
-
-const MuscleBodyCanvas = lazy(() => import('./MuscleBodyCanvas'));
+import { calculateRecoveryMetrics, muscleFigureFills, RECOVERY_STATUS } from '../../utils/workoutLogic';
 
 const MUSCLE_ANATOMY = [
   {
@@ -173,6 +172,36 @@ const EQUIPMENT_LABELS = {
 
 const DAYS_SHORT = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
 
+const VIEW_MODES = [
+  { key: 'group', icon: 'user', title: 'Chế độ Nhóm cơ & Cơ phụ trợ' },
+  { key: 'heat', icon: 'chartDonut', title: 'Chế độ Mức tập 7 ngày' },
+  { key: 'rec', icon: 'checkCircle', title: 'Chế độ Trạng thái phục hồi' }
+];
+
+// Chú thích dưới sân khấu theo chế độ (màu khớp muscleFigureFills)
+const LEGENDS = {
+  rec: [
+    { label: 'Cần nghỉ', color: 'var(--body-red)' },
+    { label: 'Đang hồi', color: 'var(--body-amber)' },
+    { label: 'Sẵn sàng', color: 'var(--body-green)' }
+  ],
+  heat: [
+    { label: 'Chưa tập', color: 'var(--body-track)' },
+    { label: 'Ít', color: 'var(--body-blue)' },
+    { label: 'Vừa', color: 'var(--body-amber)' },
+    { label: 'Nhiều', color: 'var(--body-red)' }
+  ],
+  group: [
+    { label: 'Cơ chính', color: 'var(--body-accent)' },
+    { label: 'Cơ phụ', color: 'var(--body-blue)' }
+  ]
+};
+
+const REC_COLOR = { ready: 'var(--body-green)', mid: 'var(--body-amber)', low: 'var(--body-red)' };
+const LEVEL_TONE = { 'Cơ bản': 'easy', 'Trung bình': 'mid', 'Nâng cao': 'hard' };
+// Vòng phục hồi r40 chia 3 cung, mỗi cung chừa khe 14°
+const REC_SEG = (2 * Math.PI * 40 * (120 - 14)) / 360;
+
 export default function MuscleMapScreen({ onSelectExercise }) {
   const { recentSets, exerciseMap } = useWorkouts();
 
@@ -310,6 +339,11 @@ export default function MuscleMapScreen({ onSelectExercise }) {
     });
   }, [selectedMuscleId, selectedEquip]);
 
+  const figureColors = useMemo(
+    () => muscleFigureFills({ mode: viewMode, selected: selectedMuscleId, secondary: selectedMuscle.sec, heatMap, recoveryMap }),
+    [viewMode, selectedMuscleId, selectedMuscle.sec, heatMap, recoveryMap]
+  );
+
   // Đổi nhóm cơ + tự động xoay mặt trước/sau nếu cần
   const handlePickMuscle = (id, forceRotate = true) => {
     setSelectedMuscleId(id);
@@ -321,687 +355,341 @@ export default function MuscleMapScreen({ onSelectExercise }) {
     }
   };
 
-  // Helper lấy màu dot cho từng cơ trong thanh chip
-  const getChipDotColor = (mId) => {
-    if (viewMode === 'heat') {
-      const r = heatMap[mId] || 0;
-      return r >= 0.8 ? '#C8361F' : r >= 0.4 ? '#E8804F' : '#E6E0D8';
-    }
-    if (viewMode === 'rec') {
-      const r = recoveryMap[mId] || RECOVERY_STATUS.READY;
-      return r === RECOVERY_STATUS.READY ? '#2F8A57' : r === RECOVERY_STATUS.MID ? '#B57A12' : '#C23B22';
-    }
-    return mId === selectedMuscleId ? '#6949E8' : selectedMuscle.sec.includes(mId) ? '#C4B6F4' : '#D2C7BC';
-  };
+  const recColor = REC_COLOR[selectedMuscle.recovery] || REC_COLOR.ready;
+  const recShort = `${selectedMuscle.recLabel}${selectedMuscle.recHours != null ? ` · ${selectedMuscle.recHours}h` : ''}`;
+  const cardsHidden = sheetCollapsed || desktopCardsHidden;
+  const sheetH = sheetCollapsed ? '48px' : sheetExpanded ? '80vh' : '390px';
+  const secMuscles = (selectedMuscle.sec || []).map(id => MUSCLE_ANATOMY.find(m => m.id === id)).filter(Boolean);
+
+  // Phần dùng chung desktop + sheet mobile
+  const weekGrid = (
+    <div className="body-atlas-week">
+      {DAYS_SHORT.map((day, idx) => {
+        const val = selectedMuscle.days[idx] || 0;
+        return (
+          <span key={day} className={val > 0 ? 'is-on' : undefined}>
+            <b>{val || '·'}</b>
+            <small>{day}</small>
+          </span>
+        );
+      })}
+    </div>
+  );
+  const weekHead = (
+    <div className="body-atlas-card-head">
+      <span>Mức tập 7 ngày</span>
+      <b>{selectedMuscle.currentSets}<small> / {selectedMuscle.targetSets} set</small></b>
+    </div>
+  );
+  const prBlock = selectedMuscle.pr ? (
+    <div className="body-atlas-pr">
+      <span className="body-atlas-pr-ic"><AppIcon name="trophy" size={18} weight="fill" /></span>
+      <span className="body-atlas-pr-main">
+        <small>{selectedMuscle.pr.exName}</small>
+        <b>{selectedMuscle.pr.valText}</b>
+      </span>
+      <span className="body-atlas-pr-date">{selectedMuscle.pr.dateText}</span>
+    </div>
+  ) : null;
+  const secChips = (
+    <div className="body-atlas-sec">
+      {secMuscles.map(s => (
+        <button key={s.id} type="button" className="body-chip body-atlas-sec-chip" onClick={() => handlePickMuscle(s.id, true)}>
+          {s.vn}<AppIcon name="arrowRight" size={12} />
+        </button>
+      ))}
+    </div>
+  );
+  const equipChips = (
+    <div className="body-chip-row body-atlas-equip" role="group" aria-label="Lọc dụng cụ">
+      {Object.entries(EQUIPMENT_LABELS).map(([k, label]) => (
+        <button key={k} type="button" className="body-chip" aria-pressed={selectedEquip === k} onClick={() => setSelectedEquip(k)}>
+          {label}
+        </button>
+      ))}
+    </div>
+  );
+  const levelBadge = ex => <span className={`body-atlas-level is-${LEVEL_TONE[ex.level] || 'easy'}`}>{ex.level}</span>;
+  const startBtn = ex => onSelectExercise && (
+    <button type="button" className="body-btn body-btn-primary body-atlas-go" onClick={() => onSelectExercise(ex)} title="Bắt đầu tập bài này">
+      <AppIcon name="play" size={12} weight="fill" />Tập
+    </button>
+  );
 
   return (
-    <div className="body-atlas-wrapper">
-      {/* ── WATERMARK CHỮ IN HOA LỚN PHÍA SAU MÔ HÌNH 3D ─────────────── */}
-      <div className="body-atlas-watermark">
+    <div className="body-atlas-wrapper" style={{ '--atlas-sheet-h': sheetH }}>
+      {/* ── WATERMARK TÊN CƠ IN HOA PHÍA SAU HÌNH ──────────────────── */}
+      <div className="body-atlas-watermark" aria-hidden="true">
         {selectedMuscle.nameUp}
       </div>
 
-      {/* ── DẢI CHIP CHỌN CƠ TRƯỢT NGANG Ở ĐỈNH ──────────────────────── */}
-      <div className="body-atlas-chips-bar">
+      {/* ── DẢI CHIP CHỌN CƠ Ở ĐỈNH ──────────────────────────────── */}
+      <div className="body-atlas-chips-bar body-chip-row" role="group" aria-label="Chọn nhóm cơ">
         {MUSCLE_ANATOMY.map(m => {
-          const isSel = m.id === selectedMuscleId;
-          const dotColor = getChipDotColor(m.id);
+          const hours = recoveryDetails[m.id]?.hoursSince;
           return (
             <button
               key={m.id}
-              className={`body-atlas-chip ${isSel ? 'active' : ''}`}
+              type="button"
+              className="body-chip body-atlas-chip"
+              aria-pressed={m.id === selectedMuscleId}
               onClick={() => handlePickMuscle(m.id, true)}
             >
-              <span style={{ width: '7px', height: '7px', borderRadius: '4px', background: dotColor, flexShrink: 0 }} />
-              <span>{m.vn}</span>
+              <i style={{ '--dc': figureColors.fills[m.id] || 'var(--body-track)' }} />
+              {m.vn}
+              {hours != null && <small title="Giờ kể từ lần tập gần nhất">{hours}h</small>}
             </button>
           );
         })}
       </div>
 
-      {/* ── CỤM NÚT ICON NỔI BÊN PHẢI (CHẾ ĐỘ & LẬT MẶT) ─────────────── */}
+      {/* ── CỤM NÚT CÔNG CỤ NỔI BÊN PHẢI ─────────────────────────── */}
       <div className="body-atlas-floating-tools">
-        {/* Chế độ Nhóm cơ */}
-        <button
-          className={`body-atlas-tool-btn ${viewMode === 'group' ? 'active' : ''}`}
-          onClick={() => setViewMode('group')}
-          title="Chế độ Nhóm cơ & Cơ phụ trợ"
-        >
-          <AppIcon name="user" size={19} />
-        </button>
+        {VIEW_MODES.map(v => (
+          <button
+            key={v.key}
+            type="button"
+            className="body-atlas-tool-btn"
+            aria-pressed={viewMode === v.key}
+            onClick={() => setViewMode(v.key)}
+            title={v.title}
+            aria-label={v.title}
+          >
+            <AppIcon name={v.icon} size={19} />
+          </button>
+        ))}
 
-        {/* Chế độ Mức tập */}
+        {/* Lật mặt: chỉ mobile (desktop đã thấy cả hai mặt) */}
         <button
-          className={`body-atlas-tool-btn ${viewMode === 'heat' ? 'active' : ''}`}
-          onClick={() => setViewMode('heat')}
-          title="Chế độ Mức tập 7 ngày"
-        >
-          <AppIcon name="chartDonut" size={19} />
-        </button>
-
-        {/* Chế độ Phục hồi */}
-        <button
-          className={`body-atlas-tool-btn ${viewMode === 'rec' ? 'active' : ''}`}
-          onClick={() => setViewMode('rec')}
-          title="Chế độ Trạng thái phục hồi"
-        >
-          <AppIcon name="checkCircle" size={19} />
-        </button>
-
-        {/* Lật Mặt trước / Mặt sau */}
-        <button
-          className="body-atlas-tool-btn"
+          type="button"
+          className="body-atlas-tool-btn is-flip"
           onClick={() => setSideView(s => s === 'front' ? 'back' : 'front')}
           title={`Lật sang ${sideView === 'front' ? 'Mặt sau' : 'Mặt trước'}`}
-          style={{ marginTop: '6px' }}
+          aria-label={`Lật sang ${sideView === 'front' ? 'mặt sau' : 'mặt trước'}`}
         >
-          <AppIcon name="pencil" size={18} />
+          <AppIcon name="arrowsClockwise" size={18} />
         </button>
 
         {/* Ẩn / Hiện bảng thông tin để ngắm toàn thân & bấm chân */}
         <button
-          className={`body-atlas-tool-btn ${sheetCollapsed || desktopCardsHidden ? 'active' : ''}`}
+          type="button"
+          className="body-atlas-tool-btn is-sep"
+          aria-pressed={cardsHidden}
           onClick={() => {
             setSheetCollapsed(c => !c);
             setDesktopCardsHidden(h => !h);
           }}
-          title={sheetCollapsed || desktopCardsHidden ? "Hiện lại bảng thông tin nhóm cơ" : "Thu gọn bảng để nhìn và bấm vào chân"}
-          style={{ marginTop: '2px' }}
+          title={cardsHidden ? 'Hiện lại bảng thông tin nhóm cơ' : 'Thu gọn bảng để nhìn và bấm vào chân'}
+          aria-label={cardsHidden ? 'Hiện lại bảng thông tin nhóm cơ' : 'Thu gọn bảng thông tin'}
         >
-          <AppIcon name={sheetCollapsed || desktopCardsHidden ? "eye" : "eyeSlash"} size={18} />
+          <AppIcon name={cardsHidden ? 'eye' : 'eyeOff'} size={18} />
         </button>
       </div>
 
-      {/* ── CANVAS 3D THREE.JS ────────────────────────────────────────── */}
-      <div style={{ flex: 1, minHeight: '340px', position: 'relative', zIndex: 2 }}>
-        <Suspense fallback={
-          <div style={{ width: '100%', height: '100%', minHeight: '340px', display: 'grid', placeItems: 'center' }}>
-            <span style={{ fontSize: '12px', color: 'var(--body-text-muted)', fontFamily: 'var(--body-mono)' }}>Đang tải mô hình 3D...</span>
-          </div>
-        }>
-          <MuscleBodyCanvas
-            selectedId={selectedMuscleId}
-            onSelectMuscle={(id) => handlePickMuscle(id, true)}
-            viewSide={sideView}
-            mode={viewMode}
-            secondaryList={selectedMuscle.sec || []}
-            heatMap={heatMap}
-            recoveryMap={recoveryMap}
-          />
-        </Suspense>
+      {/* ── SÂN KHẤU: hình 2D (desktop hai mặt, mobile một mặt) ─────── */}
+      <div className={`body-atlas-fig-zone${desktopCardsHidden ? ' is-free' : ''}`}>
+        <span className="body-atlas-platform" aria-hidden="true" />
+        <span className="body-atlas-ring body-deco-pulse" aria-hidden="true" />
+        <span className="body-atlas-hint" aria-hidden="true">
+          <AppIcon name="handPointing" size={14} />Bấm vào nhóm cơ để xem chi tiết
+        </span>
+        <MuscleAnatomy2D
+          side="both"
+          className={`body-atlas-fig is-${sideView}`}
+          height="var(--body-atlas-fig-h)"
+          selected={selectedMuscleId}
+          onSelect={(id) => handlePickMuscle(id, true)}
+          labelOf={(id) => MUSCLE_ANATOMY.find(m => m.id === id)?.vn || id}
+          {...figureColors}
+        />
+        <div className="body-atlas-legend" aria-hidden="true">
+          {LEGENDS[viewMode].map(l => (
+            <span key={l.label}><i style={{ '--dc': l.color }} />{l.label}</span>
+          ))}
+        </div>
       </div>
 
-      {/* ── DESKTOP ATLAS: CÁC CARD NỔI FLOATING HAI BÊN (min-width: 841px) ── */}
+      {/* ── DESKTOP: THẺ NỔI HAI BÊN + DẢI BÀI Ở ĐÁY (≥ 841px) ─────── */}
       <div className={`body-atlas-desktop ${desktopCardsHidden ? 'hidden-cards' : ''}`}>
-        {/* CỘT NỔI BÊN TRÁI: TÊN CƠ, MÔ TẢ & GAUGE PHỤC HỒI */}
+        {/* Trái: tên cơ, mô tả, phục hồi */}
         <div className="body-atlas-desktop-left">
-          <div className="body-atlas-desktop-card" style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-              <span style={{ fontSize: '11px', fontFamily: 'var(--body-mono)', fontWeight: 600, color: 'var(--body-text-muted)', letterSpacing: '0.08em' }}>
-                {selectedMuscle.side === 'front' ? 'MẶT TRƯỚC' : 'MẶT SAU'}
-              </span>
-              <h2 style={{ fontSize: '32px', fontWeight: 800, margin: 0, color: 'var(--body-text-main)', letterSpacing: '-0.02em', lineHeight: 1.1 }}>
-                {selectedMuscle.vn}
-              </h2>
-              <span style={{ fontSize: '12px', fontFamily: 'var(--body-mono)', color: 'var(--body-text-muted)' }}>
-                {selectedMuscle.en}
-              </span>
+          <section className="body-atlas-desktop-card body-atlas-info" style={{ '--dc': recColor }}>
+            <div className="body-atlas-name">
+              <span className="body-eyebrow">{selectedMuscle.side === 'front' ? 'MẶT TRƯỚC' : 'MẶT SAU'}</span>
+              <h2>{selectedMuscle.vn}</h2>
+              <small>{selectedMuscle.en}</small>
+              <span className="body-atlas-status">{selectedMuscle.recLabel}</span>
             </div>
 
-            <p style={{ margin: 0, fontSize: '13px', lineHeight: 1.55, color: 'var(--body-text-sub)' }}>
-              {selectedMuscle.desc}
-            </p>
+            <p className="body-atlas-desc">{selectedMuscle.desc}</p>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
-              <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--body-text-main)' }}>Chức năng</span>
-              <span style={{ fontSize: '12px', color: 'var(--body-text-sub)', lineHeight: 1.45 }}>{selectedMuscle.fn}</span>
+            <div className="body-atlas-fn">
+              <b>Chức năng</b>
+              <span>{selectedMuscle.fn}</span>
             </div>
 
-            {/* Vòng tròn phục hồi SVG */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '14px', padding: '12px', background: 'var(--body-shell-bg)', borderRadius: '12px', marginTop: '4px' }}>
-              <div style={{ position: 'relative', width: '64px', height: '64px', flexShrink: 0 }}>
-                {/* D4: 3 nấc trạng thái rời rạc (Cần nghỉ / Đang hồi / Sẵn sàng), không hiển thị % */}
-                <svg width="64" height="64" viewBox="0 0 76 76" style={{ display: 'block' }}>
+            {/* 3 nấc trạng thái rời rạc (Cần nghỉ / Đang hồi / Sẵn sàng), không hiển thị % */}
+            <div className="body-atlas-rec">
+              <div className="body-atlas-rec-ring">
+                <svg viewBox="0 0 96 96" aria-hidden="true">
                   {[0, 1, 2].map(i => (
                     <circle
                       key={i}
-                      cx="38"
-                      cy="38"
-                      r="31"
-                      fill="none"
-                      stroke={i < selectedMuscle.recStep ? selectedMuscle.recFg : 'var(--body-card-border)'}
-                      strokeWidth="7"
-                      strokeDasharray="56.9 194.7"
-                      transform={`rotate(${-90 + i * 120 + 6} 38 38)`}
+                      cx="48"
+                      cy="48"
+                      r="40"
+                      className={i < selectedMuscle.recStep ? 'is-on' : undefined}
+                      strokeDasharray={`${REC_SEG} ${2 * Math.PI * 40}`}
+                      transform={`rotate(${-90 + i * 120 + 7} 48 48)`}
                     />
                   ))}
                 </svg>
-                <span style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', fontSize: '13px', fontWeight: 700, fontFamily: 'var(--body-mono)', color: 'var(--body-text-main)' }}>
-                  {selectedMuscle.recHours != null ? `${selectedMuscle.recHours}h` : '—'}
-                </span>
+                <b>{selectedMuscle.recHours != null ? `${selectedMuscle.recHours}h` : '—'}</b>
               </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', minWidth: 0 }}>
-                <span style={{ fontSize: '13px', fontWeight: 700, color: selectedMuscle.recFg }}>
-                  {selectedMuscle.recLabel}
-                </span>
-                <span style={{ fontSize: '11.5px', color: 'var(--body-text-muted)', lineHeight: 1.35 }}>
-                  {selectedMuscle.recText}
-                </span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* CỘT NỔI BÊN PHẢI: LƯỚI 7 NGÀY, PR VÀ CƠ PHỤ TRỢ */}
-        <div className="body-atlas-desktop-right">
-          {/* Card 1: Mức tập 7 ngày */}
-          <div className="body-atlas-desktop-card" style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-              <span style={{ fontSize: '12.5px', fontWeight: 700, color: 'var(--body-text-main)' }}>Mức tập 7 ngày</span>
-              <span style={{ fontSize: '12px', fontFamily: 'var(--body-mono)', fontWeight: 700, color: 'var(--body-text-main)' }}>
-                {selectedMuscle.currentSets}<span style={{ fontWeight: 400, color: 'var(--body-text-muted)' }}> / {selectedMuscle.targetSets} set</span>
+              <span className="body-atlas-rec-text">
+                <b>{selectedMuscle.recLabel}</b>
+                <small>{selectedMuscle.recText}</small>
               </span>
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, minmax(0, 1fr))', gap: '5px' }}>
-              {DAYS_SHORT.map((day, idx) => {
-                const val = selectedMuscle.days[idx] || 0;
-                return (
-                  <div key={day} style={{ display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'center' }}>
-                    <span style={{
-                      width: '100%',
-                      height: '30px',
-                      borderRadius: '6px',
-                      background: val > 0 ? 'var(--body-accent-soft)' : 'var(--body-shell-bg)',
-                      border: val > 0 ? '1px solid var(--body-accent-border)' : '1px solid transparent',
-                      display: 'grid',
-                      placeItems: 'center',
-                      fontSize: '11px',
-                      fontWeight: 700,
-                      fontFamily: 'var(--body-mono)',
-                      color: val > 0 ? 'var(--body-accent)' : 'var(--body-text-muted)'
-                    }}>
-                      {val || '·'}
-                    </span>
-                    <span style={{ fontSize: '10px', color: 'var(--body-text-muted)', fontWeight: 500 }}>{day}</span>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Card 2: Kỷ lục cá nhân (PR) */}
-          <div className="body-atlas-desktop-card" style={{ padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            <span style={{ fontSize: '12.5px', fontWeight: 700, color: 'var(--body-text-main)' }}>Kỷ lục cá nhân (PR)</span>
-            {selectedMuscle.pr ? (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: 'var(--body-amber-soft)', color: 'var(--body-amber)', display: 'grid', placeItems: 'center', flexShrink: 0 }}>
-                  <AppIcon name="trophy" size={17} weight="fill" />
-                </div>
-                <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: '1px' }}>
-                  <span style={{ fontSize: '11.5px', color: 'var(--body-text-muted)' }}>{selectedMuscle.pr.exName}</span>
-                  <span style={{ fontSize: '14px', fontWeight: 700, color: 'var(--body-text-main)', fontFamily: 'var(--body-mono)' }}>{selectedMuscle.pr.valText}</span>
-                </div>
-                <span style={{ fontSize: '10.5px', color: 'var(--body-text-muted)', fontFamily: 'var(--body-mono)' }}>{selectedMuscle.pr.dateText}</span>
-              </div>
-            ) : (
-              <div style={{ fontSize: '11.5px', color: 'var(--body-text-muted)' }}>Chưa có kỷ lục nào</div>
-            )}
-          </div>
-
-          {/* Card 3: Cơ phụ trợ */}
-          <div className="body-atlas-desktop-card" style={{ padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            <span style={{ fontSize: '12.5px', fontWeight: 700, color: 'var(--body-text-main)' }}>Cơ phụ trợ</span>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-              {(selectedMuscle.sec || []).map(secId => {
-                const secAnatomy = MUSCLE_ANATOMY.find(m => m.id === secId);
-                if (!secAnatomy) return null;
-                return (
-                  <button
-                    key={secId}
-                    onClick={() => handlePickMuscle(secId, true)}
-                    style={{
-                      height: '28px',
-                      padding: '0 10px',
-                      borderRadius: '14px',
-                      background: 'var(--body-accent-soft)',
-                      border: '1px solid var(--body-accent-border)',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '5px',
-                      fontSize: '11.5px',
-                      fontWeight: 600,
-                      color: 'var(--body-accent)',
-                      cursor: 'pointer'
-                    }}
-                  >
-                    <span>{secAnatomy.vn}</span>
-                    <AppIcon name="arrowRight" size={11} />
-                  </button>
-                );
-              })}
-            </div>
-          </div>
+          </section>
         </div>
 
-        {/* DẢI BÀI TẬP DÀN NGANG Ở ĐÁY */}
+        {/* Phải: lưới 7 ngày, kỷ lục, cơ phụ trợ */}
+        <div className="body-atlas-desktop-right">
+          <section className="body-atlas-desktop-card">
+            {weekHead}
+            {weekGrid}
+          </section>
+
+          <section className="body-atlas-desktop-card">
+            <span className="body-atlas-card-title">Kỷ lục cá nhân (PR)</span>
+            {prBlock || <span className="body-atlas-muted">Chưa có kỷ lục nào</span>}
+          </section>
+
+          <section className="body-atlas-desktop-card">
+            <span className="body-atlas-card-title">Cơ phụ trợ</span>
+            {secChips}
+          </section>
+        </div>
+
+        {/* Đáy: bài tập cho nhóm cơ */}
         <div className="body-atlas-desktop-bottom">
-          <div className="body-atlas-desktop-card" style={{ padding: '12px 18px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--body-text-main)' }}>
-                  Bài tập cho {selectedMuscle.vn} ({exercises.length})
-                </span>
-              </div>
-              {/* Lọc thiết bị */}
-              <div style={{ display: 'flex', gap: '5px' }}>
-                {Object.entries(EQUIPMENT_LABELS).map(([k, label]) => {
-                  const on = selectedEquip === k;
-                  return (
-                    <button
-                      key={k}
-                      onClick={() => setSelectedEquip(k)}
-                      style={{
-                        padding: '3px 8px',
-                        borderRadius: '6px',
-                        border: '1px solid var(--body-card-border)',
-                        background: on ? 'var(--body-text-main)' : 'var(--body-shell-bg)',
-                        color: on ? 'var(--body-bg)' : 'var(--body-text-sub)',
-                        fontSize: '11px',
-                        fontWeight: on ? 600 : 500,
-                        cursor: 'pointer'
-                      }}
-                    >
-                      {label}
-                    </button>
-                  );
-                })}
-              </div>
+          <section className="body-atlas-desktop-card body-atlas-exbar">
+            <div className="body-atlas-exbar-head">
+              <span className="body-atlas-card-title">Bài tập cho {selectedMuscle.vn} ({exercises.length})</span>
+              {equipChips}
             </div>
-
-            {/* Hàng ngang các thẻ bài tập */}
-            <div style={{ display: 'flex', gap: '10px', overflowX: 'auto', scrollbarWidth: 'none', paddingBottom: '2px' }}>
+            <div className="body-atlas-exrow">
               {exercises.length === 0 ? (
-                <div style={{ fontSize: '12px', color: 'var(--body-text-muted)', padding: '10px 0' }}>
-                  Không có bài tập phù hợp với thiết bị đã chọn.
-                </div>
-              ) : (
-                exercises.map(ex => (
-                  <div
-                    key={ex.key}
-                    style={{
-                      width: '210px',
-                      flexShrink: 0,
-                      padding: '10px 12px',
-                      borderRadius: '10px',
-                      background: 'var(--body-card-bg)',
-                      border: '1px solid var(--body-card-border)',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      justifyContent: 'space-between',
-                      gap: '8px'
-                    }}
-                  >
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '6px' }}>
-                      <span style={{ fontSize: '12.5px', fontWeight: 700, color: 'var(--body-text-main)', lineHeight: 1.25 }}>
-                        {ex.name}
-                      </span>
-                      <span style={{
-                        padding: '2px 5px',
-                        borderRadius: '4px',
-                        fontSize: '9.5px',
-                        fontWeight: 600,
-                        background: ex.level === 'Nâng cao' ? '#FBE5E0' : ex.level === 'Trung bình' ? '#FBF0DC' : '#E6F2EA',
-                        color: ex.level === 'Nâng cao' ? '#B23A22' : ex.level === 'Trung bình' ? '#9A6514' : '#2F7A50',
-                        flexShrink: 0
-                      }}>
-                        {ex.level}
-                      </span>
-                    </div>
-
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <span style={{ fontSize: '11px', color: 'var(--body-text-muted)' }}>
-                        {EQUIPMENT_LABELS[ex.equipment] || ex.equipment} · {ex.defaultSets}×{ex.defaultTarget}
-                      </span>
-                      {onSelectExercise && (
-                        <button
-                          className="body-btn body-btn-accent"
-                          onClick={() => onSelectExercise(ex)}
-                          style={{ height: '24px', padding: '0 8px', fontSize: '10.5px' }}
-                        >
-                          Tập
-                        </button>
-                      )}
-                    </div>
+                <span className="body-atlas-muted">Không có bài tập phù hợp với thiết bị đã chọn.</span>
+              ) : exercises.map(ex => (
+                <div key={ex.key} className="body-tile body-atlas-ex">
+                  <div className="body-atlas-ex-top">
+                    <b>{ex.name}</b>
+                    {levelBadge(ex)}
                   </div>
-                ))
-              )}
+                  <div className="body-atlas-ex-foot">
+                    <small>{EQUIPMENT_LABELS[ex.equipment] || ex.equipment} · {ex.defaultSets}×{ex.defaultTarget}</small>
+                    {startBtn(ex)}
+                  </div>
+                </div>
+              ))}
             </div>
-          </div>
+          </section>
         </div>
       </div>
 
-      {/* ── MOBILE ATLAS: BOTTOM SHEET 3 TABS (max-width: 840px) ─────── */}
-      <div
-        className={`body-atlas-sheet-mobile ${sheetCollapsed ? 'collapsed' : ''}`}
-        style={{
-          height: sheetCollapsed ? '48px' : sheetExpanded ? '80vh' : '390px'
-        }}
-      >
+      {/* ── MOBILE: BOTTOM SHEET 3 TAB (≤ 840px) ──────────────────── */}
+      <div className={`body-atlas-sheet-mobile${sheetCollapsed ? ' collapsed' : ''}`} style={{ '--dc': recColor }}>
         {sheetCollapsed ? (
-          /* Trạng thái thu gọn: Thanh pill mỏng 48px nhường 100% không gian cho canvas 3D bấm chân */
-          <div
-            style={{
-              height: '48px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              padding: '0 16px',
-              cursor: 'pointer'
-            }}
-            onClick={() => setSheetCollapsed(false)}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
-              <span style={{
-                width: '8px',
-                height: '8px',
-                borderRadius: '50%',
-                background: selectedMuscle.recFg,
-                flexShrink: 0
-              }} />
-              <span style={{ fontSize: '15px', fontWeight: 700, color: 'var(--body-text-main)', whiteSpace: 'nowrap' }}>
-                {selectedMuscle.vn}
-              </span>
-              <span style={{
-                padding: '2px 8px',
-                borderRadius: '12px',
-                background: selectedMuscle.recBg,
-                fontSize: '11px',
-                fontWeight: 700,
-                color: selectedMuscle.recFg,
-                whiteSpace: 'nowrap'
-              }}>
-                {selectedMuscle.recLabel}{selectedMuscle.recHours != null ? ` · ${selectedMuscle.recHours}h` : ''}
-              </span>
-            </div>
-
-            <div style={{ display: 'flex', alignItems: 'center', gap: '5px', color: 'var(--body-accent)', fontSize: '12px', fontWeight: 600 }}>
-              <span>Xem chi tiết</span>
-              <AppIcon name="caretDown" size={14} style={{ transform: 'rotate(180deg)' }} />
-            </div>
-          </div>
+          /* Thu gọn: thanh mỏng 48px nhường chỗ cho hình để bấm chân */
+          <button type="button" className="body-atlas-sheet-bar" onClick={() => setSheetCollapsed(false)}>
+            <i />
+            <b>{selectedMuscle.vn}</b>
+            <span className="body-atlas-status">{recShort}</span>
+            <em>Xem chi tiết<AppIcon name="caretUp" size={14} /></em>
+          </button>
         ) : (
           <>
-            {/* Thanh kéo vuốt mở rộng / thu gọn */}
-            <div
+            <button
+              type="button"
               className="body-atlas-sheet-handle"
               onClick={() => setSheetExpanded(!sheetExpanded)}
               title="Nhấn để mở rộng hoặc thu gọn"
+              aria-label={sheetExpanded ? 'Thu nhỏ bảng' : 'Mở rộng bảng'}
             />
 
-            {/* Header Bottom Sheet */}
-            <div style={{ padding: '6px 18px 0', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', flex: 'none' }}>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', minWidth: 0 }}>
-                <span style={{ fontSize: '22px', fontWeight: 700, color: 'var(--body-text-main)', letterSpacing: '-0.02em', lineHeight: 1.1 }}>
-                  {selectedMuscle.vn}
-                </span>
-                <span style={{ fontSize: '11.5px', fontFamily: 'var(--body-mono)', color: 'var(--body-text-muted)' }}>
-                  {selectedMuscle.en}
-                </span>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
-                <span style={{
-                  padding: '5px 11px',
-                  borderRadius: '20px',
-                  background: selectedMuscle.recBg,
-                  fontSize: '11.5px',
-                  fontWeight: 700,
-                  color: selectedMuscle.recFg
-                }}>
-                  {selectedMuscle.recLabel}{selectedMuscle.recHours != null ? ` · ${selectedMuscle.recHours}h` : ''}
-                </span>
-
-                {/* NÚT ĐÓNG / THU GỌN SHEET ĐỂ BẤM CHÂN */}
-                <button
-                  type="button"
-                  className="body-atlas-sheet-close-btn"
-                  onClick={() => setSheetCollapsed(true)}
-                  title="Thu gọn bảng để nhìn và bấm vào chân"
-                  aria-label="Thu gọn bảng chi tiết"
-                >
-                  <AppIcon name="x" size={16} />
-                </button>
-              </div>
+            <div className="body-atlas-sheet-head">
+              <span className="body-atlas-sheet-name">
+                <b>{selectedMuscle.vn}</b>
+                <small>{selectedMuscle.en}</small>
+              </span>
+              <span className="body-atlas-status">{recShort}</span>
+              <button
+                type="button"
+                className="body-icon-btn"
+                onClick={() => setSheetCollapsed(true)}
+                title="Thu gọn bảng để nhìn và bấm vào chân"
+                aria-label="Thu gọn bảng chi tiết"
+              >
+                <AppIcon name="x" size={16} />
+              </button>
             </div>
 
-        {/* 3 Tabs: Tổng quan | Bài tập | Kỷ lục & Cơ phụ */}
-        <div style={{ display: 'flex', gap: '22px', padding: '0 18px', borderBottom: '1px solid var(--body-card-border)', flex: 'none', marginTop: '10px' }}>
-          {[
-            { key: 'ov', label: 'Tổng quan' },
-            { key: 'ex', label: `Bài tập (${exercises.length})` },
-            { key: 'pr', label: 'Kỷ lục & Cơ phụ' }
-          ].map(t => (
-            <button
-              key={t.key}
-              className={`body-atlas-sheet-tab ${sheetTab === t.key ? 'active' : ''}`}
-              onClick={() => setSheetTab(t.key)}
-            >
-              {t.label}
-            </button>
-          ))}
-        </div>
+            {/* 3 tab: Tổng quan | Bài tập | Kỷ lục & Cơ phụ */}
+            <div className="body-atlas-sheet-tabs" role="tablist" aria-label="Chi tiết nhóm cơ">
+              {[
+                { key: 'ov', label: 'Tổng quan' },
+                { key: 'ex', label: `Bài tập (${exercises.length})` },
+                { key: 'pr', label: 'Kỷ lục & Cơ phụ' }
+              ].map(t => (
+                <button key={t.key} type="button" role="tab" className="body-chip" aria-selected={sheetTab === t.key} onClick={() => setSheetTab(t.key)}>
+                  {t.label}
+                </button>
+              ))}
+            </div>
 
-        {/* Nội dung Tab cuộn độc lập */}
-        <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '14px 18px 24px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
-          {/* TAB 1: TỔNG QUAN */}
-          {sheetTab === 'ov' && (
-            <>
-              <p style={{ margin: 0, fontSize: '13px', lineHeight: 1.55, color: 'var(--body-text-sub)' }}>
-                {selectedMuscle.desc}
-              </p>
-
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
-                <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--body-text-main)' }}>Chức năng</span>
-                <span style={{ fontSize: '12.5px', color: 'var(--body-text-sub)', lineHeight: 1.5 }}>{selectedMuscle.fn}</span>
-              </div>
-
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginTop: '4px' }}>
-                <span style={{ fontSize: '12.5px', fontWeight: 700, color: 'var(--body-text-main)' }}>Mức tập 7 ngày</span>
-                <span style={{ fontSize: '12px', fontFamily: 'var(--body-mono)', fontWeight: 700, color: 'var(--body-text-main)' }}>
-                  {selectedMuscle.currentSets}
-                  <span style={{ fontWeight: 400, color: 'var(--body-text-muted)' }}> / {selectedMuscle.targetSets} set</span>
-                </span>
-              </div>
-
-              {/* Lưới 7 ngày (T2 - CN) */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, minmax(0, 1fr))', gap: '6px' }}>
-                {DAYS_SHORT.map((day, idx) => {
-                  const val = selectedMuscle.days[idx] || 0;
-                  return (
-                    <div key={day} style={{ display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'center' }}>
-                      <span style={{
-                        width: '100%',
-                        height: '32px',
-                        borderRadius: '6px',
-                        background: val > 0 ? 'var(--body-accent-soft)' : 'var(--body-shell-bg)',
-                        border: val > 0 ? '1px solid var(--body-accent-border)' : '1px solid transparent',
-                        display: 'grid',
-                        placeItems: 'center',
-                        fontSize: '11px',
-                        fontWeight: 700,
-                        fontFamily: 'var(--body-mono)',
-                        color: val > 0 ? 'var(--body-accent)' : 'var(--body-text-muted)'
-                      }}>
-                        {val || '·'}
-                      </span>
-                      <span style={{ fontSize: '10px', color: 'var(--body-text-muted)', fontWeight: 500 }}>{day}</span>
-                    </div>
-                  );
-                })}
-              </div>
-
-              <div style={{ padding: '10px 12px', borderRadius: '10px', background: 'var(--body-shell-bg)', fontSize: '12px', color: 'var(--body-text-sub)', lineHeight: 1.45 }}>
-                {selectedMuscle.recText}
-              </div>
-            </>
-          )}
-
-          {/* TAB 2: BÀI TẬP */}
-          {sheetTab === 'ex' && (
-            <>
-              {/* Lọc thiết bị */}
-              <div style={{ display: 'flex', gap: '5px', overflowX: 'auto', scrollbarWidth: 'none', paddingBottom: '2px' }}>
-                {Object.entries(EQUIPMENT_LABELS).map(([k, label]) => {
-                  const on = selectedEquip === k;
-                  return (
-                    <button
-                      key={k}
-                      onClick={() => setSelectedEquip(k)}
-                      style={{
-                        padding: '4px 10px',
-                        borderRadius: '8px',
-                        border: '1px solid var(--body-card-border)',
-                        background: on ? 'var(--body-text-main)' : 'var(--body-shell-bg)',
-                        color: on ? 'var(--body-bg)' : 'var(--body-text-sub)',
-                        fontSize: '11.5px',
-                        fontWeight: on ? 600 : 500,
-                        cursor: 'pointer',
-                        whiteSpace: 'nowrap'
-                      }}
-                    >
-                      {label}
-                    </button>
-                  );
-                })}
-              </div>
-
-              {/* Danh sách bài tập */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                {exercises.length === 0 ? (
-                  <div style={{ fontSize: '12.5px', color: 'var(--body-text-muted)', padding: '24px 0', textAlign: 'center' }}>
-                    Không có bài tập phù hợp cho bộ lọc này.
+            <div className="body-atlas-sheet-body">
+              {sheetTab === 'ov' && (
+                <>
+                  <p className="body-atlas-desc">{selectedMuscle.desc}</p>
+                  <div className="body-atlas-fn">
+                    <b>Chức năng</b>
+                    <span>{selectedMuscle.fn}</span>
                   </div>
-                ) : (
-                  exercises.map(ex => (
-                    <div
-                      key={ex.key}
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        padding: '10px 12px',
-                        borderRadius: '12px',
-                        background: 'var(--body-shell-bg)',
-                        border: '1px solid var(--body-card-border)',
-                        gap: '10px'
-                      }}
-                    >
-                      <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: '3px' }}>
-                        <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--body-text-main)' }}>{ex.name}</span>
-                        <span style={{ fontSize: '11px', color: 'var(--body-text-muted)' }}>
-                          {EQUIPMENT_LABELS[ex.equipment] || ex.equipment} · {ex.defaultSets} × {ex.defaultTarget}
-                        </span>
-                      </div>
+                  {weekHead}
+                  {weekGrid}
+                  <div className="body-atlas-note">{selectedMuscle.recText}</div>
+                </>
+              )}
 
-                      <span style={{
-                        padding: '3px 7px',
-                        borderRadius: '6px',
-                        fontSize: '10.5px',
-                        fontWeight: 600,
-                        background: ex.level === 'Nâng cao' ? '#FBE5E0' : ex.level === 'Trung bình' ? '#FBF0DC' : '#E6F2EA',
-                        color: ex.level === 'Nâng cao' ? '#B23A22' : ex.level === 'Trung bình' ? '#9A6514' : '#2F7A50',
-                        flexShrink: 0
-                      }}>
-                        {ex.level}
+              {sheetTab === 'ex' && (
+                <>
+                  {equipChips}
+                  {exercises.length === 0 ? (
+                    <span className="body-atlas-muted is-center">Không có bài tập phù hợp cho bộ lọc này.</span>
+                  ) : exercises.map(ex => (
+                    <div key={ex.key} className="body-tile body-atlas-mex">
+                      <span className="body-atlas-mex-main">
+                        <b>{ex.name}</b>
+                        <small>{EQUIPMENT_LABELS[ex.equipment] || ex.equipment} · {ex.defaultSets} × {ex.defaultTarget}</small>
                       </span>
-
-                      {onSelectExercise && (
-                        <button
-                          className="body-btn body-btn-accent"
-                          onClick={() => onSelectExercise(ex)}
-                          style={{ height: '30px', padding: '0 10px', fontSize: '11px', flexShrink: 0 }}
-                          title="Bắt đầu tập bài này"
-                        >
-                          <AppIcon name="play" size={12} weight="fill" /> Tập
-                        </button>
-                      )}
+                      {levelBadge(ex)}
+                      {startBtn(ex)}
                     </div>
-                  ))
-                )}
-              </div>
-            </>
-          )}
+                  ))}
+                </>
+              )}
 
-          {/* TAB 3: KỶ LỤC & CƠ PHỤ TRỢ */}
-          {sheetTab === 'pr' && (
-            <>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                <span style={{ fontSize: '12.5px', fontWeight: 700, color: 'var(--body-text-main)' }}>Kỷ lục cá nhân (PR)</span>
-                {selectedMuscle.pr ? (
-                  <div style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '12px',
-                    padding: '12px 14px',
-                    background: 'var(--body-shell-bg)',
-                    borderRadius: '12px',
-                    border: '1px solid var(--body-card-border)'
-                  }}>
-                    <div style={{ width: '36px', height: '36px', borderRadius: '10px', background: 'var(--body-amber-soft)', color: 'var(--body-amber)', display: 'grid', placeItems: 'center', flexShrink: 0 }}>
-                      <AppIcon name="trophy" size={20} weight="fill" />
-                    </div>
-                    <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                      <span style={{ fontSize: '12px', color: 'var(--body-text-muted)' }}>{selectedMuscle.pr.exName}</span>
-                      <span style={{ fontSize: '15px', fontWeight: 700, color: 'var(--body-text-main)', fontFamily: 'var(--body-mono)' }}>
-                        {selectedMuscle.pr.valText}
-                      </span>
-                    </div>
-                    <span style={{ fontSize: '11px', color: 'var(--body-text-muted)', fontFamily: 'var(--body-mono)' }}>
-                      {selectedMuscle.pr.dateText}
-                    </span>
-                  </div>
-                ) : (
-                  <div style={{ padding: '12px', borderRadius: '10px', background: 'var(--body-shell-bg)', fontSize: '12px', color: 'var(--body-text-muted)', textAlign: 'center' }}>
-                    Chưa ghi nhận kỷ lục cho nhóm cơ này.
-                  </div>
-                )}
-              </div>
-
-              {/* Các nhóm cơ phụ trợ liên đới */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '6px' }}>
-                <span style={{ fontSize: '12.5px', fontWeight: 700, color: 'var(--body-text-main)' }}>Nhóm cơ phụ trợ</span>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '7px' }}>
-                  {(selectedMuscle.sec || []).map(secId => {
-                    const secAnatomy = MUSCLE_ANATOMY.find(m => m.id === secId);
-                    if (!secAnatomy) return null;
-                    return (
-                      <button
-                        key={secId}
-                        onClick={() => handlePickMuscle(secId, true)}
-                        style={{
-                          height: '34px',
-                          padding: '0 13px',
-                          borderRadius: '17px',
-                          background: 'var(--body-accent-soft)',
-                          border: '1px solid var(--body-accent-border)',
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '6px',
-                          fontSize: '12.5px',
-                          fontWeight: 600,
-                          color: 'var(--body-accent)',
-                          cursor: 'pointer'
-                        }}
-                      >
-                        <span>{secAnatomy.vn}</span>
-                        <AppIcon name="arrowRight" size={13} />
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            </>
-          )}
-        </div>
+              {sheetTab === 'pr' && (
+                <>
+                  <span className="body-atlas-card-title">Kỷ lục cá nhân (PR)</span>
+                  {prBlock || <span className="body-atlas-note is-center">Chưa ghi nhận kỷ lục cho nhóm cơ này.</span>}
+                  <span className="body-atlas-card-title">Nhóm cơ phụ trợ</span>
+                  {secChips}
+                </>
+              )}
+            </div>
           </>
         )}
       </div>

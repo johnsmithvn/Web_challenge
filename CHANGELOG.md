@@ -1,5 +1,17 @@
 # CHANGELOG
 
+## v6.37.0 — 2026-11-10
+
+### Added
+- **Body — chi tiết mới của giao diện Ngân hà:** nút trạng thái hôm nay trên header (Buổi dở / Bắt đầu / Đã tập / Mở lộ trình), Chòm sao tuần + Quỹ đạo hôm nay ở Tổng quan, biểu đồ kcal 7 ngày ở Dinh dưỡng (`sumKcalByDay`, có test), đồng hồ BMI theo vùng, màn xong buổi "Sao {thứ} đã sáng" có pháo sao (RNG hạt cố định, tắt khi bật Giảm chuyển động), thanh đoạn tiến độ theo bài ở màn tập.
+
+### Changed
+- **Màn đăng nhập "Đèn pin" (`AuthModal.jsx`, `auth.css`, `public/art/auth/`):** thay popup đăng nhập cũ bằng màn phủ toàn màn hình: tranh phong cảnh + card kính 2 panel, tông xanh trời / xanh ngọc riêng, không theo theme app. Bấm nút ở cuối ô mật khẩu (chú thích "Soi mật khẩu bằng đèn pin") → trời chuyển đêm, đèn pin theo chuột, chữ mật khẩu chỉ hiện chỗ có ánh sáng; cú trên ô tên đăng nhập hiện ra và nhìn theo đèn. Đăng ký / Quên mật khẩu / Đặt lại mật khẩu dùng cùng card (bỏ thanh tab, chuyển bằng link dưới form). Logic Supabase giữ nguyên. Đóng bằng nút X hoặc `Esc`. 12 hình SVG do user cung cấp (bản thiết kế của user). Ô nhập màn đăng nhập dùng class riêng `.auth-entry`; `.auth-input` dùng chung của TaskForm / SubtaskList / LinkKBModal giữ nguyên. Tài liệu: `DESIGN.md` (Auth + ngoại lệ kính mờ).
+- **Body đổi sang phong cách "Ngân hà" (`body.css`, `BodyPage.jsx`, `src/components/body/*`, `useNutrition.js`, `bodyMetrics.js`, `workoutLogic.js`):** tối là đêm sao (kính mờ trên desktop, lớp nổi nền đặc), sáng là "Bình minh" pastel; token `--body-*` mới, chip / nút chính gradient / thẻ dùng chung, màu theo ý nghĩa qua `--dc`, bỏ hex rải rác. Giữ đủ tính năng của 7 màn + màn tập. Hình cơ thể 3D (three.js) thay bằng hình 2D SVG dùng chung `MuscleAnatomy2D` + `muscleFigureFills`, nguồn hình `react-body-highlighter` v2.0.5 (MIT, https://github.com/GV79/react-body-highlighter). Thư viện bài thành lưới thẻ 2 cột + chi tiết dạng hero; modal chi tiết bài và trình phát video bỏ inline style. Màn tập phủ lớp mờ lên trời, vòng set 400px, màn nghỉ vòng 340px. Tài liệu: `DESIGN.md` (Body (Ngân hà)), `FEATURES.md`, plan `docs/PLAN_BODY_NGAN_HA.md`.
+
+### Removed
+- **Body:** `MuscleBodyCanvas.jsx` và dependency `three`.
+
 ## v6.36.0 — 2026-11-08
 
 ### Added

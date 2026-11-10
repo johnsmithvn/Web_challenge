@@ -32,6 +32,13 @@ exercises.forEach(ex => {
   assert.ok(muscles[ex.primary], `Primary muscle '${ex.primary}' must exist in muscles dictionary for exercise ${ex.name}`);
 });
 
+// Hình cơ thể 2D: mọi nhóm cơ của hình thuộc 14 nhóm, và đủ cả 14 nhóm
+const figure = JSON.parse(fs.readFileSync(path.join(rootDir, 'src/data/body-muscle-figure.json'), 'utf8'));
+const figureIds = new Set([...figure.front, ...figure.back].map(p => p.id).filter(Boolean));
+figureIds.forEach(id => assert.ok(muscles[id], `Figure muscle '${id}' must exist in body-muscles.json`));
+assert.deepEqual([...figureIds].sort(), Object.keys(muscles).sort(), 'Figure covers all 14 muscles');
+assert.ok(/MIT/.test(figure.source), 'Figure keeps its MIT source credit');
+
 console.log('  ✓ Static JSON data integrity OK');
 
 // 2. Verify all 4 Body Migrations exist and satisfy security policies
@@ -85,7 +92,6 @@ const requiredFiles = [
   'src/components/body/BiometricsScreen.jsx',
   'src/components/body/NutritionScreen.jsx',
   'src/components/body/MuscleMapScreen.jsx',
-  'src/components/body/MuscleBodyCanvas.jsx',
   'src/components/body/ExerciseLibraryScreen.jsx',
   'src/components/body/ExerciseVideoPlayer.jsx',
   'src/components/body/MuscleAnatomy2D.jsx',

@@ -2,7 +2,7 @@ import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import AppIcon from '../components/AppIcon';
 import { useWorkouts } from '../hooks/useWorkouts';
-import { splitDayName, deloadTarget } from '../utils/workoutLogic';
+import { splitDayName, deloadTarget, getTodayTrainingState } from '../utils/workoutLogic';
 import { toDateStr } from '../utils/dateUtils';
 import { useToast } from '../contexts/ToastContext';
 import { useAuth } from '../contexts/AuthContext';
@@ -22,10 +22,10 @@ import ExerciseLibraryScreen from '../components/body/ExerciseLibraryScreen';
 import '../styles/body.css';
 
 const SCREENS = [
-  { key: 'overview', label: 'Tổng quan', icon: 'gauge' },
-  { key: 'routine', label: 'Lộ trình', icon: 'listChecks' },
-  { key: 'history', label: 'Tiến bộ', icon: 'chartBar' },
-  { key: 'biometrics', label: 'Cơ thể', icon: 'user' },
+  { key: 'overview', label: 'Tổng quan', icon: 'houseSimple' },
+  { key: 'routine', label: 'Lộ trình', icon: 'path' },
+  { key: 'history', label: 'Tiến bộ', icon: 'chartLine' },
+  { key: 'biometrics', label: 'Cơ thể', icon: 'scales' },
   { key: 'nutrition', label: 'Dinh dưỡng', icon: 'bowlFood' },
   { key: 'muscles', label: 'Bản đồ cơ', icon: 'personSimple' },
   { key: 'library', label: 'Thư viện bài', icon: 'books' }
@@ -294,6 +294,15 @@ export default function BodyPage() {
   // Màn tập tách khỏi điều hướng Body: không header/tab, header mobile — LiveSessionScreen tự có header
   const isSession = currentScreen === 'session';
   const screenLabel = SCREENS.find(s => s.key === currentScreen)?.label || 'Body';
+  const screenNo = String(Math.max(0, SCREENS.findIndex(s => s.key === currentScreen)) + 1).padStart(2, '0');
+  const eyebrow = `BODY · ${screenNo} / ${String(SCREENS.length).padStart(2, '0')}`;
+  const dateLabel = todayStr.charAt(0).toUpperCase() + todayStr.slice(1);
+
+  // Nút "hôm nay" trên header: buổi dở / bắt đầu / đã tập / mở lộ trình
+  const todayState = useMemo(
+    () => getTodayTrainingState({ sessions, routineItems, today }),
+    [sessions, routineItems, today]
+  );
 
   // Đang tập: ẩn luôn sidebar chung của Life Hub (màn tập chiếm trọn màn hình)
   useEffect(() => {
@@ -348,68 +357,91 @@ export default function BodyPage() {
       {/* ── HEADER DESKTOP ─────────────────────────────────────────── */}
       {!isSession && (
       <header className="body-header">
-        <div className="body-header-left">
-          {currentScreen === 'overview' ? (
-            <div>
-              <h1 className="body-header-title">{timeGreeting}, {displayName}</h1>
-              <div className="body-header-sub">
-                {todayStr} · tuần {isoWeek}
-              </div>
-            </div>
-          ) : (
-            <div>
-              <h1 className="body-header-title">{screenLabel}<span className="body-header-suffix"> · Sức Khỏe & Thể Hình</span></h1>
-              <div className="body-header-sub">
-                Kế hoạch · Tập luyện · Nhật ký · So sánh tiến bộ
-              </div>
-            </div>
-          )}
+        <div className="body-header-row">
+          <div className="body-header-left">
+            <span className="body-eyebrow">{eyebrow}</span>
+            <h1 className="body-header-title">
+              {currentScreen === 'overview' ? `${timeGreeting}, ${displayName}` : screenLabel}
+            </h1>
+          </div>
+
+          <div className="body-header-right">
+            <span className="body-date-chip">
+              <AppIcon name="moonStars" size={16} weight="fill" />
+              {dateLabel}<span className="body-date-week"> · Tuần {isoWeek}</span>
+            </span>
+
+            {currentScreen === 'overview' && (
+              <button
+                type="button"
+                className="body-btn body-today-btn"
+                onClick={() => window.dispatchEvent(new CustomEvent('body:open-quick-capture'))}
+                title="Ghi nhanh cân nặng hoặc dinh dưỡng"
+                aria-label="Ghi nhanh"
+              >
+                <AppIcon name="plus" size={16} />
+                <span>Ghi nhanh</span>
+              </button>
+            )}
+
+            {todayState.state === 'resume' && liveInfo && (
+              <button type="button" className="body-live-pill" onClick={resumeLive} title="Quay lại buổi tập đang dở">
+                <i className="body-live-dot" aria-hidden="true" />
+                <span className="body-live-pill-text">
+                  <b>Buổi dở · {liveInfo.name}</b>
+                  <small>{liveInfo.meta}</small>
+                </span>
+                <span className="body-live-pill-btn"><AppIcon name="play" size={11} weight="fill" />Tiếp tục</span>
+              </button>
+            )}
+            {todayState.state === 'start' && (
+              <button
+                type="button"
+                className="body-btn body-btn-primary body-today-btn"
+                onClick={() => handleStartSession({ weekday: todayState.weekday, day: todayState.weekday, name: todayState.dayName })}
+                aria-label="Bắt đầu buổi tập"
+              >
+                <AppIcon name="play" size={15} weight="fill" />
+                <span>Bắt đầu buổi tập</span>
+              </button>
+            )}
+            {todayState.state === 'done' && (
+              <button type="button" className="body-btn body-btn-primary body-today-btn" disabled aria-label="Đã tập hôm nay">
+                <AppIcon name="checkCircle" size={16} weight="fill" />
+                <span>Đã tập hôm nay</span>
+              </button>
+            )}
+            {todayState.state === 'rest' && (
+              <button
+                type="button"
+                className="body-btn body-btn-secondary body-today-btn"
+                onClick={() => setScreen('routine')}
+                aria-label="Mở lộ trình"
+              >
+                <AppIcon name="path" size={16} />
+                <span>Mở lộ trình</span>
+              </button>
+            )}
+          </div>
         </div>
 
-        <div className="body-header-right">
-          {liveInfo && (
-            <button type="button" className="body-live-pill" onClick={resumeLive} title="Quay lại buổi tập đang dở">
-              <i />
-              <span className="body-live-pill-text">
-                <b>Buổi dở · {liveInfo.name}</b>
-                <small>{liveInfo.meta}</small>
-              </span>
-              <span className="body-live-pill-btn"><AppIcon name="play" size={11} weight="fill" />Tiếp tục</span>
-            </button>
-          )}
-
-          <nav className="body-subnav" aria-label="Màn Body">
-            {SCREENS.map(s => {
-              const isActive = currentScreen === s.key;
-              return (
-                <button
-                  key={s.key}
-                  type="button"
-                  className={`body-subnav-btn ${isActive ? 'active' : ''}`}
-                  onClick={() => setScreen(s.key)}
-                  aria-current={isActive ? 'page' : undefined}
-                >
-                  <AppIcon name={s.icon} size={14} weight={isActive ? 'fill' : 'regular'} />
-                  <span>{s.label}</span>
-                </button>
-              );
-            })}
-          </nav>
-
-          {currentScreen === 'overview' && (
-            <button
-              type="button"
-              className="body-header-quick-btn"
-              onClick={() => {
-                window.dispatchEvent(new CustomEvent('body:open-quick-capture'));
-              }}
-              title="Ghi nhanh cân nặng hoặc dinh dưỡng"
-            >
-              <AppIcon name="plus" size={14} />
-              <span>Ghi nhanh</span>
-            </button>
-          )}
-        </div>
+        <nav className="body-subnav" aria-label="Màn Body">
+          {SCREENS.map(s => {
+            const isActive = currentScreen === s.key;
+            return (
+              <button
+                key={s.key}
+                type="button"
+                className={`body-subnav-btn ${isActive ? 'active' : ''}`}
+                onClick={() => setScreen(s.key)}
+                aria-current={isActive ? 'page' : undefined}
+              >
+                <AppIcon name={s.icon} size={16} weight={isActive ? 'fill' : 'regular'} />
+                <span>{s.label}</span>
+              </button>
+            );
+          })}
+        </nav>
       </header>
       )}
 
@@ -421,12 +453,13 @@ export default function BodyPage() {
             <AppIcon name="sparkle" size={17} weight="fill" />
           </button>
           <div className="body-mhead-titles">
+            <span className="body-eyebrow">{eyebrow}</span>
             <span className="body-mhead-title">{screenLabel}</span>
             {mobileSub && <span className="body-mhead-sub">{mobileSub}</span>}
           </div>
           {liveInfo && (
             <button type="button" className="body-mhead-live" onClick={resumeLive} aria-label={`Tiếp tục buổi dở ${liveInfo.name}`}>
-              <i />
+              <i className="body-live-dot" aria-hidden="true" />
               <span>{liveInfo.meta || 'Đang tập'}</span>
               <AppIcon name="play" size={11} weight="fill" />
             </button>
@@ -522,8 +555,8 @@ export default function BodyPage() {
         )}
 
         {currentScreen === 'session' && effectiveSession && !hasLoaded && (
-          <div className="body-card" style={{ maxWidth: '480px', margin: '40px auto', padding: '32px', textAlign: 'center', color: 'var(--body-text-muted)' }}>
-            Đang tải buổi tập…
+          <div className="body-card body-ls-empty">
+            <p>Đang tải buổi tập…</p>
           </div>
         )}
 
@@ -549,15 +582,15 @@ export default function BodyPage() {
               onPause={handlePauseSession}
             />
           ) : (
-            <div className="body-card" style={{ maxWidth: '480px', margin: '40px auto', padding: '32px', textAlign: 'center', display: 'flex', flexDirection: 'column', gap: '16px', alignItems: 'center' }}>
-              <div style={{ width: '56px', height: '56px', borderRadius: '16px', background: 'var(--body-shell-bg)', color: 'var(--body-text-muted)', display: 'grid', placeItems: 'center' }}>
-                <AppIcon name="barbell" size={28} />
+            <div className="body-card body-ls-empty">
+              <div className="body-ls-empty-ic">
+                <AppIcon name="barbell" size={24} />
               </div>
-              <h2 style={{ fontSize: '20px', fontWeight: 700, margin: 0 }}>Chưa có buổi tập nào</h2>
-              <p style={{ fontSize: '13.5px', color: 'var(--body-text-muted)', lineHeight: 1.5, margin: 0 }}>
+              <h3>Chưa có buổi tập nào</h3>
+              <p>
                 Hãy chọn một ngày trong Lộ trình để bắt đầu hoặc mở Tổng quan để xem buổi tập hôm nay.
               </p>
-              <div style={{ display: 'flex', gap: '10px', marginTop: '8px' }}>
+              <div className="body-ls-empty-actions">
                 <button className="body-btn" onClick={() => setScreen('overview')}>
                   Về Tổng quan
                 </button>
