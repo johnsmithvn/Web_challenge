@@ -450,6 +450,16 @@ const daysAgo = d => new Date(NOW - d * 86400000).toISOString();
   assert.equal(media.type, 'mediaBlock');
   assert.equal(JSON.stringify(doc), before, 'input not mutated');
   assert.equal(migrateTiptapDoc(null), null);
+
+  // Slice lúc dán (transformPasted): giữ openStart / openEnd, gỡ màu chữ xám nhạt copy từ trang nền tối
+  const pasted = migrateTiptapDoc({
+    content: [{ type: 'paragraph', content: [text([{ type: 'textStyle', attrs: { color: 'rgb(236, 236, 236)' } }])] }],
+    openStart: 1,
+    openEnd: 1,
+  });
+  assert.equal(pasted.openStart, 1);
+  assert.equal(pasted.openEnd, 1);
+  assert.deepEqual(pasted.content[0].content[0].marks, []);
   console.log('isThemeBreakingColor / migrateTiptapDoc: OK');
 }
 

@@ -17,12 +17,11 @@ const TiptapEditor = lazy(() => import('../TiptapEditor'));
 const REMARK_PLUGINS = [remarkGfm];
 const EDITOR_MODE_KEY = 'kb_editor_mode';
 
-// Kiểu bài: chỉ giữ những gì còn có tính năng riêng (gallery trích dẫn, trình phát podcast).
-// Bài cũ mang learn / idea / ai / entertainment được coi là Bài viết.
+// Kiểu bài: chỉ thứ không đoán được từ link (trích dẫn). Podcast = bài có link âm thanh, tự nhận.
+// Bài cũ mang podcast / learn / idea / ai / entertainment được coi là Bài viết.
 const TYPES = [
   { key: 'note', label: 'Bài viết' },
   { key: 'quote', label: 'Trích dẫn' },
-  { key: 'podcast', label: 'Podcast' },
 ];
 const normalizeType = type => (TYPES.some(t => t.key === type) ? type : 'note');
 

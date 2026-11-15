@@ -55,7 +55,7 @@ Mỗi bài có **một quyết định duy nhất là Chủ đề**, để trố
 |---|---|---|
 | **Chủ đề** | Nó thuộc mảng nào trong đời mình? | Người dùng, một lần, để trống được (Chưa xếp) |
 | **Loại** | Nó là cái gì? | Máy tự nhận từ link (`contentKind`) |
-| **Kiểu** | Bài viết / Trích dẫn / Podcast | Người dùng, trong trình soạn thảo; chỉ để giữ gallery trích dẫn và trình phát podcast |
+| **Kiểu** | Bài viết / Trích dẫn | Người dùng, trong trình soạn thảo; chỉ cho thứ link không nói được (trích dẫn). Podcast = bài có link âm thanh, tự nhận |
 
 ### 2.1. Chủ đề
 
@@ -101,7 +101,7 @@ Bộ khởi đầu (nguồn duy nhất: hàm SQL `seed_starter_collection_topics
 
 | Cột | Vai trò |
 |---|---|
-| `type` | `CHECK IN ('inbox','note','quote','learn','idea','ai','entertainment','podcast')`, `DEFAULT 'inbox'`. App ghi `note` / `quote` / `podcast`; bài cũ mang `learn/idea/ai/entertainment` được coi là Bài viết. `inbox` không còn dùng (Inbox đã gộp vào Tasks) |
+| `type` | `CHECK IN ('inbox','note','quote','learn','idea','ai','entertainment','podcast')`, `DEFAULT 'inbox'`. App ghi `note` / `quote`; bài cũ mang `podcast/learn/idea/ai/entertainment` được coi là Bài viết (lưu lại thì thành `note`). `inbox` không còn dùng (Inbox đã gộp vào Tasks) |
 | `topic_id` | Chủ đề; NULL = Chưa xếp. FK `(user_id, topic_id) → collection_topics (user_id, id) ON DELETE SET NULL (topic_id)` — bài và chủ đề luôn cùng chủ, xoá chủ đề thì bài về Chưa xếp |
 | `title` | Bắt buộc. Với trích dẫn: tên tác giả |
 | `url` | Link nguồn; hậu tố `#audio` / `#video` ép cách hiển thị |
@@ -205,7 +205,7 @@ Bài chưa xếp cũ hơn 30 ngày không hiện ở đây (xếp hàng loạt t
 ### 4.6. Trình soạn thảo (`KBEditorView`)
 
 - Markdown / Visual (chỉ chọn khi tạo mới), thống kê chữ, nút nối `[[ ]]`, Lưu (`Ctrl+S`).
-- Tiêu đề · hàng **chủ đề** (gợi ý: viền đứt + chữ "gợi ý"; có Chưa xếp) · **Kiểu** Bài viết / Trích dẫn / Podcast · thẻ · URL.
+- Tiêu đề · hàng **chủ đề** (gợi ý: viền đứt + chữ "gợi ý"; có Chưa xếp) · **Kiểu** Bài viết / Trích dẫn · thẻ · URL.
 - Rời ô URL khi tiêu đề trống → tự điền tiêu đề đoán từ link (`guessTitle`: repo → `owner/repo`, YouTube → "Video YouTube", Facebook → "Bài Facebook", còn lại → tên miền).
 - Visual: khối media (`MediaNode`, liền khối không gõ vào được) có thanh sửa phía trên — ô link (`Enter` / rời ô là đổi) + nút xoá khối. Trang đọc không có thanh này.
 - Lưu thất bại → báo lỗi và ở lại trình soạn thảo.
@@ -334,7 +334,7 @@ Knowledge đang dùng; hộp quản lý thẻ (`KBTagModal`) làm việc trên m
 | Tasks → Knowledge | Mục "Bài viết" trong ngăn chi tiết việc (`TaskDetailDrawer`): `LinkPicker` gắn / bỏ bài (junction `task_collections` qua `useUserTasks.linkCollection` / `unlinkCollection`, ghi activity log), gợi ý `suggestByTitle`; icon theo `KIND_META`. "Viết bài mới cho việc này" → `/collect` với `state.newArticleForTask`, lưu xong tự gắn. Bấm thẻ bài → `state.openArticleId` |
 | Knowledge hiển thị task | Cột phải trang đọc "Nhiệm vụ liên kết": trạng thái + hạn, bấm → `/tasks` với `state.openTaskId` (mở ngăn việc). "Gắn vào việc" (cùng `LinkPicker`), "Tạo việc từ bài này". Gắn / bỏ ở đây vá `_linkedTaskIds` tại chỗ (`useCollections.setLinkedTask`). Số nhiệm vụ ở dòng bài |
 | Trang chủ | `useCollections.fetchStats` đếm bài |
-| Podcast nổi | `useRandomPodcast` lấy bài `type = 'podcast'` có link |
+| Podcast nổi | `useRandomPodcast` bốc ngẫu nhiên bài có link âm thanh (`contentKind` = `audio`, gồm link Drive không có `#video`), trừ Thùng rác |
 | Cài đặt | Quản lý thẻ |
 
 Knowledge không tạo task; nối bài với task làm từ phía Tasks.
@@ -388,7 +388,7 @@ Contract test thẻ / ghi chú: `src/__tests__/core/tagsAndKnowledgeContract.tes
 
 ## 13. Để sau
 
-- Thu gọn `type` còn `note/quote/podcast`, bỏ `'inbox'` khỏi CHECK, đổi `DEFAULT 'inbox'` → `'note'` (có bảng sao lưu).
+- Thu gọn `type` còn `note/quote`, bỏ `'inbox'` khỏi CHECK, đổi `DEFAULT 'inbox'` → `'note'` (có bảng sao lưu).
 - Dọn cột `status` (giờ chỉ còn `read` + `archived` = Thùng rác; `unread` là dữ liệu cũ).
 - Nhóm nhỏ trong chủ đề khi một chủ đề > ~15 bài (dùng lại `tags`).
 - Lọc thời gian cho ô tìm (logic đã có trong `filterArticles`).
@@ -413,4 +413,4 @@ Cần đăng nhập.
 - [ ] Trang đọc: `F` ẩn / hiện cột phải; "+ Gán chủ đề" mở select. Sơ đồ: bấm sao không làm cả bầu trời chạy lại.
 - [ ] Gõ "tam ly" ra bài Tâm lý; `#thẻ` vẫn chạy; hàng thẻ không có thẻ Finance / Tasks.
 - [ ] Điện thoại và chế độ sáng: phần mới đọc rõ, không tràn.
-- [ ] Podcast nổi vẫn phát bài kiểu Podcast.
+- [ ] Podcast nổi phát bài có link âm thanh (mp3, Drive audio), không bốc bài video / bài không link.

@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { useEditor, EditorContent, NodeViewContent, NodeViewWrapper, ReactNodeViewRenderer } from '@tiptap/react';
+import { Slice } from '@tiptap/pm/model';
 import CodeBlockLowlight from '@tiptap/extension-code-block-lowlight';
 import { common, createLowlight } from 'lowlight';
 import StarterKit from '@tiptap/starter-kit';
@@ -358,6 +359,11 @@ export default function TiptapEditor({ value, onChange, onSave }) {
         }
 
         return false; // pass through all other keys
+      },
+
+      // Chữ dán từ web / Docs mang màu xám, trắng, đen… chìm trên nền → gỡ ngay lúc dán, cùng luật với lúc mở bài
+      transformPasted(slice, view) {
+        return Slice.fromJSON(view.state.schema, migrateTiptapDoc(slice.toJSON()));
       },
 
       // Auto-upload pasted images → Imgur/R2

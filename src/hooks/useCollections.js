@@ -6,7 +6,7 @@ import { logger } from '../utils/logger';
 /**
  * useCollections — CRUD for the `collections` table (Knowledge bài).
  *
- * type: note | quote | podcast (older rows may still hold learn / idea / ai / entertainment).
+ * type: note | quote (older rows may still hold podcast / learn / idea / ai / entertainment — read as note).
  * topic_id: chủ đề, see useCollectionTopics. NULL = Chưa xếp.
  * status: unread | read | archived (DB values; the Knowledge UI saves read). archived = Thùng rác:
  * `items` never holds them, they live in `trash` until restored or deleted for good.
