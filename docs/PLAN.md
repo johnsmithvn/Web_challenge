@@ -30,7 +30,7 @@ PLAN chỉ giữ thứ tự roadmap hiện tại. Checklist có thể chạy n�
 3. QA responsive/mobile bằng dữ liệu dày, bắt đầu từ các màn dùng `finance.css`.
 4. QA keyboard/focus + nhóm B của audit a11y: `role="button"` thiếu `tabIndex`/keydown (Navbar,
    MonthCalendar), `<div onClick>` trần (Inbox), Esc để đóng cho `GenericModal` +
-   `DatePickerPopover` + `TaskPicker` + `AuthModal` + `LinkKBModal`, và một hook `useFocusTrap` dùng
+   `DatePickerPopover` + `TaskPicker` + `AuthModal`, và một hook `useFocusTrap` dùng
    chung.
 5. Media API smoke (upload ảnh, audio Range/206, 401).
 

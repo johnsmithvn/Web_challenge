@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useCollections } from '../hooks/useCollections';
 import { useCollectionTopics } from '../hooks/useCollectionTopics';
 import { useUserTasks } from '../hooks/useUserTasks';
@@ -48,12 +49,14 @@ const countLabel = list => (list.length === 1 ? `"${list[0].title}"` : `${list.l
 export default function CollectPage() {
   const { user } = useAuth();
   const {
-    items, trash, isLoading, fetchItems, addItem, updateItem, updateItems, moveToTrash, restoreFromTrash, deleteForever,
+    items, trash, isLoading, fetchItems, addItem, updateItem, updateItems, moveToTrash, restoreFromTrash, deleteForever, setLinkedTask,
   } = useCollections();
   const {
     topics, addTopic, updateTopic, reorderTopics, deleteTopic, mergeTopics, seedStarterTopics,
   } = useCollectionTopics();
-  const { pendingTasks } = useUserTasks();
+  const { tasks, pendingTasks, hasLoaded: tasksLoaded, addTask, linkCollection, unlinkCollection } = useUserTasks();
+  const location = useLocation();
+  const navigate = useNavigate();
   const { tags: centralTags, addTag: addCentralTag, linkTag, unlinkTag, deleteTag: deleteCentralTag } = useTags();
   const notesHook = useCollectionNotes();
   const { confirm, ConfirmModal } = useConfirm();
@@ -63,9 +66,13 @@ export default function CollectPage() {
   const [view, setView] = useState('overview'); // LIBRARY_VIEWS | 'snippets' | 'reader' | 'editor' | 'trash'
   // Sổ lệnh: form Thêm lệnh mở từ nút ＋ của cột trái / phím N; rời Sổ lệnh thì đóng
   const [snipAdding, setSnipAdding] = useState(false);
+  // Bài mới viết từ ngăn task ("Viết bài mới cho việc này"): { id, title } của việc — tên việc điền sẵn
+  // làm tiêu đề, lưu xong thì gắn bài vào việc. Rời trình soạn là bỏ.
+  const [taskForNew, setTaskForNew] = useState(null);
   const changeView = useCallback((v) => {
     setView(v);
     setSnipAdding(false);
+    setTaskForNew(null);
   }, []);
   // Only the id is kept; the bài itself always comes from live data (see selectedArticle below),
   // so topic / status / notes / link changes show in the reader without manual syncing.
@@ -127,12 +134,16 @@ export default function CollectPage() {
 
   const topicById = useMemo(() => new Map(topics.map(t => [t.id, t])), [topics]);
 
-  // Attach topic + open linked tasks to items for display
-  const articlesWithTasks = useMemo(() => items.map(item => ({
-    ...item,
-    _topic: topicById.get(item.topic_id) || null,
-    _linkedTasks: pendingTasks.filter(t => (item._linkedTaskIds || []).includes(t.id)),
-  })), [items, pendingTasks, topicById]);
+  // Attach topic + linked tasks to items for display. Việc đã tải = chưa xong (cả Bỏ qua) + xong hôm nay;
+  // việc xong từ trước không có ở đây — trang đọc đếm phần còn lại từ _linkedTaskIds.
+  const articlesWithTasks = useMemo(() => {
+    const topTasks = tasks.filter(t => !t.parent_task_id);
+    return items.map(item => ({
+      ...item,
+      _topic: topicById.get(item.topic_id) || null,
+      _linkedTasks: topTasks.filter(t => (item._linkedTaskIds || []).includes(t.id)),
+    }));
+  }, [items, tasks, topicById]);
 
   const selectedArticle = useMemo(
     () => (selectedId ? articlesWithTasks.find(a => a.id === selectedId) || null : null),
@@ -343,7 +354,48 @@ export default function CollectPage() {
   const goLibrary = useCallback(() => {
     setView(returnViewRef.current);
     setSelectedId(null);
+    setTaskForNew(null);
   }, []);
+
+  // ── Liên kết task ↔ bài từ trang đọc ──
+  // DB + danh sách việc qua useUserTasks; _linkedTaskIds của bài trong kho sửa tại chỗ (setLinkedTask)
+  const handleLinkTask = useCallback(async (article, task, linked) => {
+    const ok = linked ? await linkCollection(task.id, article) : await unlinkCollection(task.id, article);
+    if (ok) setLinkedTask(article.id, task.id, linked);
+    else showToast('Không lưu được liên kết. Thử lại.');
+    return ok;
+  }, [linkCollection, unlinkCollection, setLinkedTask, showToast]);
+
+  const openTask = useCallback(task => navigate('/tasks', { state: { openTaskId: task.id } }), [navigate]);
+
+  const handleCreateTaskFromArticle = useCallback(async (article) => {
+    const task = await addTask({ title: article.title, status: 'todo' });
+    if (!task?.id) {
+      showToast('Không tạo được việc. Thử lại.');
+      return;
+    }
+    if (await handleLinkTask(article, task, true)) {
+      showToast(`Đã tạo việc "${article.title}"`, { actionLabel: 'Mở', onAction: () => openTask(task) });
+    }
+  }, [addTask, handleLinkTask, showToast, openTask]);
+
+  // Đến từ trang Nhiệm vụ: mở một bài (thẻ bài trong ngăn task) hoặc viết bài mới cho một việc.
+  // Đợi kho tải xong để tìm được bài; xong thì xoá state để quay lại / tải lại không mở lần nữa.
+  const routeState = location.state;
+  useEffect(() => {
+    if (!routeState || isLoading) return;
+    if (routeState.newArticleForTask) {
+      rememberReturn();
+      setSelectedId(null);
+      setTaskForNew(routeState.newArticleForTask);
+      setView('editor');
+    } else if (routeState.openArticleId) {
+      const article = articlesWithTasks.find(a => a.id === routeState.openArticleId);
+      if (article) openReader(article);
+      else showToast('Không thấy bài này. Có thể bài đã ở thùng rác.');
+    }
+    navigate(location.pathname, { replace: true, state: null });
+  }, [routeState, isLoading, articlesWithTasks, openReader, rememberReturn, showToast, navigate, location.pathname]);
 
   const handleDeleteArticle = useCallback((article) => {
     if (view === 'reader') goLibrary();
@@ -395,6 +447,9 @@ export default function CollectPage() {
         showToast('Không lưu được bài. Thử lại.');
         return;
       }
+      // Bài viết từ ngăn task: gắn vào việc đó (fetchItems bên dưới tải lại _linkedTaskIds)
+      const linkTask = !selectedArticle?.id && taskForNew;
+      const linked = !!linkTask && await linkCollection(linkTask.id, { ...payload, id: savedId });
 
       // Sync tags via junction table
       if (draft.tags) {
@@ -420,15 +475,16 @@ export default function CollectPage() {
       }
 
       await fetchItems();
-      showToast(`Đã lưu "${draft.title}"`);
+      showToast(linked ? `Đã lưu "${draft.title}" và gắn vào việc "${linkTask.title}"` : `Đã lưu "${draft.title}"`);
 
       // Open reader of the saved article
+      setTaskForNew(null);
       setSelectedId(savedId);
       setView('reader');
     } finally {
       setIsSaving(false);
     }
-  }, [selectedArticle, updateItem, addItem, addCentralTag, linkTag, unlinkTag, fetchItems, showToast]);
+  }, [selectedArticle, taskForNew, updateItem, addItem, addCentralTag, linkTag, unlinkTag, linkCollection, fetchItems, showToast]);
 
   // Toggle wiki link in article
   const handleToggleWikiLink = useCallback(async (targetArticle) => {
@@ -724,10 +780,15 @@ export default function CollectPage() {
             onOpenGraph={() => setView('graph')}
             onOpenLinkModal={() => setLinkOpen(true)}
             onUpdateUrl={url => updateItem(selectedArticle.id, { url })}
+            pickTasks={pendingTasks}
+            tasksLoaded={tasksLoaded}
+            onLinkTask={(task, linked) => handleLinkTask(selectedArticle, task, linked)}
+            onCreateTask={() => handleCreateTaskFromArticle(selectedArticle)}
+            onOpenTask={openTask}
           />
         ) : view === 'editor' ? (
           <KBEditorView
-            initial={selectedArticle}
+            initial={selectedArticle || (taskForNew && { title: taskForNew.title })}
             onSave={handleSaveArticle}
             onCancel={goLibrary}
             isSaving={isSaving}

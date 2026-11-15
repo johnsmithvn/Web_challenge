@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
-import { ShortcutsModal } from './TiptapEditor';
+import { ShortcutsModal } from './ShortcutsModal';
 import AuthModal from './AuthModal';
 import XpBar from './XpBar';
 import AppIcon from './AppIcon';

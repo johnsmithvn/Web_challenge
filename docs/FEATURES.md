@@ -194,6 +194,9 @@ Desktop nổi bên phải, mobile là sheet; mở bằng nút "Lịch & sự ki�
 ### Detail, lịch sử và XP
 - Detail modal cho xem/sửa Task, activity field-diff và note cá nhân. Khu Hoạt động & Ghi chú **thu gọn mặc
   định** (hiện số dòng), bấm để mở.
+- **Bài viết** (ngăn chi tiết, cần đăng nhập, việc đã lưu): gắn / bỏ bài Kiến thức qua bộ chọn (tìm không dấu theo
+  tên; nhóm Đã gắn / Gợi ý trùng chữ với tên việc / Gần đây; `↑↓` `Enter` `Esc`), bấm thẻ bài mở trang đọc, "Viết bài
+  mới cho việc này" mở trình soạn với tên việc và tự gắn khi lưu. Thẻ việc có chip số bài. Gắn / bỏ ghi activity log.
 - `activity_logs` gắn `task_id`; xóa Task cascade lịch sử. Note sửa được, field-diff không sửa.
 - Hoàn thành qua `completeTask` cộng `+10 XP` có dedup (trừ subtask); bỏ hoàn thành xóa event tương ứng.
 - “Quick Done” từ Inbox tạo thẳng một Task `completed=true`, rồi xóa Inbox item. Luồng này ghi
@@ -249,12 +252,14 @@ Giao diện "Cực quang" trên nền trời đêm dùng chung với Nhiệm v�
   Knowledge); nhóm theo Tháng / Chủ đề / Loại; sắp xếp; chọn nhiều (gán chủ đề, xoá). Sơ đồ là "bầu trời": mỗi bài một ngôi sao.
 - **Tìm kiếm** không cần dấu, nhiều từ, trong cả ghi chú và tên chủ đề; `#thẻ`.
 - **Trang đọc:** mục lục, `[[liên kết]]` + backlink, khung **Xung quanh** (cùng chủ đề / cùng nguồn / lưu gần thời
-  điểm), sơ đồ nhỏ, ghi chú cá nhân, nhiệm vụ liên kết, chế độ tập trung (`F`).
+  điểm), sơ đồ nhỏ, ghi chú cá nhân, chế độ tập trung (`F`). **Nhiệm vụ liên kết**: việc đã gắn kèm trạng thái + hạn
+  (bấm mở ngăn việc đó ở Nhiệm vụ; việc xong trước hôm nay chỉ hiện số), "Gắn vào việc" (bộ chọn chung với Nhiệm vụ,
+  nhóm Đã gắn / Gợi ý / Đang làm / Cần làm), "Tạo việc từ bài này" (việc Cần làm mang tên bài, gắn sẵn).
 - **Sổ lệnh** (kiểu xem thứ 6, `G` `S`): lệnh / đoạn code đặt tên theo việc cần làm. Hàng gọn một dòng có nút Copy, bấm hàng
   mở cả lệnh + ghi chú + cảnh báo; nhóm tự đặt (thu gọn được), chip lọc công cụ, mục Hay dùng (5 lệnh copy nhiều nhất). Ô tìm
   của cột trái tìm trong tên, lệnh, ghi chú; nút ＋ / phím `N` mở form Thêm lệnh ngay trên trang (`Ctrl+Enter` lưu).
 - **Thùng rác:** Xoá = bỏ vào thùng rác (hoàn tác bằng toast / `⌘Z`, bài về nguyên vẹn). Mục Thùng rác ở cột trái (chỉ hiện
-  khi có bài): Khôi phục, Xoá vĩnh viễn, Dọn sạch. Không có trạng thái đọc hay nút tạo task (nối bài với task từ Nhiệm vụ).
+  khi có bài): Khôi phục, Xoá vĩnh viễn, Dọn sạch. Không có trạng thái đọc.
 
 **Data:** `collections` (+ `topic_id`), `collection_topics`, `collection_notes`, `collection_tags`, `task_collections`, `snippets`.
 **Local:** `vl_kb_recent` (Gần đây), `vl_kb_snippet_closed` (nhóm Sổ lệnh đang thu gọn), `kb_editor_mode`, `kb_canvas_nodes`, `kb_canvas_edges`.

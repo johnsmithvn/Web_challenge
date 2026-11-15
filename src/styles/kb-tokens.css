@@ -30,6 +30,7 @@
   --kb-sage:  #9AE66E;
   --kb-red:   #FF8A8A;
   --kb-code-bg: rgba(3, 6, 14, 0.8);
+  --kb-syn-fn: #82AAFF;                 /* tên hàm / class trong khối code (màu khác lấy token có sẵn) */
   --kb-scrim:  rgba(3, 5, 12, 0.62);    /* nền mờ sau hộp thoại */
   --kb-shadow: 0 30px 80px rgba(0, 0, 0, 0.5);
 }
@@ -54,6 +55,7 @@
   --kb-sage:  #059669;
   --kb-red:   #DC2626;
   --kb-code-bg: #F1EEFF;
+  --kb-syn-fn: #0369A1;
   --kb-scrim:  rgba(30, 27, 58, 0.28);
   --kb-shadow: 0 24px 60px rgba(60, 40, 140, 0.18);
 }
@@ -147,6 +149,55 @@
   color: inherit;
   font-size: inherit;
 }
+
+/* ── Khối code trang đọc (KBCodeBlock): khung + thanh nhãn ngôn ngữ / Copy ─────
+   Selector dài để thắng `.kb-prose pre` và `.tp-content pre` (+ bản sáng) của bài Visual. */
+.kb-code {
+  margin: 24px 0;
+  border: 1px solid var(--kb-line);
+  border-radius: 12px;
+  background: var(--kb-code-bg);
+  overflow: hidden;
+}
+.kb-code__head {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  padding: 5px 6px 5px 16px;
+  border-bottom: 1px solid var(--kb-line);
+}
+.kb-code__lang {
+  font: 500 0.72rem/1 var(--kb-mono); letter-spacing: 0.06em; text-transform: uppercase;
+  color: var(--kb-faint);
+}
+.kb-code__copy {
+  display: inline-flex; align-items: center; gap: 5px;
+  height: 28px; padding: 0 9px;
+  border: 0; border-radius: 7px; background: transparent;
+  font: 500 0.75rem/1 var(--kb-font); color: var(--kb-dim); cursor: pointer;
+}
+.kb-code__copy:hover { background: var(--kb-p2); color: var(--kb-tx); }
+.kb-prose .kb-code .kb-code__pre {
+  margin: 0; padding: 14px 18px 16px;
+  border: 0; border-radius: 0; background: transparent;
+}
+.kb-prose .kb-code .kb-code__pre code {
+  background: none; border: 0; padding: 0;
+  font-family: var(--kb-mono); font-size: 0.85rem; line-height: 1.8;
+  color: var(--kb-tx);
+}
+
+/* Tô màu cú pháp — class của highlight.js (lowlight), màu theo token nên tự đổi sáng / tối */
+.kb-prose .hljs-comment, .kb-prose .hljs-quote { color: var(--kb-faint); font-style: italic; }
+.kb-prose .hljs-keyword, .kb-prose .hljs-selector-tag, .kb-prose .hljs-doctag { color: var(--kb-violet); }
+.kb-prose .hljs-string, .kb-prose .hljs-regexp, .kb-prose .hljs-addition { color: var(--kb-sage); }
+.kb-prose .hljs-number, .kb-prose .hljs-literal, .kb-prose .hljs-symbol, .kb-prose .hljs-bullet,
+.kb-prose .hljs-attr, .kb-prose .hljs-attribute, .kb-prose .hljs-type, .kb-prose .hljs-built_in,
+.kb-prose .hljs-title.class_ { color: var(--kb-gold); }
+.kb-prose .hljs-title, .kb-prose .hljs-section, .kb-prose .hljs-selector-id,
+.kb-prose .hljs-selector-class { color: var(--kb-syn-fn); }
+.kb-prose .hljs-name, .kb-prose .hljs-deletion { color: var(--kb-red); }
+.kb-prose .hljs-meta { color: var(--kb-dim); }
+.kb-prose .hljs-emphasis { font-style: italic; }
+.kb-prose .hljs-strong { font-weight: 600; }
 .kb-prose table {
   width: 100%;
   max-width: 100%;

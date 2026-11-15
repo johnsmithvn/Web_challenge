@@ -14,7 +14,9 @@ import UI_STRINGS from '../data/ui-strings.json';
 
 const TASKS_CACHE_PREFIX = 'vl_tasks_cache_';
 // Task + junction KB/tag (flatten thành _collections/_tags trong fetchTasks).
-const TASK_SELECT = '*, task_collections(collection_id, collections(id, title, type)), task_tags(tag_id, tags(id, name, color))';
+// Cột bài = LINK_COLLECTION_FIELDS: đủ cho thẻ bài trong ngăn task (loại, chủ đề, số phút đọc).
+const TASK_SELECT = '*, task_collections(collection_id, collections(id, title, type, url, topic_id, word_count)), task_tags(tag_id, tags(id, name, color))';
+const LINK_COLLECTION_FIELDS = ['id', 'title', 'type', 'url', 'topic_id', 'word_count'];
 
 const todayStr = () => toDateStr();
 
@@ -786,17 +788,19 @@ export function useUserTasks() {
   }, [tasks]);
 
   // ── Link collection to task (v4.5.0 junction) ──────────────
-  // `title` (tuỳ chọn) chỉ để activity log ghi được TÊN bài viết thay vì uuid —
-  // sau khi bài viết bị xoá thì không còn nguồn nào tra ngược tên.
-  const linkCollection = useCallback(async (taskId, collectionId, title) => {
+  // `collection` = bài (ít nhất id + title): vào _collections ngay để thẻ bài hiện đủ, và để activity
+  // log ghi TÊN bài thay vì uuid — sau khi bài bị xoá thì không còn nguồn nào tra ngược tên.
+  const linkCollection = useCallback(async (taskId, collection) => {
     if (!isAuth) return false;
+    const collectionId = collection.id;
+    const entry = Object.fromEntries(LINK_COLLECTION_FIELDS.map(k => [k, collection[k] ?? null]));
 
     // Optimistic: add to _collections
     setTasks(prev => prev.map(t => {
       if (t.id !== taskId) return t;
       const already = (t._collections || []).some(c => c.id === collectionId);
       if (already) return t;
-      return { ...t, _collections: [...(t._collections || []), { id: collectionId }] };
+      return { ...t, _collections: [...(t._collections || []), entry] };
     }));
 
     try {
@@ -814,7 +818,7 @@ export function useUserTasks() {
         }));
         return false;
       }
-      logTaskRelation(ACTIONS.TASK_LINK_ADD, taskId, title || 'bài viết');
+      logTaskRelation(ACTIONS.TASK_LINK_ADD, taskId, collection.title || 'bài viết');
       return true;
     } catch (err) {
       logger.error('[useUserTasks] linkCollection exception:', err);
@@ -823,12 +827,13 @@ export function useUserTasks() {
   }, [isAuth, logTaskRelation]);
 
   // ── Unlink collection from task (v4.5.0 junction) ──────────
-  const unlinkCollection = useCallback(async (taskId, collectionId, title) => {
+  const unlinkCollection = useCallback(async (taskId, collection) => {
     if (!isAuth) return false;
+    const collectionId = collection.id;
 
     // Backup for rollback
     const backup = tasks.find(t => t.id === taskId)?._collections || [];
-    const label = title || backup.find(c => c.id === collectionId)?.title || 'bài viết';
+    const label = collection.title || backup.find(c => c.id === collectionId)?.title || 'bài viết';
 
     // Optimistic: remove from _collections
     setTasks(prev => prev.map(t => {

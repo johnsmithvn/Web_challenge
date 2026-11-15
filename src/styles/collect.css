@@ -1130,24 +1130,21 @@ span.kb-tag-chip { cursor: default; }
 }
 .kb-reader__assign:hover { background: var(--kb-accent-soft); }
 .kb-reader__media { margin-top: 24px; }
-.kb-reader__body { margin-top: 30px; }
-/* Khối rộng tràn khỏi cột chữ 760px, tối đa 960px và không quá vùng đọc (100cqw = bề rộng nội dung
-   .kb-reader__main): code / sơ đồ ASCII và bảng. Cột chữ canh giữa vùng đọc nên margin âm hai bên
-   bằng nhau là vẫn giữa. Chỉ khối cấp đầu của bài — cả Markdown lẫn Tiptap (.tp-content). */
-.kb-reader__body.kb-prose > :is(pre, table),
-.kb-reader__body .tp-content > :is(pre, table, .tableWrapper) {
-  --kb-wide: min(960px, 100cqw);
+/* Khối rộng (code, bảng, ảnh) thẳng lề trái với cột chữ 760px, nới sang phải hết phần trống của vùng đọc.
+   Cột chữ canh giữa .kb-reader__main (container, 100cqw = bề rộng nội dung) nên phần trống bên phải
+   = (100cqw − 760px) / 2 → rộng 50cqw + 380px, trần 1200px; vùng đọc hẹp thì bằng cột chữ. */
+.kb-reader__body { margin-top: 30px; --kb-wide: min(50cqw + 380px, 100cqw, 1200px); }
+/* Chỉ khối cấp đầu của bài — Markdown lẫn Tiptap (.tp-content; khối code Tiptap bọc trong .node-codeBlock) */
+.kb-reader__body.kb-prose > :is(.kb-code, table),
+.kb-reader__body .tp-content > :is(.node-codeBlock, table, .tableWrapper) {
   width: var(--kb-wide);
   max-width: none;
-  margin-inline: calc((100% - var(--kb-wide)) / 2);
 }
-/* Ảnh: giữ cỡ thật, chỉ nới trần từ 760 lên 960px; canh giữa cột (ảnh to tràn đều hai bên) */
+/* Ảnh: giữ cỡ thật, chỉ nới trần */
 .kb-reader__body.kb-prose > p > img:only-child,
 .kb-reader__body .tp-content > img {
   display: block;
-  max-width: min(960px, 100cqw);
-  margin-left: 50%;
-  transform: translateX(-50%);
+  max-width: var(--kb-wide);
 }
 .kb-prose__empty { color: var(--kb-faint); }
 
@@ -1225,8 +1222,52 @@ span.kb-tag-chip { cursor: default; }
 .kb-rail-backlink:hover { border-color: color-mix(in srgb, var(--kb-accent) 45%, var(--kb-line)); }
 .kb-rail-backlink__title { font-size: 13.5px; font-weight: 500; }
 .kb-backlink-ctx { font-size: 12.5px; line-height: 1.5; color: var(--kb-faint); }
-.kb-rail-task { display: flex; gap: 8px; padding: 7px 8px; font-size: 13.5px; color: var(--kb-dim); }
-.kb-rail-task__mark { color: var(--kb-violet); }
+/* Nhiệm vụ liên kết: bấm việc mở ngăn của nó ở trang Nhiệm vụ. Màu trạng thái (STATUS_META dùng --tk-st-*)
+   và bộ chọn việc (LinkPicker, token --tk-*) map sang token Kiến thức. */
+.kb-reader {
+  --tk-st-todo: var(--kb-faint); --tk-st-doing: var(--kb-gold); --tk-st-done: var(--kb-sage); --tk-st-skip: var(--kb-faint);
+}
+.kb-page .tk-linkpick {
+  --tk-popover-bg: var(--kb-pop); --tk-popover-border: var(--kb-line); --tk-popover-shadow: var(--kb-shadow);
+  --tk-text-main: var(--kb-tx); --tk-text-sub: var(--kb-dim); --tk-text-mute: var(--kb-faint); --tk-label: var(--kb-faint);
+  --tk-divider: var(--kb-line); --tk-hover: var(--kb-p2); --tk-pp-soft: var(--kb-p2);
+  --tk-accent: var(--kb-accent); --tk-solid-fg: var(--kb-on-accent); --tk-ks-late-fg: var(--kb-red);
+}
+.kb-rail-task {
+  display: flex; align-items: flex-start; gap: 10px;
+  width: 100%;
+  padding: 9px 10px;
+  border: 1px solid var(--kb-line);
+  border-radius: 10px;
+  background: transparent;
+  text-align: left;
+  font-family: var(--kb-font);
+  color: var(--kb-tx);
+  cursor: pointer;
+}
+.kb-rail-task + .kb-rail-task { margin-top: 4px; }
+.kb-rail-task:hover { background: var(--kb-p2); border-color: color-mix(in srgb, var(--kb-accent) 45%, var(--kb-line)); }
+.kb-rail-task > svg { flex: none; margin-top: 2px; }
+.kb-rail-task__text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.kb-rail-task__title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13.5px; font-weight: 500; }
+.kb-rail-task__meta { font-size: 12px; color: var(--kb-faint); }
+.kb-rail-task__meta.is-late { color: var(--kb-red); }
+.kb-rail-task-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+.kb-rail-btn {
+  height: 32px;
+  padding: 0 11px;
+  display: inline-flex; align-items: center; gap: 6px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  font: 500 12.5px var(--kb-font);
+  color: var(--kb-dim);
+  cursor: pointer;
+}
+.kb-rail-btn:hover { background: var(--kb-p2); color: var(--kb-tx); }
+.kb-rail-btn--link { border: 1px dashed color-mix(in srgb, var(--kb-accent) 55%, transparent); color: var(--kb-accent); }
+.kb-rail-btn--link:hover,
+.kb-rail-btn--link.is-on { border-style: solid; background: var(--kb-accent-soft); color: var(--kb-accent); }
 .kb-toc {
   display: flex; flex-direction: column; gap: 1px;
   max-height: 260px;

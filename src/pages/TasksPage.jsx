@@ -1,4 +1,5 @@
 import { useState, lazy, Suspense, useCallback, useEffect, useMemo, useRef } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import TaskListSection from '../components/TaskListSection';
 import { useUserTasks } from '../hooks/useUserTasks';
 import { useAuth } from '../contexts/AuthContext';
@@ -197,6 +198,22 @@ export default function TasksPage() {
     setDraft(null);
     setSelectedTask(task);
   }, []);
+
+  // Bấm một việc ở trang Kiến thức (cột "Nhiệm vụ liên kết") → mở ngăn của việc đó khi danh sách đã tải.
+  // Mở ngay lúc render (mẫu "chỉnh state theo prop"), rồi xoá state của history để quay lại không mở lần nữa.
+  const location = useLocation();
+  const navigate = useNavigate();
+  const openTaskId = location.state?.openTaskId;
+  const routeTask = openTaskId ? tasks.find((t) => t.id === openTaskId) : null;
+  const [openedFromRoute, setOpenedFromRoute] = useState(null);
+  if (routeTask && openedFromRoute !== routeTask.id) {
+    setOpenedFromRoute(routeTask.id);
+    setDraft(null);
+    setSelectedTask(routeTask);
+  }
+  useEffect(() => {
+    if (openedFromRoute && openTaskId) navigate(location.pathname, { replace: true, state: null });
+  }, [openedFromRoute, openTaskId, navigate, location.pathname]);
 
   // parsed = kết quả parseTaskQuickText của chữ đã gõ (điền sẵn tên, hạn, giờ, ưu tiên, nhãn)
   const openDraft = useCallback((status = 'todo', parsed = null) => {

@@ -1810,6 +1810,8 @@ function LoanDetail({ fin, nav, tasks, act, loan: l, payId, setPayId, onEdit, on
   const totalInterest = sch.kind === 'interest'
     ? sch.monthlyInterest * sch.progress.total
     : Math.max(0, sch.monthlyPayment * sch.progress.total - l.principal);
+  // Thời hạn = từ ngày vay tới ngày tất toán, như thanh kỳ hạn của sổ / thời hạn cho vay.
+  const span = l.opened_at && l.due_at ? daysInclusive(l.opened_at, l.due_at) - 1 : 0;
   const canSettle = sch.kind === 'interest' && principalDue && !paidPrincipal && !isCompleted;
   const canPayPeriod = Boolean(cycle) && !donePeriod && !isCompleted;
 
@@ -1852,10 +1854,14 @@ function LoanDetail({ fin, nav, tasks, act, loan: l, payId, setPayId, onEdit, on
           return !!tx;
         }} />}
 
+      {!isCompleted && span > 0 && (
+        <ProgressBox label={`Thời hạn ${span} ngày`} pct={(daysInclusive(l.opened_at, fin.today) - 1) / span * 100}
+          left={`Vay ${dmy(l.opened_at)}`} right={`Tất toán ${dmy(l.due_at)}`} />
+      )}
       <ProgressBox label={`Kỳ ${sch.progress.done} / ${sch.progress.total}`}
         pct={sch.progress.total ? sch.progress.done / sch.progress.total * 100 : 0}
         left={`Lãi đã trả ${money(paidInterestTotal)}`}
-        right={l.due_at ? `Tất toán ${dmy(l.due_at)}` : `Còn ${Math.max(0, sch.progress.total - sch.progress.done)} kỳ`} />
+        right={l.due_at && !span ? `Tất toán ${dmy(l.due_at)}` : `Còn ${Math.max(0, sch.progress.total - sch.progress.done)} kỳ`} />
 
       {sch.kind === 'interest' && !paidPrincipal && l.due_at && !isCompleted && principalDue && (
         <div className="fin-inline-message fin-inline-message--warn">
@@ -1893,6 +1899,8 @@ function LendDetail({ fin, tasks, act, lending: l, payId, setPayId, onEdit, onCl
   const left = Math.max(0, l.principal - got);
   const done = left === 0;
   const days = l.due_on ? daysInclusive(fin.today, l.due_on) - 1 : null;
+  // Thời hạn = từ ngày cho mượn tới hẹn (đã lùi thì tính tới hẹn mới), như thanh kỳ hạn của sổ.
+  const span = l.lent_on && l.due_on ? daysInclusive(l.lent_on, l.due_on) - 1 : 0;
   const math = lendingInterest(l, repayments, fin.today);
   const overdue = days != null && days < 0;
   const postponed = l.due_history || [];
@@ -1933,6 +1941,10 @@ function LendDetail({ fin, tasks, act, lending: l, payId, setPayId, onEdit, onCl
         amountLabel="Họ vừa trả bao nhiêu" confirmLabel="Ghi nhận"
         onCancel={() => setPayId(null)} onPay={(payload) => act.recordLending(l, payload)} />}
 
+      {!done && span > 0 && (
+        <ProgressBox label={`Thời hạn ${span} ngày`} pct={(span - days) / span * 100}
+          left={`Cho mượn ${dmy(l.lent_on)}`} right={`Hẹn ${dmy(l.due_on)}`} />
+      )}
       <ProgressBox label="Đã thu lại" pct={l.principal ? got / l.principal * 100 : 0}
         left={money(got)} right={money(l.principal)} />
 

@@ -1,5 +1,7 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import AppIcon from './AppIcon';
+import LinkPicker from './LinkPicker';
 import { StatusPopover, PriorityPopover, TaskDatePickerPopover, RecurrencePopover } from './TaskFloatingPopovers';
 import TaskSubtaskModal from './TaskSubtaskModal';
 import { SubtaskGrip, SubtaskPriorityBtn, SubtaskFocusBtn, SubtaskDueChip } from './TaskCard';
@@ -14,12 +16,15 @@ import { formatSpent } from '../utils/calendarTimeUtils';
 import { sortSubtasks } from '../utils/subtaskUtils';
 import { useConfirm } from './ConfirmModal';
 import { useTags } from '../hooks/useTags';
+import { useCollections } from '../hooks/useCollections';
+import { useCollectionTopics } from '../hooks/useCollectionTopics';
+import { KIND_META, contentKind, normalizeVi, suggestByTitle } from '../utils/kbDeriveUtils';
 import UI_STRINGS from '../data/ui-strings.json';
 
 /*
  * TaskDetailDrawer — ngăn chi tiết bên phải theo mockup "Nhiệm vụ · Kanban tối & sáng":
  * tên sửa tại chỗ, lưới thuộc tính (Trạng thái · Hạn · Ưu tiên · Lặp lại · Thực tế · Nhãn),
- * mô tả Markdown có Lưu/Huỷ, việc con, tab Hoạt động / Ghi chú, chân có meta + Xoá.
+ * mô tả Markdown có Lưu/Huỷ, bài viết gắn kèm (Kiến thức), việc con, tab Hoạt động / Ghi chú, chân có meta + Xoá.
  * Chế độ tạo mới (prop `draft`, mockup Rừng tiên): cùng ngăn này nhưng sửa trên bản nháp cục bộ,
  * đầu ghi "VIỆC MỚI · <cột>", ẩn Thực tế + tab Hoạt động/Ghi chú, chân là Huỷ / Tạo việc (⌘↵).
  * Chỉ ghi DB khi bấm Tạo việc; X / Huỷ / Esc bỏ bản nháp.
@@ -119,8 +124,11 @@ export default function TaskDetailDrawer({ task: savedTask, draft, onClose, task
   const { user } = useAuth();
   const { confirm, ConfirmModal } = useConfirm();
   const { getTaskLogs, addNote, deleteLog } = useActivityLog();
-  const { updateTask, completeTask, uncompleteTask, deleteTask, linkTaskTag, unlinkTaskTag } = taskModel || {};
+  const { updateTask, completeTask, uncompleteTask, deleteTask, linkTaskTag, unlinkTaskTag, linkCollection, unlinkCollection } = taskModel || {};
   const { tags: allTags, addTag } = useTags();
+  const { fetchLinkOptions } = useCollections();
+  const { topics } = useCollectionTopics();
+  const navigate = useNavigate();
   const today = toDateStr();
 
   const isDraft = !!draft;
@@ -141,6 +149,10 @@ export default function TaskDetailDrawer({ task: savedTask, draft, onClose, task
   const [noteDraft, setNoteDraft] = useState('');
   const [noteFocus, setNoteFocus] = useState(false);
   const [popover, setPopover] = useState(null); // { type, x, y }
+  // Bộ chọn bài: { anchorEl, start } — `start` = bài đã gắn lúc mở, giữ nhóm "Đã gắn" đứng yên khi bấm gắn / bỏ
+  const [linkPick, setLinkPick] = useState(null);
+  const [linkQuery, setLinkQuery] = useState('');
+  const [linkOptions, setLinkOptions] = useState(null); // null = chưa tải
   const [fetchedSubs, setFetchedSubs] = useState([]);
   const descRef = useRef(null);
   const noteRef = useRef(null);
@@ -365,6 +377,53 @@ export default function TaskDetailDrawer({ task: savedTask, draft, onClose, task
     onClose();
   };
 
+  // ── Bài viết gắn kèm (Kiến thức) — chỉ việc đã lưu, có đăng nhập ──
+  const canLink = !isDraft && !!user && !!linkCollection;
+  const linked = task._collections || [];
+  const topicOf = (c) => topics.find((tp) => tp.id === c.topic_id);
+  const articleMeta = (c, withTime) => [
+    topicOf(c)?.name,
+    KIND_META[contentKind(c)].label,
+    withTime && c.word_count ? `${Math.max(1, Math.ceil(c.word_count / 220))} phút đọc` : null,
+  ].filter(Boolean).join(' · ');
+  // Mở bài / viết bài mới ở trang Kiến thức (CollectPage đọc location.state); đóng ngăn trước để mô tả kịp lưu
+  const goKnowledge = (state) => {
+    handleClose();
+    navigate('/collect', { state });
+  };
+  const writeArticle = () => goKnowledge({ newArticleForTask: { id: task.id, title: task.title } });
+
+  const toggleLinkPick = async (e) => {
+    if (linkPick) {
+      setLinkPick(null);
+      return;
+    }
+    setLinkPick({ anchorEl: e.currentTarget, start: linked });
+    setLinkQuery('');
+    if (!linkOptions) setLinkOptions(await fetchLinkOptions());
+  };
+  const linkedIds = new Set(linked.map((c) => c.id));
+  const pickItem = (c) => ({ id: c.id, title: c.title, linked: linkedIds.has(c.id), meta: articleMeta(c), dot: topicOf(c)?.color, raw: c });
+  let linkGroups = [];
+  if (linkPick) {
+    const opts = linkOptions || [];
+    const q = normalizeVi(linkQuery.trim());
+    if (q) {
+      linkGroups = [{ key: 'found', label: 'Kết quả', items: opts.filter((c) => normalizeVi(c.title).includes(q)).slice(0, 30).map(pickItem) }];
+    } else {
+      const startIds = new Set(linkPick.start.map((c) => c.id));
+      const rest = opts.filter((c) => !startIds.has(c.id));
+      const sugg = suggestByTitle(task.title, rest);
+      const suggIds = new Set(sugg.map((c) => c.id));
+      linkGroups = [
+        { key: 'linked', label: 'Đã gắn', items: linkPick.start.map(pickItem) },
+        { key: 'sugg', label: 'Gợi ý · trùng chữ với tên việc', items: sugg.map(pickItem) },
+        { key: 'recent', label: 'Gần đây', items: rest.filter((c) => !suggIds.has(c.id)).slice(0, 6).map(pickItem) },
+      ];
+    }
+  }
+  const toggleLink = (item) => (item.linked ? unlinkCollection(task.id, item.raw) : linkCollection(task.id, item.raw));
+
   return (
     <>
       {ConfirmModal}
@@ -407,6 +466,21 @@ export default function TaskDetailDrawer({ task: savedTask, draft, onClose, task
           onSelect={(rule) => patchTask({ recurrence_rule: rule })}
           onClose={() => setPopover(null)}
           style={popStyle}
+        />
+      )}
+      {linkPick && (
+        <LinkPicker
+          anchorEl={linkPick.anchorEl}
+          label="Gắn bài viết vào việc"
+          placeholder="Tìm bài theo tên…"
+          groups={linkGroups}
+          query={linkQuery}
+          onQuery={setLinkQuery}
+          onToggle={toggleLink}
+          createLabel="Viết bài mới và gắn vào việc này"
+          onCreate={writeArticle}
+          emptyText={!linkOptions ? 'Đang tải bài…' : linkQuery.trim() ? 'Không có bài nào khớp.' : 'Kiến thức chưa có bài nào.'}
+          onClose={() => setLinkPick(null)}
         />
       )}
 
@@ -621,6 +695,47 @@ export default function TaskDetailDrawer({ task: savedTask, draft, onClose, task
               )}
             </div>
           </section>
+
+          {/* Bài viết gắn kèm: bấm thẻ mở bài ở Kiến thức; X bỏ liên kết */}
+          {canLink && (
+            <section className="tk-drawer__section">
+              <div className="tk-section-head">
+                <span className="tk-section-head__label">BÀI VIẾT</span>
+                {linked.length > 0 && <span className="tk-section-head__count">{linked.length}</span>}
+              </div>
+              {linked.map((c) => (
+                <div key={c.id} className="tk-kb-card" style={topicOf(c) ? { '--tk-kb-topic': topicOf(c).color } : undefined}>
+                  <span className="tk-kb-card__icon" aria-hidden="true">
+                    <AppIcon name={KIND_META[contentKind(c)].icon} size={17} />
+                  </span>
+                  <button type="button" className="tk-kb-card__main" onClick={() => goKnowledge({ openArticleId: c.id })}>
+                    <span className="tk-kb-card__title">{c.title || '(Không tiêu đề)'}</span>
+                    <span className="tk-kb-card__meta">{articleMeta(c, true)}</span>
+                  </button>
+                  <AppIcon name="arrowUpRight" size={15} className="tk-kb-card__go" aria-hidden="true" />
+                  <button
+                    type="button"
+                    className="tk-drawer__icon-btn tk-kb-card__x"
+                    title="Bỏ liên kết"
+                    aria-label={`Bỏ liên kết bài ${c.title}`}
+                    onClick={() => unlinkCollection(task.id, c)}
+                  >
+                    <AppIcon name="x" size={14} />
+                  </button>
+                </div>
+              ))}
+              <div className="tk-kb-actions">
+                <button type="button" className={`tk-kb-add${linkPick ? ' is-on' : ''}`} aria-expanded={!!linkPick} onClick={toggleLinkPick}>
+                  <AppIcon name="link" size={14} />
+                  Gắn bài viết
+                </button>
+                <button type="button" className="tk-btn-ghost" onClick={writeArticle}>
+                  <AppIcon name="pencil" size={14} />
+                  Viết bài mới cho việc này
+                </button>
+              </div>
+            </section>
+          )}
 
           {/* Việc con */}
           <section className="tk-drawer__section tk-drawer__section--tight">

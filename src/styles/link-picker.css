@@ -1,0 +1,151 @@
+/* ══════════════════════════════════════════════════════════════════════════
+ * LinkPicker (components/LinkPicker.jsx): popover gắn task ↔ bài viết.
+ * Có class .tk-popover (ngăn task nhận ra popover đang mở) nhưng tự đủ khung: trang Kiến thức không nạp
+ * date-popover.css. Màu qua token --tk-*: Nhiệm vụ khai ở .tasks-workspace--*, Kiến thức map sang --kb-*
+ * ở collect.css (.kb-page .tk-linkpick).
+ * ══════════════════════════════════════════════════════════════════════════ */
+.tk-popover.tk-linkpick {
+  z-index: 160;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-radius: 14px;
+  background: var(--tk-popover-bg);
+  border: 1px solid var(--tk-popover-border);
+  box-shadow: var(--tk-popover-shadow);
+  color: var(--tk-text-main);
+  font-family: 'Be Vietnam Pro', system-ui, sans-serif;
+}
+
+.tk-linkpick__search {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 48px;
+  padding: 0 14px;
+  border-bottom: 1px solid var(--tk-divider);
+  color: var(--tk-text-mute);
+}
+.tk-linkpick__search input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  font: 400 14px 'Be Vietnam Pro', sans-serif;
+  color: var(--tk-text-main);
+}
+.tk-linkpick__search input::placeholder { color: var(--tk-text-mute); }
+.tk-linkpick__search kbd {
+  padding: 3px 6px;
+  border: 1px solid var(--tk-divider);
+  border-radius: 6px;
+  font: 500 10.5px/1 'JetBrains Mono', monospace;
+  color: var(--tk-text-mute);
+}
+
+.tk-linkpick__list {
+  flex: 1 1 auto;
+  min-height: 0;
+  max-height: 340px;
+  overflow-y: auto;
+  padding: 4px 6px 6px;
+}
+.tk-linkpick__group {
+  padding: 12px 10px 6px;
+  font: 500 10.5px/1 'JetBrains Mono', monospace;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--tk-label);
+}
+.tk-linkpick__empty {
+  margin: 0;
+  padding: 18px 10px;
+  font-size: 13px;
+  color: var(--tk-text-mute);
+  text-align: center;
+}
+
+.tk-linkpick__row,
+.tk-linkpick__create {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  width: 100%;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  text-align: left;
+  font-family: inherit;
+  color: var(--tk-text-main);
+  cursor: pointer;
+}
+.tk-linkpick__row.is-active,
+.tk-linkpick__create.is-active { background: var(--tk-hover); }
+
+.tk-linkpick__check {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  box-sizing: border-box;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  border: 1.5px solid var(--tk-text-mute);
+  color: var(--tk-solid-fg, #fff);
+}
+.tk-linkpick__check.is-on {
+  border-color: var(--tk-accent);
+  background: var(--tk-accent);
+}
+.tk-linkpick__text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.tk-linkpick__title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13.5px;
+  font-weight: 500;
+}
+.tk-linkpick__row[aria-pressed="true"] .tk-linkpick__title { font-weight: 600; }
+.tk-linkpick__meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  overflow: hidden;
+  white-space: nowrap;
+  font-size: 11.5px;
+  color: var(--tk-text-sub);
+}
+.tk-linkpick__meta.is-late { color: var(--tk-ks-late-fg, #DC2626); }
+.tk-linkpick__dot { flex: none; width: 6px; height: 6px; border-radius: 50%; }
+
+.tk-linkpick__create {
+  flex: none;
+  padding: 11px 16px;
+  border-top: 1px solid var(--tk-divider);
+  border-radius: 0;
+  color: var(--tk-accent);
+  font-size: 13px;
+  font-weight: 500;
+}
+.tk-linkpick__create span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.tk-linkpick__keys {
+  flex: none;
+  display: flex;
+  gap: 14px;
+  padding: 9px 16px;
+  border-top: 1px solid var(--tk-divider);
+  background: var(--tk-pp-soft);
+  font: 400 10.5px/1 'JetBrains Mono', monospace;
+  color: var(--tk-text-mute);
+}
+
+/* Điện thoại không có bàn phím: bỏ dòng gợi ý phím */
+@media (max-width: 768px) {
+  .tk-linkpick__keys,
+  .tk-linkpick__search kbd { display: none; }
+}

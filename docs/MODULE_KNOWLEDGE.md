@@ -33,7 +33,7 @@
 | Tổng quan | `src/components/kb/KBOverview.jsx` |
 | Danh sách | `src/components/kb/KBListView.jsx` |
 | Gallery / Sơ đồ / Canvas | `KBGalleryView.jsx`, `KBGraphView.jsx`, `KBCanvasView.jsx` |
-| Trang đọc | `src/components/kb/KBReaderView.jsx` |
+| Trang đọc | `src/components/kb/KBReaderView.jsx` (+ `KBCodeBlock.jsx`: khối code tô màu, nhãn ngôn ngữ, Copy) |
 | Sổ lệnh | `src/components/kb/KBSnippetsView.jsx` + `src/hooks/useSnippets.js` + `src/utils/snippetUtils.js` |
 | Trình soạn thảo | `src/components/kb/KBEditorView.jsx` (+ `TiptapEditor.jsx`, `SlashCommand.jsx`, `extensions/MediaNode.jsx`) |
 | Chọn chủ đề / Quản lý chủ đề | `KBTopicPicker.jsx`, `KBTopicModal.jsx` |
@@ -196,7 +196,10 @@ Bài chưa xếp cũ hơn 30 ngày không hiện ở đây (xếp hàng loạt t
   (tiêu đề đã ở H1, chủ đề ở viên). Vạch tiến độ cuộn trang (scaleX). Điện thoại (≤640px): nút về chỉ còn mũi tên, ẩn nút
   Tập trung (cột phải đã nằm dưới bài).
 - **Nội dung:** meta (loại · nguồn · ngày · phút đọc), tiêu đề Spectral, "+ Gán chủ đề" (khi Chưa xếp, mở thẳng select) + #thẻ, media preview, thân bài, **Ghi chú của bạn**.
-- **Cột phải:** độ dài / ngày tạo / nguồn · **Lân cận** (sơ đồ sao nhỏ, "Mở bầu trời ↗") · **Xung quanh** (§5.2, mỗi dòng ghi cùng chủ đề / cùng nguồn / cất cùng lúc) · Mục lục (Markdown) · Trỏ tới · Được trỏ về · Nhiệm vụ liên kết (task chưa xong).
+- **Khối code** (bài Markdown lẫn Visual, `KBCodeBlock.jsx`): tô màu cú pháp (lowlight, 37 ngôn ngữ phổ biến; Markdown ghi
+  ` ```js `, không ghi thì tự đoán), thanh trên có nhãn ngôn ngữ + nút **Copy** (lỗi clipboard → toast nhắc bôi đen + Ctrl+C).
+  Trình soạn thảo chưa tô màu (chỉ trang đọc).
+- **Cột phải:** độ dài / ngày tạo / nguồn · **Lân cận** (sơ đồ sao nhỏ, "Mở bầu trời ↗") · **Xung quanh** (§5.2, mỗi dòng ghi cùng chủ đề / cùng nguồn / cất cùng lúc) · Mục lục (Markdown) · Trỏ tới · Được trỏ về · **Nhiệm vụ liên kết** (§9).
 - Bài đang đọc / soạn chỉ giữ **id**; nội dung lấy từ dữ liệu sống nên đổi chủ đề, link, `[[ ]]` hiện ngay. Thêm / xoá ghi chú → tải lại danh sách.
 
 ### 4.6. Trình soạn thảo (`KBEditorView`)
@@ -328,8 +331,8 @@ Knowledge đang dùng; hộp quản lý thẻ (`KBTagModal`) làm việc trên m
 
 | Module | Cơ chế |
 |---|---|
-| Tasks → Knowledge | `LinkKBModal` trong task: chọn / bỏ bài (junction `task_collections`), ghi activity log; icon theo `KIND_META` |
-| Knowledge hiển thị task | Thẻ "Nhiệm vụ liên kết" ở trang đọc, số nhiệm vụ ở dòng bài |
+| Tasks → Knowledge | Mục "Bài viết" trong ngăn chi tiết việc (`TaskDetailDrawer`): `LinkPicker` gắn / bỏ bài (junction `task_collections` qua `useUserTasks.linkCollection` / `unlinkCollection`, ghi activity log), gợi ý `suggestByTitle`; icon theo `KIND_META`. "Viết bài mới cho việc này" → `/collect` với `state.newArticleForTask`, lưu xong tự gắn. Bấm thẻ bài → `state.openArticleId` |
+| Knowledge hiển thị task | Cột phải trang đọc "Nhiệm vụ liên kết": trạng thái + hạn, bấm → `/tasks` với `state.openTaskId` (mở ngăn việc). "Gắn vào việc" (cùng `LinkPicker`), "Tạo việc từ bài này". Gắn / bỏ ở đây vá `_linkedTaskIds` tại chỗ (`useCollections.setLinkedTask`). Số nhiệm vụ ở dòng bài |
 | Trang chủ | `useCollections.fetchStats` đếm bài |
 | Podcast nổi | `useRandomPodcast` lấy bài `type = 'podcast'` có link |
 | Cài đặt | Quản lý thẻ |

@@ -429,7 +429,7 @@ export function migrateTiptapDoc(node) {
 }
 
 /* ── Content kind (derived from url + type) ────────────────── */
-// glyph: text mark inside Knowledge; icon: AppIcon name for app-wide UI (e.g. LinkKBModal).
+// glyph: text mark inside Knowledge; icon: AppIcon name for app-wide UI (e.g. bài cards in TaskDetailDrawer).
 export const KIND_META = {
   repo:    { label: 'Repo',      glyph: '{ }', icon: 'code' },
   video:   { label: 'Video',     glyph: '▶',   icon: 'play' },
@@ -622,4 +622,25 @@ export function pickResurface(items, dateStr, n = 3, now = Date.now()) {
 /** "Mở gần đây": put `id` first, drop duplicates, keep at most `max`. */
 export function pushRecent(ids, id, max = 10) {
   return [id, ...ids.filter(x => x !== id)].slice(0, max);
+}
+
+/* ── Gợi ý khi gắn task ↔ bài (LinkPicker) ─────────────────── */
+// Từ nối / động từ chung không nói lên chủ đề ("Làm …", "… cho …")
+const TITLE_STOPWORDS = new Set(['va', 'cua', 'cho', 'cac', 'nhung', 'mot', 'la', 'co', 'khong', 'de', 'voi', 'tu', 'trong', 'nay', 'lam', 've', 'the', 'and', 'for', 'to', 'of', 'in']);
+const titleWords = s => new Set(normalizeVi(s).split(/[^a-z0-9]+/).filter(w => w.length >= 2 && !TITLE_STOPWORDS.has(w)));
+
+/**
+ * Items whose title shares words with `title` (no diacritics, stopwords dropped), most shared words
+ * first; ties keep input order. Used both ways: bài for a task, task for a bài.
+ * ponytail: plain shared-word count; rank by rarity (TF-IDF) if suggestions get noisy.
+ */
+export function suggestByTitle(title, items, limit = 3) {
+  const want = titleWords(title);
+  if (!want.size) return [];
+  return items
+    .map(it => ({ it, n: [...titleWords(it.title)].filter(w => want.has(w)).length }))
+    .filter(x => x.n > 0)
+    .sort((a, b) => b.n - a.n)
+    .slice(0, limit)
+    .map(x => x.it);
 }

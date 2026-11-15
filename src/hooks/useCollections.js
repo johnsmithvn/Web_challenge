@@ -13,7 +13,7 @@ import { logger } from '../utils/logger';
  *
  * Fetched items carry: _tags, _linkedTaskIds, _linkedTaskCount, _notes ({content}[]), _noteCount.
  *
- * Used by: CollectPage, HomeDashboard (fetchStats).
+ * Used by: CollectPage, HomeDashboard (fetchStats), TaskDetailDrawer (fetchLinkOptions).
  */
 export function useCollections() {
   const { user, isAuthenticated } = useAuth();
@@ -195,6 +195,35 @@ export function useCollections() {
     return true;
   }, [enabled, user, fetchItems]);
 
+  // ── Gắn / bỏ task ở trang Kiến thức: ghi DB qua useUserTasks.linkCollection, đây chỉ sửa
+  // _linkedTaskIds trong `items` để danh sách (viên ◇, lọc "Có liên kết") khớp ngay, khỏi tải lại cả kho.
+  const setLinkedTask = useCallback((collectionId, taskId, linked) => {
+    setItems(prev => prev.map(item => {
+      if (item.id !== collectionId) return item;
+      const ids = (item._linkedTaskIds || []).filter(id => id !== taskId);
+      if (linked) ids.push(taskId);
+      return { ...item, _linkedTaskIds: ids, _linkedTaskCount: ids.length };
+    }));
+  }, []);
+
+  // ── Danh sách nhẹ cho bộ chọn bài trong ngăn task (LinkPicker) ──
+  // Chỉ cột cần để hiện + tìm theo tên; không kéo thân bài / thẻ / ghi chú như fetchItems.
+  const fetchLinkOptions = useCallback(async () => {
+    if (!enabled) return [];
+    const { data, error } = await supabase
+      .from('collections')
+      .select('id, title, type, url, topic_id, word_count, updated_at')
+      .eq('user_id', user.id)
+      .neq('status', 'archived')
+      .order('updated_at', { ascending: false })
+      .limit(500);
+    if (error) {
+      logger.warn('[useCollections] link options error:', error.message);
+      return [];
+    }
+    return data || [];
+  }, [enabled, user]);
+
   // ── Stats nhẹ cho ô Knowledge ở Trang chủ ─────────────────────
   // Đếm mục chưa lưu trữ + ngày tạo các mục từ `sinceDate` — chỉ 1 cột, không kéo nội
   // dung/tag như fetchItems (Trang chủ không cần cả bài viết chỉ để vẽ vài cột).
@@ -228,6 +257,8 @@ export function useCollections() {
     moveToTrash,      // (items[]) => Promise<boolean>
     restoreFromTrash, // (items[]) => Promise<boolean>
     deleteForever,    // (ids[]) => Promise<boolean>
+    setLinkedTask,    // (collectionId, taskId, linked) => void — chỉ state, DB do useUserTasks ghi
+    fetchLinkOptions, // () => Promise<{id,title,type,url,topic_id,word_count,updated_at}[]>
     enabled,       // boolean
   };
 }

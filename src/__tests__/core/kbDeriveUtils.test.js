@@ -27,6 +27,7 @@ import {
   groupArticles,
   isThemeBreakingColor,
   migrateTiptapDoc,
+  suggestByTitle,
 } from '../../utils/kbDeriveUtils.js';
 
 const NOW = Date.parse('2026-10-24T12:00:00Z');
@@ -450,6 +451,22 @@ const daysAgo = d => new Date(NOW - d * 86400000).toISOString();
   assert.equal(JSON.stringify(doc), before, 'input not mutated');
   assert.equal(migrateTiptapDoc(null), null);
   console.log('isThemeBreakingColor / migrateTiptapDoc: OK');
+}
+
+{
+  const items = [
+    { id: 'a', title: 'Ghi chú git: rebase hay merge' },
+    { id: 'b', title: 'So sánh Live2D, VRM cho nhân vật AI' },
+    { id: 'c', title: 'Kế hoạch AI model 3D' },
+    { id: 'd', title: 'Làm bánh cho mẹ' },
+  ];
+  // "Làm"/"cho" là từ nối → không khớp bài "Làm bánh cho mẹ"; nhiều từ chung hơn đứng trước; không dấu vẫn khớp
+  assert.deepEqual(suggestByTitle('Làm vr AI waifu, nhân vật 3d', items).map(i => i.id), ['b', 'c']);
+  assert.deepEqual(suggestByTitle('lam vr ai', items).map(i => i.id), ['b', 'c']);
+  assert.deepEqual(suggestByTitle('Kế hoạch AI', items, 1).map(i => i.id), ['c']);
+  assert.deepEqual(suggestByTitle('làm cho', items), []);
+  assert.deepEqual(suggestByTitle('', items), []);
+  console.log('suggestByTitle: OK');
 }
 
 console.log('\n✅ All kbDeriveUtils checks passed.');

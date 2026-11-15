@@ -1446,6 +1446,16 @@
   white-space: nowrap;
 }
 
+/* Số bài viết gắn kèm (rê chuột: tên bài ở title) */
+.tk-docs-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--tk-accent);
+  font: 500 11.5px/1 'JetBrains Mono', monospace;
+  white-space: nowrap;
+}
+
 /* ── THẺ KANBAN DESKTOP ── */
 .tk-card {
   position: relative;
@@ -3279,6 +3289,98 @@
   gap: 5px;
   font: 400 11px/1 'Be Vietnam Pro', sans-serif;
   color: var(--tk-label);
+}
+
+/* ── Bài viết gắn kèm (Kiến thức): thẻ bài, màu ô biểu tượng theo chủ đề (--tk-kb-topic) ── */
+.tk-kb-card {
+  --tk-kb-topic: var(--tk-accent);
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 9px 8px 9px 10px;
+  border: 1px solid var(--tk-divider);
+  border-radius: 12px;
+}
+.tk-kb-card:hover {
+  border-color: var(--tk-accent-border);
+  background: var(--tk-hover);
+}
+.tk-kb-card__icon {
+  flex: none;
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--tk-kb-topic) 16%, transparent);
+  color: var(--tk-kb-topic);
+}
+.tk-kb-card__main {
+  flex: 1;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  text-align: left;
+  font-family: 'Be Vietnam Pro', sans-serif;
+  color: var(--tk-text-main);
+  cursor: pointer;
+}
+/* Cả thẻ bấm được: vùng bấm của nút chính phủ kín thẻ, nút X nổi lên trên */
+.tk-kb-card__main::after { content: ''; position: absolute; inset: 0; border-radius: 12px; }
+.tk-kb-card__x { position: relative; }
+.tk-kb-card__title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13.5px;
+  font-weight: 600;
+}
+.tk-kb-card__meta {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+  color: var(--tk-text-sub);
+}
+/* Mũi tên "mở" và nút X chỉ hiện khi rê chuột / focus; màn cảm ứng luôn hiện X */
+.tk-kb-card__go { flex: none; color: var(--tk-accent); opacity: 0; }
+.tk-kb-card__x { opacity: 0; }
+.tk-kb-card:hover .tk-kb-card__go,
+.tk-kb-card:hover .tk-kb-card__x,
+.tk-kb-card:focus-within .tk-kb-card__go,
+.tk-kb-card:focus-within .tk-kb-card__x { opacity: 1; }
+@media (hover: none) {
+  .tk-kb-card__x { opacity: 1; }
+}
+
+.tk-kb-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.tk-kb-actions .tk-btn-ghost { height: 34px; }
+.tk-kb-add {
+  height: 34px;
+  padding: 0 13px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  border: 1px dashed var(--tk-accent-border);
+  border-radius: 10px;
+  background: transparent;
+  font: 500 12.5px/1 'Be Vietnam Pro', sans-serif;
+  color: var(--tk-accent);
+  cursor: pointer;
+}
+.tk-kb-add:hover,
+.tk-kb-add.is-on {
+  border-style: solid;
+  background: var(--tk-accent-soft);
 }
 
 .tk-unsaved {

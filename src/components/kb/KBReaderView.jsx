@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, useRef, lazy, Suspense } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import rehypeHighlight from 'rehype-highlight';
 import {
   KIND_META,
   contentKind,
@@ -12,16 +13,23 @@ import {
   getOutboundLinks,
   findBacklinks,
   safeHostname,
+  normalizeVi,
+  suggestByTitle,
 } from '../../utils/kbDeriveUtils';
-import { formatDate, formatDateTime } from '../../utils/dateUtils';
+import { formatDate, formatDateTime, toDateStr } from '../../utils/dateUtils';
+import { STATUS_META, statusKeyOf } from '../../utils/kanbanUtils';
 import AppIcon from '../AppIcon';
+import LinkPicker from '../LinkPicker';
 import { KBTopicSelect } from './KBTopicPicker';
 import MediaPreview from '../MediaPreview';
 import { stripMediaTag } from '../../utils/mediaUtils';
+import { MarkdownCodeBlock } from './KBCodeBlock';
 
 const TiptapReadOnly = lazy(() => import('../TiptapEditor').then(m => ({ default: m.TiptapReadOnly })));
 
 const REMARK_PLUGINS = [remarkGfm];
+// Tô màu khối code (lowlight, 37 ngôn ngữ phổ biến); không ghi ngôn ngữ thì tự đoán — khung ở KBCodeBlock
+const REHYPE_PLUGINS = [[rehypeHighlight, { detect: true }]];
 
 function RailSection({ title, count, action, children }) {
   return (
@@ -33,6 +41,17 @@ function RailSection({ title, count, action, children }) {
       {children}
     </section>
   );
+}
+
+// Hạn của việc cho cột "Nhiệm vụ liên kết" / bộ chọn việc: "hạn 28/11 09:00" hoặc "trễ 2 ngày"
+function taskDue(task, today) {
+  if (!task.due_date) return { text: 'chưa có hạn' };
+  const open = statusKeyOf(task) !== 'done' && task.status !== 'skip';
+  if (open && task.due_date < today) {
+    return { text: `trễ ${Math.round((Date.parse(today) - Date.parse(task.due_date)) / 864e5)} ngày`, late: true };
+  }
+  const [, m, d] = task.due_date.split('-');
+  return { text: `hạn ${Number(d)}/${Number(m)}${task.due_time ? ` ${task.due_time.slice(0, 5)}` : ''}` };
 }
 
 function RailRow({ article, meta, onOpen }) {
@@ -61,8 +80,16 @@ export default function KBReaderView({
   onOpenGraph,
   onOpenLinkModal,
   onUpdateUrl,
+  pickTasks,      // việc chưa xong (cấp đầu) cho bộ chọn "Gắn vào việc"
+  tasksLoaded,    // danh sách việc đã tải xong (trước đó chưa đếm được việc đã xong từ trước)
+  onLinkTask,     // (task, linked) => Promise
+  onCreateTask,   // () => tạo việc tên = tên bài, gắn luôn
+  onOpenTask,     // (task) => mở ngăn việc ở trang Nhiệm vụ
 }) {
   const [focusMode, setFocusMode] = useState(false);
+  // Bộ chọn việc: { anchorEl, start } — `start` = việc đã gắn lúc mở (nhóm "Đã gắn" đứng yên khi gắn / bỏ)
+  const [taskPick, setTaskPick] = useState(null);
+  const [taskQuery, setTaskQuery] = useState('');
   const [readProg, setReadProg] = useState(0);
   const miniCanvasRef = useRef(null);
   const topicSelectRef = useRef(null);
@@ -120,8 +147,43 @@ export default function KBReaderView({
   // Xung quanh: cùng chủ đề · cùng nguồn · lưu gần thời điểm
   const around = useMemo(() => findNeighbors(article, allArticles), [article, allArticles]);
 
-  // Tasks associated with this collection
+  // Việc gắn với bài: việc đã tải (chưa xong + xong hôm nay); việc xong từ trước chỉ còn đếm được
   const tasks = article._linkedTasks || [];
+  const linkedTaskIds = new Set(article._linkedTaskIds || []);
+  const olderDone = linkedTaskIds.size - tasks.length;
+  const today = toDateStr();
+
+  const toggleTaskPick = (e) => {
+    if (taskPick) {
+      setTaskPick(null);
+      return;
+    }
+    setTaskPick({ anchorEl: e.currentTarget, start: tasks.filter(t => statusKeyOf(t) !== 'done') });
+    setTaskQuery('');
+  };
+  const pickItem = (t) => {
+    const due = taskDue(t, today);
+    return { id: t.id, title: t.title, linked: linkedTaskIds.has(t.id), meta: due.text, metaTone: due.late ? 'late' : undefined, raw: t };
+  };
+  let taskGroups = [];
+  if (taskPick) {
+    const q = normalizeVi(taskQuery.trim());
+    if (q) {
+      taskGroups = [{ key: 'found', label: 'Kết quả', items: pickTasks.filter(t => normalizeVi(t.title).includes(q)).slice(0, 30).map(pickItem) }];
+    } else {
+      const startIds = new Set(taskPick.start.map(t => t.id));
+      const rest = pickTasks.filter(t => !startIds.has(t.id));
+      const sugg = suggestByTitle(article.title, rest);
+      const shown = new Set(sugg.map(t => t.id));
+      const byStatus = st => rest.filter(t => !shown.has(t.id) && statusKeyOf(t) === st).slice(0, 8);
+      taskGroups = [
+        { key: 'linked', label: 'Đã gắn', items: taskPick.start.map(pickItem) },
+        { key: 'sugg', label: 'Gợi ý · trùng chữ với tên bài', items: sugg.map(pickItem) },
+        { key: 'doing', label: 'Đang làm', items: byStatus('doing').map(pickItem) },
+        { key: 'todo', label: 'Cần làm', items: byStatus('todo').map(pickItem) },
+      ];
+    }
+  }
 
   // "+ Gán chủ đề" mở luôn ô chọn chủ đề trên thanh trên: click vào ô gõ của SearchSelect
   // nổi lên khung điều khiển, khung mở menu và focus ô gõ
@@ -246,6 +308,7 @@ export default function KBReaderView({
     h1: ({ children }) => <h2 id={slugifyVi(String(children))}>{children}</h2>,
     h2: ({ children }) => <h2 id={slugifyVi(String(children))}>{children}</h2>,
     h3: ({ children }) => <h3 id={slugifyVi(String(children))}>{children}</h3>,
+    pre: MarkdownCodeBlock,
     p: ({ children }) => {
       const text = String(children);
       if (typeof children === 'string' && text.includes('[[')) {
@@ -310,6 +373,24 @@ export default function KBReaderView({
 
   return (
     <div className={`kb-reader${focusMode ? ' kb-reader--focus' : ''}`} style={{ animation: 'kb-up .25s ease' }}>
+      {taskPick && (
+        <LinkPicker
+          anchorEl={taskPick.anchorEl}
+          label="Gắn bài vào việc"
+          placeholder="Tìm việc…"
+          groups={taskGroups}
+          query={taskQuery}
+          onQuery={setTaskQuery}
+          onToggle={item => onLinkTask(item.raw, !item.linked)}
+          createLabel={`Tạo việc “${article.title}”`}
+          onCreate={() => {
+            setTaskPick(null);
+            onCreateTask();
+          }}
+          emptyText={taskQuery.trim() ? 'Không có việc nào khớp.' : 'Chưa có việc nào đang mở.'}
+          onClose={() => setTaskPick(null)}
+        />
+      )}
       {/* Thanh trên: quay lại · vị trí · ↑↓ · chủ đề · 4 nút */}
       {/* Thanh trong suốt, hai cụm nổi — trời và trăng vẫn hiện phía sau */}
       <div className="kb-reader__bar">
@@ -405,7 +486,7 @@ export default function KBReaderView({
                   <TiptapReadOnly content={article.body} />
                 </Suspense>
               ) : article.body ? (
-                <ReactMarkdown remarkPlugins={REMARK_PLUGINS} components={mdComponents}>
+                <ReactMarkdown remarkPlugins={REMARK_PLUGINS} rehypePlugins={REHYPE_PLUGINS} components={mdComponents}>
                   {article.body}
                 </ReactMarkdown>
               ) : (
@@ -564,19 +645,41 @@ export default function KBReaderView({
               )}
             </RailSection>
 
-            <RailSection title="Nhiệm vụ liên kết" count={tasks.length}>
-              {tasks.length === 0 ? (
-                <p className="kb-rail-empty">Chưa có task nào. Nối bài với task từ trang Nhiệm vụ (Liên kết bài viết).</p>
-              ) : (
+            <RailSection title="Nhiệm vụ liên kết" count={linkedTaskIds.size}>
+              {tasks.length > 0 && (
                 <div className="kb-rail-list">
-                  {tasks.map(t => (
-                    <div key={t.id} className="kb-rail-task">
-                      <span className="kb-rail-task__mark">◇</span>
-                      <span>{t.title}</span>
-                    </div>
-                  ))}
+                  {tasks.map(t => {
+                    const st = STATUS_META[statusKeyOf(t)];
+                    const due = taskDue(t, today);
+                    return (
+                      <button key={t.id} type="button" className="kb-rail-task" onClick={() => onOpenTask(t)}>
+                        <AppIcon name={st.icon} size={15} weight={st.weight} style={{ color: st.color }} />
+                        <span className="kb-rail-task__text">
+                          <span className="kb-rail-task__title">{t.title}</span>
+                          <span className={`kb-rail-task__meta${due.late ? ' is-late' : ''}`}>{st.label} · {due.text}</span>
+                        </span>
+                      </button>
+                    );
+                  })}
                 </div>
               )}
+              {tasksLoaded && olderDone > 0 && <p className="kb-rail-empty">+ {olderDone} việc đã xong trước hôm nay</p>}
+              {linkedTaskIds.size === 0 && <p className="kb-rail-empty">Chưa gắn vào việc nào.</p>}
+              <div className="kb-rail-task-actions">
+                <button
+                  type="button"
+                  className={`kb-rail-btn kb-rail-btn--link${taskPick ? ' is-on' : ''}`}
+                  aria-expanded={!!taskPick}
+                  onClick={toggleTaskPick}
+                >
+                  <AppIcon name="link" size={14} />
+                  Gắn vào việc
+                </button>
+                <button type="button" className="kb-rail-btn" onClick={onCreateTask}>
+                  <AppIcon name="plus" size={14} />
+                  Tạo việc từ bài này
+                </button>
+              </div>
             </RailSection>
           </aside>
         )}

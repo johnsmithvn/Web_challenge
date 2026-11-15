@@ -744,7 +744,7 @@ QuickCapture all open it). Scoped design contract, like Vault:
   appears and looks at the light. JS only writes `transform` / size / `--lit`
   / `--owl-*`; never animates layout.
 - **Inputs.** `.auth-entry` (52px, 14px radius, glass). `.auth-input` is a
-  different, shared input used by TaskForm / SubtaskList / LinkKBModal — the
+  different, shared input used by TaskForm / SubtaskList — the
   Auth screen must not use it.
 - Labels are `.sr-only` + placeholder. Motion stops under
   `:root[data-reduce-motion]`.
@@ -1419,6 +1419,13 @@ Knowledge có contract riêng, scoped trên `.kb-page`; không dùng glass/gradi
 - **Đầu danh sách** `.kb-topic-head`: dải mở, không khung, không vạch dưới — chỉ quầng `--kb-topic` góc trên trái,
   không quả cầu; tên Spectral nghiêng 34px màu `--kb-topic` (không có thì `--kb-gold`; nền sáng pha 55% với `--kb-tx`),
   số bài là viên `--kb-p2`, hàng thẻ thẳng lề trái, không nhãn "Thẻ".
+- **Khối code trang đọc** (`KBCodeBlock.jsx`, cả bài Markdown lẫn Visual): khung `.kb-code` (nền `--kb-code-bg`, viền
+  `--kb-line`, bo 12px) có thanh trên: nhãn ngôn ngữ mono viết hoa nhỏ màu `--kb-faint` (ngoại lệ của luật nhãn — giống
+  nhãn trên editor code) · nút Copy chìm. Tô màu cú pháp bằng lowlight (bộ 37 ngôn ngữ phổ biến của highlight.js, tự đoán
+  khi không ghi ngôn ngữ); màu lấy token có sẵn: từ khoá `--kb-violet`, chuỗi `--kb-sage`, số / thuộc tính / kiểu
+  `--kb-gold`, thẻ HTML `--kb-red`, chú thích `--kb-faint` nghiêng, tên hàm `--kb-syn-fn` (token riêng: tối `#82AAFF`,
+  sáng `#0369A1`). Markdown: `rehype-highlight` (`KBReaderView`); Visual: `CodeBlockLowlight` + NodeView trong
+  `TiptapReadOnly` (`TiptapEditor.jsx`, chỉ tải lười — bảng phím tắt của Navbar ở `ShortcutsModal.jsx` riêng).
 - **Không đóng khung trang trí trên trời**: không hộp viền bo chỉ để trang trí (bầu trời nhỏ ở Tổng quan đã bỏ). Canvas
   không có thanh header — nút `.kb-canvas__toolbar` nổi góc phải, nền trong suốt; nút tự có viền (`.kb-btn-ghost`).
 - **Nút**: `.kb-btn-primary` (nền mint + quầng `--kb-glow`), `.kb-btn-soft` (nền accent-soft), `.kb-btn-ghost` (viền),
@@ -1426,8 +1433,13 @@ Knowledge có contract riêng, scoped trên `.kb-page`; không dùng glass/gradi
   (`--quiet` không khung). Chip chủ đề trong bộ chọn: `.kb-chip` viên tròn `999px`.
 - **Trang đọc**: thanh trên trong suốt, chỉ có hai cụm `.kb-reader__group` (viên, nền `--kb-pop` 72%) để trời / trăng
   không bị che. Cột chữ `max-width: 760px` giữa vùng đọc (~90 ký tự/dòng — đã là trần dễ đọc, đừng nới chữ), cột phải
-  360px. Khối cấp đầu rộng — code / sơ đồ ASCII, bảng (`width`), ảnh (`max-width`, giữ cỡ thật, canh giữa) — tràn đều hai
-  bên tới `min(960px, 100cqw)`; `.kb-reader__main` là container nên màn hẹp không tràn ra ngoài.
+  360px. Khối cấp đầu rộng — code (`.kb-code` / `.node-codeBlock`), bảng (`width`), ảnh (`max-width`, giữ cỡ thật) —
+  thẳng lề trái với chữ, nới sang phải hết phần trống: `--kb-wide: min(50cqw + 380px, 100cqw, 1200px)` (đừng canh giữa
+  tràn hai bên — lệch lề chữ). `.kb-reader__main` là container nên màn hẹp khối chỉ bằng cột chữ.
+- **Nhiệm vụ liên kết** (cột phải trang đọc): `.kb-rail-task` = icon trạng thái (`STATUS_META`, `--tk-st-*` map sang
+  token `--kb-*` trên `.kb-reader`) + tên + hạn (trễ thì `--kb-red`); dưới là `.kb-rail-btn--link` "Gắn vào việc" (viền
+  nét đứt) và `.kb-rail-btn` "Tạo việc từ bài này". Bộ chọn `LinkPicker` dùng chung với Nhiệm vụ: `.kb-page .tk-linkpick`
+  map `--tk-*` sang `--kb-*` (`collect.css`).
 - **Thùng rác** (`KBTrashView`): dùng lại `.kb-topic-head` + `.kb-row`; dòng `.kb-row--trash` không con trỏ tay, không sáng
   viền khi rê (không mở được); "Dọn sạch" là `.kb-btn-ghost--danger`, Xoá vĩnh viễn là `.kb-icon-btn--danger`. Mục ở cột trái
   dùng icon thùng rác màu `--kb-faint`.
@@ -1546,6 +1558,13 @@ Bật Giảm chuyển động (Cài đặt) thì tắt mọi chuyển động n�
   (xem Performance rules ở Elevation & Depth). Thẻ Kanban Rừng tiên không kính mờ (cột đã kính mờ); thẻ mobile giữ.
 - Ngăn chi tiết `.tk-drawer` (560px, ≥1600px là 600px, nổi phải): ở Kanban nổi **đè** lên bảng; Danh sách/Lịch ≥1280px vẫn chừa
   `padding-right: calc(var(--tk-drawer-width) + 28px)` (588px/628px) cho `.tk-main`. Mobile = sheet dưới + `.tk-drawer-backdrop`.
+- Mục **Bài viết** trong ngăn chi tiết (giữa Mô tả và Việc con): `.tk-kb-card` (ô icon pha màu chủ đề `--tk-kb-topic`,
+  cả thẻ bấm được qua `__main::after`; `↗` và X chỉ hiện khi hover / focus, `hover: none` luôn hiện X) + `.tk-kb-actions`
+  (`.tk-kb-add` viền nét đứt accent, `.is-on` khi bộ chọn mở · "Viết bài mới" là `.tk-btn-ghost`). Thẻ việc có
+  `.tk-docs-chip` (icon file + số bài, `title` liệt kê tên bài).
+- Bộ chọn gắn `LinkPicker` (`.tk-popover.tk-linkpick`, `link-picker.css`, rộng 420px, z 160): tự đủ khung (không cần
+  `date-popover.css`), render ngoài `.tk-drawer` vì `position: fixed`; ô tìm · nhóm nhãn mono viết hoa · dòng có vòng tick
+  `.tk-linkpick__check.is-on` · dòng tạo mới có vạch trên · chân phím tắt (ẩn ≤768px). Tự lật lên khi dưới thiếu chỗ.
 - Hàng việc con (`.tk-subs__row` trên thẻ, `.tk-sub-row` trong ngăn chi tiết): tay nắm `.tk-sub-grip` (span
   `role="button"`, `touch-action: none`) + nút ưu tiên `.tk-sub-pr` (`.is-unset` mờ, chỉ hiện khi hover; `hover: none`
   luôn hiện mờ). Kéo thả qua `useSubtaskReorder` (Pointer Events): hàng `data-drag="self"` nhấc theo con trỏ,

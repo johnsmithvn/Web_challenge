@@ -528,7 +528,7 @@
 }
 
 /* ============================================================
-   .auth-input — ô nhập dùng chung (TaskForm, SubtaskList, LinkKBModal).
+   .auth-input — ô nhập dùng chung (TaskForm, SubtaskList).
    Màn đăng nhập KHÔNG dùng class này (dùng .auth-entry).
    ============================================================ */
 .auth-input {

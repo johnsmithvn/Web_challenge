@@ -232,6 +232,15 @@ export default function TaskCard({
 
   const tags = m.tags.map((t) => <span key={t} className="tk-tag-text">#{t}</span>);
 
+  // Bài viết gắn kèm (Kiến thức): số bài, rê chuột thấy tên; mở thẻ để đọc
+  const docs = task._collections || [];
+  const docsChip = docs.length > 0 && (
+    <span className="tk-docs-chip" title={docs.map((c) => c.title).filter(Boolean).join('\n')} aria-label={`${docs.length} bài viết`}>
+      <AppIcon name="file" size={12} />
+      {docs.length}
+    </span>
+  );
+
   // Việc con đang làm: 1 dòng trên mặt thẻ khi danh sách đang thu gọn (mở ra thì hàng đó tự nổi bật)
   const doingSub = !expanded && !m.done && subtasks.find((s) => statusKeyOf(s) === 'doing');
   const focusLine = doingSub && (
@@ -271,6 +280,7 @@ export default function TaskCard({
           <div className="tk-row__aside">
             {runChip}
             {subsBtn}
+            {docsChip}
             {tags}
             {prChip}
             {badge()}
@@ -296,6 +306,7 @@ export default function TaskCard({
             {prChip}
             {subsBtn}
             {runChip}
+            {docsChip}
             {tags}
           </div>
           {subsPanel}
@@ -305,7 +316,7 @@ export default function TaskCard({
   }
 
   // variant === 'card' (Kanban desktop)
-  const hasMeta = !!(m.run || subtasks.length || m.repeat || m.tags.length);
+  const hasMeta = !!(m.run || subtasks.length || m.repeat || m.tags.length || docs.length);
   return (
     <div className={`tk-card${selected ? ' is-selected' : ''}`} style={style} onClick={() => onOpen?.(task)} {...dragProps}>
       <span className="tk-k-bar" />
@@ -331,6 +342,7 @@ export default function TaskCard({
         <div className="tk-card__meta">
           {runChip}
           {subsBtn}
+          {docsChip}
           {m.repeat && <AppIcon name="repeat" size={13} style={{ color: 'var(--tk-text-sub)' }} title="Lặp lại" />}
           {tags}
         </div>
