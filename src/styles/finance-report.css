@@ -688,16 +688,30 @@
   transition: width 0.3s ease;
 }
 
-/* Danh mục con (Subcategories breakdown) */
+/* Danh mục con xổ ra kiểu NHÁNH CÂY (cùng kiểu với Định kỳ, Giao dịch): nhánh màu nhóm (--cat)
+   chạy từ mũi tên (tâm x ≈ 6) xuống, rẽ vào từng danh mục con; dòng cuối bo góc. */
+.fin-report__rank-item.is-expanded .fin-report__rank-chevron {
+  color: var(--cat);
+}
 .fin-report__rank-subs {
-  margin-top: 8px;
-  margin-left: 10px;
-  padding-left: 10px;
-  border-left: 2px solid #E8E7E2;
+  position: relative;
+  margin-top: 6px;
   display: flex;
   flex-direction: column;
-  gap: 8px;
   animation: finRankFadeIn 0.2s ease;
+}
+.fin-report__rank-subs::before,
+.fin-report__rank-sub-item::before,
+.fin-report__rank-sub-item::after {
+  content: '';
+  position: absolute;
+  left: 5px;
+  width: 2px;
+  background: color-mix(in srgb, var(--cat) 55%, transparent);
+}
+.fin-report__rank-subs::before {
+  top: -6px;
+  height: 6px;
 }
 
 @keyframes finRankFadeIn {
@@ -706,9 +720,33 @@
 }
 
 .fin-report__rank-sub-item {
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: 3px;
+  padding: 5px 0 5px 24px;
+}
+.fin-report__rank-sub-item::before {
+  top: 0;
+  bottom: 0;
+}
+.fin-report__rank-sub-item::after {
+  top: 12px;
+  width: 14px;
+  height: 2px;
+}
+.fin-report__rank-sub-item:last-child::before {
+  bottom: auto;
+  height: 14px;
+  width: 14px;
+  box-sizing: border-box;
+  background: none;
+  border: solid color-mix(in srgb, var(--cat) 55%, transparent);
+  border-width: 0 0 2px 2px;
+  border-bottom-left-radius: 7px;
+}
+.fin-report__rank-sub-item:last-child::after {
+  display: none;
 }
 
 .fin-report__rank-sub-head {
@@ -1396,6 +1434,50 @@
 .fin-report__diff-sub-tr {
   background: #FAF9F6;
 }
+/* Bảng chênh lệch: cùng nhánh màu nhóm, từ mũi tên (padding ô 10 + nửa ô mũi tên 7 = 17)
+   xuống từng dòng danh mục con; dòng con cuối (không có dòng con nào theo sau) bo góc. */
+.fin-report__diff-row-tr.is-open .fin-report__diff-caret {
+  color: var(--cat);
+}
+.fin-report__diff-row-tr.is-open td:first-child,
+.fin-report__diff-sub-tr td:first-child {
+  position: relative;
+}
+.fin-report__diff-row-tr.is-open td:first-child::after,
+.fin-report__diff-sub-tr td:first-child::before,
+.fin-report__diff-sub-tr td:first-child::after {
+  content: '';
+  position: absolute;
+  left: 16px;
+  width: 2px;
+  background: color-mix(in srgb, var(--cat) 55%, transparent);
+}
+.fin-report__diff-row-tr.is-open td:first-child::after {
+  top: calc(50% + 7px);
+  bottom: -1px;
+}
+.fin-report__diff-sub-tr td:first-child::before {
+  top: 0;
+  bottom: -1px;
+}
+.fin-report__diff-sub-tr td:first-child::after {
+  top: 50%;
+  width: 12px;
+  height: 2px;
+  margin-top: -1px;
+}
+.fin-report__diff-sub-tr:not(:has(+ .fin-report__diff-sub-tr)) td:first-child::before {
+  bottom: calc(50% - 1px);
+  width: 12px;
+  box-sizing: border-box;
+  background: none;
+  border: solid color-mix(in srgb, var(--cat) 55%, transparent);
+  border-width: 0 0 2px 2px;
+  border-bottom-left-radius: 8px;
+}
+.fin-report__diff-sub-tr:not(:has(+ .fin-report__diff-sub-tr)) td:first-child::after {
+  display: none;
+}
 .fin-report__diff-sub-tr:hover {
   background: #F4F3EE;
 }
@@ -1967,6 +2049,17 @@
 
   /* Bảng Kỳ này với kỳ trước vừa khung thay vì cuộn ngang: tên nhóm xuống dòng,
      thanh mini nằm dưới tên, badge chênh lệch tách 2 dòng (số tiền / %). */
+  /* Ô hẹp → mũi tên ở 4 + 7 = 11: dời nhánh theo (chữ dòng con vẫn ở 32). */
+  .fin-report__diff-row-tr.is-open td:first-child::after,
+  .fin-report__diff-sub-tr td:first-child::before,
+  .fin-report__diff-sub-tr td:first-child::after {
+    left: 10px;
+  }
+  .fin-report__diff-sub-tr td:first-child::after,
+  .fin-report__diff-sub-tr:not(:has(+ .fin-report__diff-sub-tr)) td:first-child::before {
+    width: 18px;
+  }
+
   .fin-report__diff-table th,
   .fin-report__diff-table td {
     padding-left: 4px;
@@ -2093,7 +2186,7 @@
 
 /* Đường kẻ */
 [data-theme="dark"] .fin-report :is(.fin-report__header, .fin-report__step-label, .fin-report__mgr-footer,
-  .fin-report__rank-subs, .fin-report__mobile-row, .fin-report__diff-table th, .fin-report__diff-table td,
+  .fin-report__mobile-row, .fin-report__diff-table th, .fin-report__diff-table td,
   .fin-report__outlier-footer) {
   border-color: var(--n-line);
 }

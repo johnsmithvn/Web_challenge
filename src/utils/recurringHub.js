@@ -20,6 +20,48 @@ export function shortMoney(n) {
 }
 const pctOf = (a, b) => (b ? Math.min(100, Math.max(0, Math.round((a / b) * 100))) : 0);
 
+/*
+ * Dòng con CHỈ ĐỌC khi xổ một dòng hub ra (`item.log`), cũ trước mới sau. Cột ngày là ngày
+ * xảy ra (`day` + `wd` = "T<tháng>"); `value` là số tiền (UI format) hoặc nhãn sẵn ("+31 ngày").
+ */
+const logDate = (at, month) => ({
+  day: at ? String(Number(at.slice(8))) : '—',
+  wd: `T${at ? Number(at.slice(5, 7)) : month}`,
+});
+
+/** Hóa đơn: `count` kỳ gần nhất đã trả hoặc đã bỏ (cùng nguồn với khung "N kỳ gần nhất" của panel). */
+function billLog(b, transactions, cards, count = 3) {
+  const paid = new Map();
+  for (const t of transactions) {
+    if (t.bill_id !== b.id || !t.bill_period) continue;
+    const p = paid.get(t.bill_period) || { amount: 0, at: t.occurred_at, card: t.source_card_id };
+    p.amount += t.amount;
+    if (t.occurred_at > p.at) Object.assign(p, { at: t.occurred_at, card: t.source_card_id });
+    paid.set(t.bill_period, p);
+  }
+  const periods = [...new Set([...paid.keys(), ...(b.skipped_periods || [])])].sort().slice(-count);
+  return periods.map((period) => {
+    const p = paid.get(period);
+    const name = `Kỳ ${period.slice(5)}/${period.slice(0, 4)}`;
+    if (!p) {
+      return { key: period, ...logDate(null, Number(period.slice(5, 7))), icon: 'minusCircle', name,
+        sub: 'bỏ kỳ', value: null, state: 'Bỏ kỳ', tone: null };
+    }
+    const source = p.card ? (cards.find(c => c.id === p.card)?.name || 'thẻ') : 'Tiền có sẵn';
+    return { key: period, ...logDate(p.at), icon: 'check', name, sub: `trả ${dmyFull(p.at)} bằng ${source}`,
+      value: p.amount, state: 'Đã trả', tone: 'paid' };
+  });
+}
+
+/** Cho vay: mỗi lần bấm Lùi hẹn (`due_history`). */
+function lendLog(l) {
+  return (l.due_history || []).map((h, i) => ({
+    key: `due${i}`, ...logDate(h.at), icon: 'clock', name: `Lùi hẹn sang ${dmyFull(h.to)}`,
+    sub: [`hẹn cũ ${dmyFull(h.from)}`, h.reason].filter(Boolean).join(' · '),
+    value: `+${daysInclusive(h.from, h.to) - 1} ngày`, state: `lần ${i + 1}`, tone: null,
+  }));
+}
+
 /**
  * 1. Gom 5 nguồn thành item phẳng (bảng §2 trong RECURRING_HUB_PLAN.md).
  * Không format tiền ở đây — UI lo việc hiển thị.
@@ -83,6 +125,7 @@ export function buildHubItems(fin = {}) {
       ev,
       progress,
       overdue,
+      log: billLog(b, transactions, cards),
     });
   }
 
@@ -274,6 +317,7 @@ export function buildHubItems(fin = {}) {
       ev,
       progress,
       overdue: Boolean(ev && ev.due < today),
+      log: lendLog(l),
     });
   }
 

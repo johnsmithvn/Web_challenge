@@ -2540,11 +2540,30 @@ select.fin-input { color-scheme: dark; cursor: pointer; }
 }
 .fin-hub__toggle-done:hover { background: var(--n-sink); }
 .fin-hub__archive { margin: 8px 18px 0; }
-/* Quỹ xổ ra: sổ là dòng con thụt vào, có vạch dẫn bên trái. */
+/* Xổ ra kiểu NHÁNH CÂY (cùng kiểu với gom cụm ở Giao dịch, danh mục con ở Báo cáo): dòng cha đang
+   mở có vòng màu quanh icon và cuống nhánh chạy xuống; mỗi dòng con rẽ từ nhánh vào icon nhỏ của nó,
+   dòng cuối (`.is-last`) bo góc. Nhánh = màu loại mờ 55%. Tâm icon cha: 18 + 36 + 14 + 17 = 85px. */
+.fin-hub__row { --branch: color-mix(in srgb, var(--tile-color) 55%, transparent); }
 .fin-hub__row-caret { margin-right: 4px; vertical-align: -1px; color: var(--n-txt3); }
-.fin-hub__row.is-child { position: relative; padding-left: 34px; }
-.fin-hub__row.is-child::before { content: ''; position: absolute; top: 0; bottom: 0; left: 26px; width: 1px; background: var(--n-border); }
-/* Cho vay xổ ra: mỗi lần lùi hẹn là một dòng con chỉ để đọc (div, không bấm được). */
+.fin-hub__row[aria-expanded="true"] { position: relative; }
+.fin-hub__row[aria-expanded="true"] .fin-hub__row-caret { color: var(--tile-color); }
+.fin-hub__row[aria-expanded="true"] .fin-hub__row-icon { box-shadow: 0 0 0 2px var(--branch); }
+.fin-hub__row[aria-expanded="true"]::after,
+.fin-hub__row.is-child::before,
+.fin-hub__row.is-child::after { content: ''; position: absolute; left: 84px; width: 2px; background: var(--branch); }
+.fin-hub__row[aria-expanded="true"]::after { top: calc(50% + 17px); bottom: 0; }
+/* Dòng con: cột icon rộng 62px, icon nhỏ dồn phải → nhánh ngang 20px (84 → 104). */
+.fin-hub__row.is-child { position: relative; grid-template-columns: 36px 62px minmax(0, 1fr) 150px 128px; }
+.fin-hub__row.is-child .fin-hub__row-icon { justify-self: end; width: 26px; height: 26px; border-radius: 8px; }
+.fin-hub__row.is-child .fin-hub__row-icon svg { width: 13px; height: 13px; }
+.fin-hub__row.is-child::before { top: 0; bottom: 0; }
+.fin-hub__row.is-child::after { top: 50%; width: 20px; height: 2px; margin-top: -1px; }
+.fin-hub__row.is-child.is-last::before {
+  bottom: calc(50% - 1px); width: 20px; box-sizing: border-box; background: none;
+  border: solid var(--branch); border-width: 0 0 2px 2px; border-bottom-left-radius: 10px;
+}
+.fin-hub__row.is-child.is-last::after { display: none; }
+/* Hóa đơn (các kỳ) / cho vay (các lần lùi hẹn): dòng con chỉ để đọc (div, không bấm được). */
 .fin-hub__row.is-log { cursor: default; }
 .fin-hub__row.is-log:hover { background: transparent; }
 /* Lọc Quỹ: tổng của mọi sổ đang gửi (chỗ của bảng tiền gửi cũ). */
@@ -2763,8 +2782,13 @@ select.fin-input { color-scheme: dark; cursor: pointer; }
   .fin-hub__row-val { font-size: 14px; }
   .fin-hub__row-state { font-size: 11px; }
   .fin-hub__row-stdate { display: inline; }
-  .fin-hub__row.is-child { padding-left: 30px; }
-  .fin-hub__row.is-child::before { left: 20px; }
+  /* Nhánh trên điện thoại: tâm icon cha 14 + 18 = 32px; dòng con cột icon 62px → nhánh ngang 31 → 50. */
+  .fin-hub__row[aria-expanded="true"]::after, .fin-hub__row.is-child::before, .fin-hub__row.is-child::after { left: 31px; }
+  .fin-hub__row[aria-expanded="true"]::after { top: calc(50% + 18px); }
+  .fin-hub__row.is-child { grid-template-columns: 62px minmax(0, 1fr) auto; }
+  .fin-hub__row.is-child::after, .fin-hub__row.is-child.is-last::before { width: 19px; }
+  /* Dòng chỉ đọc cần dòng phụ (lý do lùi hẹn, trả bằng gì) — dòng thường thì ẩn như cũ. */
+  .fin-hub__row.is-log .fin-hub__row-sub { display: block; }
   .fin-hub__sumstrip { grid-template-columns: repeat(2, minmax(0, 1fr)); margin: 12px 14px 4px; }
   .generic-modal-backdrop:has(.fin-dep-modal) { align-items: flex-end; padding: 0; }
   .generic-modal.fin-dep-modal { max-width: none !important; max-height: 94dvh; border-radius: 26px 26px 0 0; border-bottom: 0; }

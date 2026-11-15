@@ -1077,7 +1077,7 @@ export default function ReportScreen({ fin, nav, lead, footer }) {
               const isExpanded = expandedGroups.has(c.key);
               const hasSubs = c.subs && c.subs.length > 0;
               return (
-                <div key={c.key} className={`fin-report__rank-item ${isExpanded ? 'is-expanded' : ''}`}>
+                <div key={c.key} className={`fin-report__rank-item ${isExpanded ? 'is-expanded' : ''}`} style={{ '--cat': c.col }}>
                   <div
                     className={`fin-report__rank-row-head ${hasSubs ? 'has-subs' : ''}`}
                     onClick={() => hasSubs && toggleExpandGroup(c.key)}
@@ -1358,6 +1358,7 @@ export default function ReportScreen({ fin, nav, lead, footer }) {
                           <Fragment key={r.key}>
                             <tr
                               className={`fin-report__diff-row-tr ${isOpen ? 'is-open' : ''}`}
+                              style={{ '--cat': r.col }}
                               onClick={() => toggleExpandDiffGroup(r.key)}
                             >
                               <td>
@@ -1402,7 +1403,7 @@ export default function ReportScreen({ fin, nav, lead, footer }) {
                               const subCurW = s.curAmt > 0 ? Math.max(3, Math.round((s.curAmt / (r.curAmt || 1)) * 100)) : 0;
                               const subPrevW = s.prevAmt > 0 ? Math.max(3, Math.round((s.prevAmt / (r.prevAmt || 1)) * 100)) : 0;
                               return (
-                                <tr key={s.key} className="fin-report__diff-sub-tr">
+                                <tr key={s.key} className="fin-report__diff-sub-tr" style={{ '--cat': r.col }}>
                                   <td style={{ paddingLeft: '32px' }}>
                                     <div className="fin-report__diff-sub-cell">
                                       <span className="fin-report__diff-sub-name">{s.name}</span>

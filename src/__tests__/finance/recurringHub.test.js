@@ -291,7 +291,10 @@ const lendDueItems = buildHubItems(lendDueFin);
 const mai10 = lendDueItems.find(i => i.id === 'mai10');
 assert.deepEqual([mai10.ev.state, mai10.ev.due, mai10.ev.amount], ['due', '2026-10-23', 10000000], 'hẹn trong tháng → còn phải thu');
 assert.equal(mai10.sub, 'cho mượn 06/10/2026');
-const maiLate = buildHubItems({ ...lendDueFin, lendings: [{ ...lendDueFin.lendings[0], due_history: [{}, {}] }] })[0];
+const maiLate = buildHubItems({ ...lendDueFin, lendings: [{ ...lendDueFin.lendings[0], due_history: [
+  { from: '2026-10-23', to: '2026-10-30', reason: null, at: '2026-10-14' },
+  { from: '2026-10-30', to: '2026-11-06', reason: null, at: '2026-10-14' },
+] }] })[0];
 assert.equal(maiLate.sub, 'cho mượn 06/10/2026 · đã lùi hẹn 2 lần', 'đã lùi hẹn thì dòng ghi số lần');
 assert.equal(lendDueItems.find(i => i.id === 'next').ev, null, 'hẹn tháng sau → không có kỳ trong tháng');
 assert.equal(lendDueItems.find(i => i.id === 'late').overdue, true, 'hẹn đã qua mà chưa thu đủ → quá hạn');
@@ -367,5 +370,35 @@ assert.deepEqual([iG.icon, iG.note, iG.tone, iG.progress.label],
   ['plant', 'thiếu 1 tr tiền góp', 'due', '6%/năm · 3 năm · góp 1 tr/tháng']);
 // Quỹ không có sổ An Gia vẫn không có kỳ
 assert.equal(chung([dC]).ev, null);
+
+// Xổ ra (item.log): hóa đơn → 3 kỳ gần nhất đã trả/bỏ, cũ trước; cho vay → các lần lùi hẹn.
+const logItems = buildHubItems({
+  today: '2026-11-15', cards: [{ id: 'tcb', name: 'TCB' }], loans: [], goals: [], deposits: [],
+  bills: [{ id: 'dien', name: 'Tiền điện', enabled: true, amount: 0, amount_mode: 'ask', due_day: 20,
+    anchor_date: '2026-01-20', skipped_periods: ['2026-08'] }],
+  transactions: [
+    { id: 'e6', bill_id: 'dien', bill_period: '2026-06', amount: 900000, occurred_at: '2026-06-18', type: 'expense' },
+    { id: 'e9', bill_id: 'dien', bill_period: '2026-09', amount: 1405000, occurred_at: '2026-09-19', type: 'expense', source_card_id: 'tcb' },
+    { id: 'e10a', bill_id: 'dien', bill_period: '2026-10', amount: 1000000, occurred_at: '2026-10-18', type: 'expense' },
+    { id: 'e10b', bill_id: 'dien', bill_period: '2026-10', amount: 312000, occurred_at: '2026-10-20', type: 'expense' },
+  ],
+  lendings: [{ id: 'mai', name: 'Chị Mai', principal: 100000000, lent_on: '2026-08-15', due_on: '2027-03-31',
+    due_history: [
+      { from: '2026-12-31', to: '2027-02-28', reason: 'Chưa bán được đất', at: '2026-10-02' },
+      { from: '2027-02-28', to: '2027-03-31', reason: null, at: '2026-11-15' },
+    ] }],
+});
+const dienLog = logItems.find(i => i.id === 'dien').log;
+assert.deepEqual(dienLog.map(e => e.key), ['2026-08', '2026-09', '2026-10'], 'hóa đơn: 3 kỳ gần nhất (kỳ bỏ cũng tính), cũ trước');
+assert.deepEqual([dienLog[0].day, dienLog[0].wd, dienLog[0].value, dienLog[0].state], ['—', 'T8', null, 'Bỏ kỳ'], 'kỳ bỏ: không có ngày trả');
+assert.equal(dienLog[1].sub, 'trả 19/09/2026 bằng TCB', 'kỳ trả bằng thẻ ghi tên thẻ');
+assert.deepEqual([dienLog[2].value, dienLog[2].day, dienLog[2].wd, dienLog[2].sub], [1312000, '20', 'T10', 'trả 20/10/2026 bằng Tiền có sẵn'],
+  'kỳ trả nhiều lần: cộng tiền, ngày là lần trả cuối');
+const maiLog = logItems.find(i => i.id === 'mai').log;
+assert.deepEqual(maiLog.map(e => [e.day, e.wd, e.name, e.sub, e.value, e.state]), [
+  ['2', 'T10', 'Lùi hẹn sang 28/02/2027', 'hẹn cũ 31/12/2026 · Chưa bán được đất', '+59 ngày', 'lần 1'],
+  ['15', 'T11', 'Lùi hẹn sang 31/03/2027', 'hẹn cũ 28/02/2027', '+31 ngày', 'lần 2'],
+], 'cho vay: mỗi lần lùi hẹn một dòng, không lý do thì không ghi');
+assert.deepEqual(buildHubItems(lendDueFin).find(i => i.id === 'mai10').log, [], 'chưa lùi hẹn → không có gì để xổ');
 
 console.log('recurringHub check: OK');

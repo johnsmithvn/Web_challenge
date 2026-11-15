@@ -1073,10 +1073,10 @@ function archivedSections(fin) {
 
 /**
  * Một dòng danh sách: ngày · icon · tên + tiến độ · số tiền + trạng thái.
- * Dòng quỹ có sổ / cho vay đã lùi hẹn thì xổ ra/thu lại (`expanded`); sổ là dòng con
- * (`child`) thụt vào, cho vay xổ ra các lần lùi hẹn (dòng con `.is-log`, chỉ để đọc).
+ * Dòng có thứ để xổ (quỹ có sổ, hóa đơn có kỳ cũ, cho vay đã lùi hẹn) thì xổ ra/thu lại
+ * (`expanded`); dòng con (`child`, `last` = dòng cuối nhánh) nối về icon dòng cha bằng nhánh màu.
  */
-function HubRow({ item, today, selected, onPick, rowRef, child = false, expanded }) {
+function HubRow({ item, today, selected, onPick, rowRef, child = false, last = false, expanded }) {
   const meta = KIND_META[item.kind];
   const { ev } = item;
   const st = ev?.state;
@@ -1092,7 +1092,7 @@ function HubRow({ item, today, selected, onPick, rowRef, child = false, expanded
   const sameMonth = ev && ev.due.slice(0, 7) === today.slice(0, 7);
   return (
     <button type="button" ref={rowRef} onClick={onPick}
-      className={`fin-hub__row${selected ? ' is-selected' : ''}${done ? ' is-done' : ''}${child ? ' is-child' : ''}`}
+      className={`fin-hub__row${selected ? ' is-selected' : ''}${done ? ' is-done' : ''}${child ? ' is-child' : ''}${last ? ' is-last' : ''}`}
       style={{ '--tile-color': meta.color, '--tile-soft': meta.soft }}
       aria-current={selected ? 'true' : undefined} aria-expanded={expanded}>
       <div className="fin-hub__row-date">
@@ -1141,7 +1141,7 @@ export default function RecurringScreen({ fin, nav }) {
   // state → chọn sẵn sổ đáo hạn sớm nhất (panel có nút Xử lý) và xổ quỹ của nó ra.
   const location = useLocation();
   const [selectedId, setSelectedId] = useState(null);
-  // Dòng đang xổ ra: quỹ có sổ (dòng con) và khoản cho vay đã lùi hẹn (nhật ký lùi hẹn).
+  // Dòng đang xổ ra: quỹ (các sổ), hóa đơn (các kỳ gần nhất), cho vay (các lần lùi hẹn).
   const [openRows, setOpenRows] = useState(() => new Set());
   // Dữ liệu có thể chưa tải lúc mở màn → chờ tải xong mới chọn, một lần.
   const [deepLink, setDeepLink] = useState(() => location.state?.recurringSeg === 'saving');
@@ -1184,7 +1184,7 @@ export default function RecurringScreen({ fin, nav }) {
   };
   const pick = (id) => { setSelectedId(id); setPayId(null); };
   // Bấm dòng quỹ: chọn và xổ sổ ra; bấm lại đúng dòng đang chọn thì thu vào.
-  const canExpand = (it) => it.deposits?.length > 0 || (it.kind === 'lend' && it.source.due_history?.length > 0);
+  const canExpand = (it) => it.deposits?.length > 0 || it.log?.length > 0;
   const pickRow = (it) => {
     if (canExpand(it)) {
       setOpenRows(prev => {
@@ -1364,33 +1364,38 @@ export default function RecurringScreen({ fin, nav }) {
       expanded={canExpand(it) ? openRows.has(it.id) : undefined}
       rowRef={el => rowRefs.current.set(it.id, el)} onPick={() => pickRow(it)} />
   );
-  const renderWithChildren = (it) => [
-    renderRow(it),
-    ...(openRows.has(it.id) ? childrenOf(it).map(c => (
-      <HubRow key={c.id} item={c} today={fin.today} selected={selected?.id === c.id} child
-        rowRef={el => rowRefs.current.set(c.id, el)} onPick={() => pick(c.id)} />
-    )) : []),
-    // Cho vay: mỗi lần lùi hẹn là một dòng con chỉ để đọc — cột ngày là ngày bấm lùi.
-    ...(openRows.has(it.id) && it.kind === 'lend' ? (it.source.due_history || []).map((h, i) => (
-      <div key={`${it.id}:due${i}`} className="fin-hub__row is-child is-log"
-        style={{ '--tile-color': KIND_META.lend.color, '--tile-soft': KIND_META.lend.soft }}>
-        <div className="fin-hub__row-date">
-          <span className="fin-hub__row-day">{Number(h.at.slice(8))}</span>
-          <span className="fin-hub__row-wd">T{Number(h.at.slice(5, 7))}</span>
+  // Xổ ra kiểu nhánh cây: quỹ → sổ (dòng bấm được), hóa đơn / cho vay → `item.log` (dòng chỉ đọc).
+  const renderWithChildren = (it) => {
+    if (!openRows.has(it.id)) return [renderRow(it)];
+    const kids = childrenOf(it);
+    const log = it.log || [];
+    return [
+      renderRow(it),
+      ...kids.map((c, i) => (
+        <HubRow key={c.id} item={c} today={fin.today} selected={selected?.id === c.id} child last={i === kids.length - 1}
+          rowRef={el => rowRefs.current.set(c.id, el)} onPick={() => pick(c.id)} />
+      )),
+      ...log.map((e, i) => (
+        <div key={`${it.id}:${e.key}`} className={`fin-hub__row is-child is-log${i === log.length - 1 ? ' is-last' : ''}`}
+          style={{ '--tile-color': KIND_META[it.kind].color, '--tile-soft': KIND_META[it.kind].soft }}>
+          <div className="fin-hub__row-date">
+            <span className="fin-hub__row-day">{e.day}</span>
+            <span className="fin-hub__row-wd">{e.wd}</span>
+          </div>
+          <span className="fin-hub__row-icon"><AppIcon name={e.icon} size={16} /></span>
+          <div className="fin-hub__row-meta">
+            <span className="fin-hub__row-name">{e.name}</span>
+            <span className="fin-hub__row-sub">{e.sub}</span>
+          </div>
+          <div className="fin-hub__row-prog" />
+          <div className="fin-hub__row-amt">
+            <span className="fin-hub__row-val">{typeof e.value === 'number' ? money(e.value) : e.value ?? '—'}</span>
+            <span className={`fin-hub__row-state${e.tone ? ` fin-hub__row-state--${e.tone}` : ''}`}>{e.state}</span>
+          </div>
         </div>
-        <span className="fin-hub__row-icon"><AppIcon name="clock" size={16} /></span>
-        <div className="fin-hub__row-meta">
-          <span className="fin-hub__row-name">Lùi hẹn sang {dmy(h.to)}</span>
-          <span className="fin-hub__row-sub">{[`hẹn cũ ${dmy(h.from)}`, h.reason].filter(Boolean).join(' · ')}</span>
-        </div>
-        <div className="fin-hub__row-prog" />
-        <div className="fin-hub__row-amt">
-          <span className="fin-hub__row-val">+{daysInclusive(h.from, h.to) - 1} ngày</span>
-          <span className="fin-hub__row-state">lần {i + 1}</span>
-        </div>
-      </div>
-    )) : []),
-  ];
+      )),
+    ];
+  };
 
   return (
     <div className="fin-hub">

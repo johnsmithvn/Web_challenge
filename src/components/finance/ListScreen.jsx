@@ -408,9 +408,10 @@ export default function ListScreen({ fin, nav }) {
                     const sign = tx.type === 'income' ? '+' : tx.type === 'saving' ? '' : '-';
 
                     return (
-                      <div key={tx.id}>
+                      // --cat: màu nhóm cho chip "N món" và nhánh của khoản gom cụm khi xổ ra.
+                      <div key={tx.id} style={{ '--cat': info.color || '#A8A29E' }}>
                         <div
-                          className={`fin-nhipchi__row${selected?.id === tx.id ? ' is-selected' : ''}`}
+                          className={`fin-nhipchi__row${selected?.id === tx.id ? ' is-selected' : ''}${isCluster && isExpanded ? ' is-open' : ''}`}
                           onClick={() => { setSelId(tx.id); setIsEditing(false); }}
                         >
                           {/* Color stripe */}
@@ -425,7 +426,7 @@ export default function ListScreen({ fin, nav }) {
                               {isAutomated && <span className="fin-nhipchi__badge">ĐỊNH KỲ</span>}
                               {isCluster && (
                                 <span className="fin-nhipchi__badge fin-nhipchi__badge--cluster" onClick={e => toggleCluster(tx.id, e)}>
-                                  GOM CỤM {tx.items.length}
+                                  {tx.items.length} món
                                 </span>
                               )}
                               {tx.excluded && <span className="fin-nhipchi__badge">ngoài tổng</span>}

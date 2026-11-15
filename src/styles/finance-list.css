@@ -28,8 +28,6 @@
   --nhip-accent: #6C5CE7;
   --nhip-accent-soft: #F4F2FF;
   --nhip-accent-txt: #4F3FD1;
-  --nhip-cluster-bg: #EBE7FF;
-  --nhip-cluster-txt: #4F3FD1;
   --nhip-bar-empty: #E8E5DF;
   --nhip-bar-fill: #D6D0C7;
   --nhip-bar-hover: #A8A29E;
@@ -66,8 +64,6 @@
   --nhip-accent: #9184d9;
   --nhip-accent-soft: rgba(145, 132, 217, 0.16);
   --nhip-accent-txt: #d2cefd;
-  --nhip-cluster-bg: rgba(145, 132, 217, 0.2);
-  --nhip-cluster-txt: #d2cefd;
   --nhip-bar-empty: #242738;
   --nhip-bar-fill: #3f445c;
   --nhip-bar-hover: #5d6382;
@@ -705,8 +701,11 @@
   flex: none;
 }
 .fin-nhipchi__badge--cluster {
-  background: var(--nhip-cluster-bg);
-  color: var(--nhip-cluster-txt);
+  border-radius: 999px;
+  padding: 2px 7px;
+  background: color-mix(in srgb, var(--cat) 16%, transparent);
+  color: color-mix(in srgb, var(--cat) 62%, var(--nhip-txt));
+  cursor: pointer;
 }
 
 .fin-nhipchi__row-sub {
@@ -770,34 +769,61 @@
   flex: none;
 }
 
-/* Cluster Children Items — dính liền dòng cha: tên thẳng cột tiêu đề (16 + 3.5 + 12),
-   vạch dẫn chạy dưới sọc màu, thành tiền thẳng cột số tiền cha (chừa caret 14 + gap 12). */
-.fin-nhipchi__row:has(+ .fin-nhipchi__cluster-kids) {
-  border-bottom: none;
-}
-.fin-nhipchi__cluster-kids {
-  position: relative;
-  padding: 0 42px 12px 32px;
-  margin-top: -4px;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-.fin-nhipchi__cluster-kids::before {
+/* Gom cụm xổ ra kiểu NHÁNH CÂY (cùng kiểu với Định kỳ, Báo cáo): cuống nhánh màu nhóm (--cat)
+   chạy từ đáy sọc màu xuống, rẽ vào từng món; món cuối bo góc. Sọc ở x = 16 → nhánh 2px ở 17.
+   Tên món thẳng cột tiêu đề (34), thành tiền thẳng cột số tiền cha (chừa caret 14 + gap 12 + 16). */
+.fin-nhipchi__row.is-open::after,
+.fin-nhipchi__cluster-kid::before,
+.fin-nhipchi__cluster-kid::after {
   content: '';
   position: absolute;
+  width: 2px;
+  background: color-mix(in srgb, var(--cat) 55%, transparent);
+}
+.fin-nhipchi__row.is-open {
+  border-bottom: none;
+}
+.fin-nhipchi__row.is-open::after {
   left: 17px;
-  top: 0;
-  bottom: 16px;
-  width: 1.5px;
-  border-radius: 1px;
-  background: var(--nhip-border);
+  top: calc(50% + 16px);
+  bottom: 0;
+}
+.fin-nhipchi__cluster-kids {
+  display: flex;
+  flex-direction: column;
+  padding: 0 42px 12px 34px;
 }
 
 .fin-nhipchi__cluster-kid {
+  position: relative;
   display: flex;
   align-items: baseline;
   gap: 10px;
+  padding: 5px 0;
+}
+.fin-nhipchi__cluster-kid::before {
+  left: -17px;
+  top: 0;
+  bottom: 0;
+}
+.fin-nhipchi__cluster-kid::after {
+  left: -17px;
+  top: 50%;
+  width: 11px;
+  height: 2px;
+  margin-top: -1px;
+}
+.fin-nhipchi__cluster-kid:last-child::before {
+  bottom: calc(50% - 1px);
+  width: 11px;
+  box-sizing: border-box;
+  background: none;
+  border: solid color-mix(in srgb, var(--cat) 55%, transparent);
+  border-width: 0 0 2px 2px;
+  border-bottom-left-radius: 8px;
+}
+.fin-nhipchi__cluster-kid:last-child::after {
+  display: none;
 }
 
 .fin-nhipchi__cluster-kid-name {
