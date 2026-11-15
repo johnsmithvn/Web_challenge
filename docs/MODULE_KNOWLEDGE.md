@@ -55,7 +55,7 @@ Mỗi bài có **một quyết định duy nhất là Chủ đề**, để trố
 |---|---|---|
 | **Chủ đề** | Nó thuộc mảng nào trong đời mình? | Người dùng, một lần, để trống được (Chưa xếp) |
 | **Loại** | Nó là cái gì? | Máy tự nhận từ link (`contentKind`) |
-| **Kiểu** | Bài viết / Trích dẫn | Người dùng, trong trình soạn thảo; chỉ cho thứ link không nói được (trích dẫn). Podcast = bài có link âm thanh, tự nhận |
+| **Kiểu** | Có phải trích dẫn không? | Người dùng, nút bật / tắt "Trích dẫn" trong trình soạn thảo (tắt = bài thường); chỉ cho thứ link không nói được (trích dẫn). Podcast = bài có link âm thanh, tự nhận |
 
 ### 2.1. Chủ đề
 
@@ -205,7 +205,7 @@ Bài chưa xếp cũ hơn 30 ngày không hiện ở đây (xếp hàng loạt t
 ### 4.6. Trình soạn thảo (`KBEditorView`)
 
 - Markdown / Visual (chỉ chọn khi tạo mới), thống kê chữ, nút nối `[[ ]]`, Lưu (`Ctrl+S`).
-- Tiêu đề · hàng **chủ đề** (gợi ý: viền đứt + chữ "gợi ý"; có Chưa xếp) · **Kiểu** Bài viết / Trích dẫn · thẻ · URL.
+- Tiêu đề · hàng **chủ đề** (gợi ý: viền đứt + chữ "gợi ý"; có Chưa xếp) · nút bật / tắt **Trích dẫn** (`.kb-chip`) · thẻ · URL.
 - Rời ô URL khi tiêu đề trống → tự điền tiêu đề đoán từ link (`guessTitle`: repo → `owner/repo`, YouTube → "Video YouTube", Facebook → "Bài Facebook", còn lại → tên miền).
 - Visual: khối media (`MediaNode`, liền khối không gõ vào được) có thanh sửa phía trên — ô link (`Enter` / rời ô là đổi) + nút xoá khối. Trang đọc không có thanh này.
 - Lưu thất bại → báo lỗi và ở lại trình soạn thảo.

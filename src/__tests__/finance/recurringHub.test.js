@@ -291,6 +291,8 @@ const lendDueItems = buildHubItems(lendDueFin);
 const mai10 = lendDueItems.find(i => i.id === 'mai10');
 assert.deepEqual([mai10.ev.state, mai10.ev.due, mai10.ev.amount], ['due', '2026-10-23', 10000000], 'hẹn trong tháng → còn phải thu');
 assert.equal(mai10.sub, 'cho mượn 06/10/2026');
+const maiLate = buildHubItems({ ...lendDueFin, lendings: [{ ...lendDueFin.lendings[0], due_history: [{}, {}] }] })[0];
+assert.equal(maiLate.sub, 'cho mượn 06/10/2026 · đã lùi hẹn 2 lần', 'đã lùi hẹn thì dòng ghi số lần');
 assert.equal(lendDueItems.find(i => i.id === 'next').ev, null, 'hẹn tháng sau → không có kỳ trong tháng');
 assert.equal(lendDueItems.find(i => i.id === 'late').overdue, true, 'hẹn đã qua mà chưa thu đủ → quá hạn');
 const lendDueGroups = groupHubItems(lendDueItems, '2026-10-14');

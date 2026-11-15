@@ -2544,6 +2544,9 @@ select.fin-input { color-scheme: dark; cursor: pointer; }
 .fin-hub__row-caret { margin-right: 4px; vertical-align: -1px; color: var(--n-txt3); }
 .fin-hub__row.is-child { position: relative; padding-left: 34px; }
 .fin-hub__row.is-child::before { content: ''; position: absolute; top: 0; bottom: 0; left: 26px; width: 1px; background: var(--n-border); }
+/* Cho vay xổ ra: mỗi lần lùi hẹn là một dòng con chỉ để đọc (div, không bấm được). */
+.fin-hub__row.is-log { cursor: default; }
+.fin-hub__row.is-log:hover { background: transparent; }
 /* Lọc Quỹ: tổng của mọi sổ đang gửi (chỗ của bảng tiền gửi cũ). */
 .fin-hub__sumstrip { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px 12px; margin: 12px 18px 4px; padding: 12px 14px; border-radius: 12px; background: var(--n-sink); }
 .fin-hub__sumstrip > span { display: flex; flex-direction: column; gap: 5px; min-width: 0; }

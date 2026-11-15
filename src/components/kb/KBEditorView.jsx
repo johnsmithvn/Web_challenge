@@ -10,6 +10,7 @@ import {
   suggestTopic,
 } from '../../utils/kbDeriveUtils';
 import UrlInputPopover from '../UrlInputPopover';
+import AppIcon from '../AppIcon';
 import KBTopicPicker from './KBTopicPicker';
 
 const TiptapEditor = lazy(() => import('../TiptapEditor'));
@@ -17,13 +18,9 @@ const TiptapEditor = lazy(() => import('../TiptapEditor'));
 const REMARK_PLUGINS = [remarkGfm];
 const EDITOR_MODE_KEY = 'kb_editor_mode';
 
-// Kiểu bài: chỉ thứ không đoán được từ link (trích dẫn). Podcast = bài có link âm thanh, tự nhận.
-// Bài cũ mang podcast / learn / idea / ai / entertainment được coi là Bài viết.
-const TYPES = [
-  { key: 'note', label: 'Bài viết' },
-  { key: 'quote', label: 'Trích dẫn' },
-];
-const normalizeType = type => (TYPES.some(t => t.key === type) ? type : 'note');
+// Kiểu bài: chỉ còn Trích dẫn (thứ không đoán được từ link) — một nút bật / tắt, mặc định là bài thường.
+// Podcast = bài có link âm thanh, tự nhận. Bài cũ mang podcast / learn / idea / ai / entertainment → note.
+const normalizeType = type => (type === 'quote' ? 'quote' : 'note');
 
 export default function KBEditorView({
   initial,
@@ -216,21 +213,15 @@ export default function KBEditorView({
         </div>
 
         <div className="kb-editor__meta-row">
-          {/* Type */}
-          <div className="kb-seg" role="radiogroup" aria-label="Kiểu bài">
-            {TYPES.map(t => (
-              <button
-                key={t.key}
-                type="button"
-                role="radio"
-                aria-checked={draft.type === t.key}
-                className={`kb-seg__item${draft.type === t.key ? ' is-active' : ''}`}
-                onClick={() => set('type', t.key)}
-              >
-                {t.label}
-              </button>
-            ))}
-          </div>
+          <button
+            type="button"
+            aria-pressed={draft.type === 'quote'}
+            className={`kb-chip${draft.type === 'quote' ? ' kb-chip--active' : ''}`}
+            onClick={() => set('type', draft.type === 'quote' ? 'note' : 'quote')}
+          >
+            <AppIcon name="quotes" size={14} />
+            Trích dẫn
+          </button>
 
           <span className="kb-editor__meta-sep" />
 

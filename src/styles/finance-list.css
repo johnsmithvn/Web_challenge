@@ -770,26 +770,40 @@
   flex: none;
 }
 
-/* Cluster Children Items */
+/* Cluster Children Items — dính liền dòng cha: tên thẳng cột tiêu đề (16 + 3.5 + 12),
+   vạch dẫn chạy dưới sọc màu, thành tiền thẳng cột số tiền cha (chừa caret 14 + gap 12). */
+.fin-nhipchi__row:has(+ .fin-nhipchi__cluster-kids) {
+  border-bottom: none;
+}
 .fin-nhipchi__cluster-kids {
-  margin: 0 16px 14px 48px;
-  border-left: 1px solid var(--nhip-border);
-  padding-left: 16px;
+  position: relative;
+  padding: 0 42px 12px 32px;
+  margin-top: -4px;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
+}
+.fin-nhipchi__cluster-kids::before {
+  content: '';
+  position: absolute;
+  left: 17px;
+  top: 0;
+  bottom: 16px;
+  width: 1.5px;
+  border-radius: 1px;
+  background: var(--nhip-border);
 }
 
 .fin-nhipchi__cluster-kid {
   display: flex;
-  align-items: center;
+  align-items: baseline;
   gap: 10px;
 }
 
 .fin-nhipchi__cluster-kid-name {
   flex: 1;
   min-width: 0;
-  font-size: 13px;
+  font-size: 12.5px;
   color: var(--nhip-txt-sec);
   white-space: nowrap;
   overflow: hidden;
@@ -798,18 +812,17 @@
 
 .fin-nhipchi__cluster-kid-qty {
   font-family: 'JetBrains Mono', monospace;
-  font-size: 12px;
+  font-size: 11px;
   color: var(--nhip-txt-subtle);
   flex: none;
 }
 
 .fin-nhipchi__cluster-kid-val {
   font-family: 'JetBrains Mono', monospace;
-  font-size: 13px;
+  font-size: 12.5px;
   font-weight: 500;
   color: var(--nhip-txt-sec);
   flex: none;
-  width: 96px;
   text-align: right;
 }
 

@@ -160,13 +160,23 @@ export default function ListScreen({ fin, nav }) {
     if (!maxDayAmt) {
       return { text: 'Các khoản chi tiêu kỳ này đều ở mức ổn định.' };
     }
-    const pct = Math.round((maxDayAmt / shownTotal) * 100);
+    // Cùng mẫu số với dailyTotals (cả kỳ, không theo bộ lọc) — shownTotal theo bộ lọc nên có thể >100%.
+    const periodTotal = Object.values(dailyTotals).reduce((sum, v) => sum + v, 0);
+    const pct = Math.round((maxDayAmt / periodTotal) * 100);
     const dayStr = maxDay.slice(8) + '/' + maxDay.slice(5, 7);
-    const txsOnMaxDay = inPeriod.filter(t => t.occurred_at === maxDay && t.type === 'expense' && !t.excluded);
-    const topCatId = txsOnMaxDay[0]?.category_id;
-    const catName = topCatId ? catInfo(topCatId, fin.cats).label : 'Chi tiêu';
+    // Số tiền là của CẢ NGÀY; tên nhóm là nhóm chi nhiều nhất trong ngày đó, kèm số của riêng nhóm.
+    // Trước đây lấy nhóm của giao dịch ĐẦU TIÊN rồi gán cả tổng ngày cho nó → "Ăn uống 9,5 tr".
+    const byCat = {};
+    for (const t of inPeriod) {
+      if (t.occurred_at === maxDay && t.type === 'expense' && !t.excluded) {
+        byCat[t.category_id || ''] = (byCat[t.category_id || ''] || 0) + t.amount;
+      }
+    }
+    const [topCatId, topCatAmt] = Object.entries(byCat).sort((a, b) => b[1] - a[1])[0];
+    const catName = topCatId ? catInfo(topCatId, fin.cats).label : 'Chưa phân nhóm';
     return {
-      text: `${catName} ngày ${dayStr} cộng lại ${money(maxDayAmt)} — bằng ${pct}% cả kỳ.`,
+      text: `Ngày ${dayStr} chi ${money(maxDayAmt)} — bằng ${pct}% cả kỳ, ${topCatAmt === maxDayAmt
+        ? `toàn bộ là ${catName}` : `nhiều nhất là ${catName} ${money(topCatAmt)}`}.`,
     };
   }, [inPeriod, shownTotal, dailyTotals, fin.cats]);
 
@@ -466,9 +476,10 @@ export default function ListScreen({ fin, nav }) {
                             {tx.items.map((item, idx) => (
                               <div key={idx} className="fin-nhipchi__cluster-kid">
                                 <span className="fin-nhipchi__cluster-kid-name">{item.name || 'Mục chưa đặt tên'}</span>
-                                <span className="fin-nhipchi__cluster-kid-qty">
-                                  {item.qty > 1 ? `${item.qty} × ` : ''}{item.price ? money(item.price) : ''}
-                                </span>
+                                {/* Đơn giá chỉ hiện khi mua nhiều cái — 1 cái thì trùng đúng thành tiền bên phải. */}
+                                {Number(item.qty) > 1 && parseCurrencyInput(item.price) > 0 && (
+                                  <span className="fin-nhipchi__cluster-kid-qty">{item.qty} × {money(parseCurrencyInput(item.price))}</span>
+                                )}
                                 <span className="fin-nhipchi__cluster-kid-val">
                                   {money((Math.max(1, Number(item.qty) || 1)) * (parseCurrencyInput(item.price) || 0))}
                                 </span>

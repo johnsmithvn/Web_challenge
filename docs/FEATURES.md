@@ -248,8 +248,8 @@ Giao diện "Cực quang" trên nền trời đêm dùng chung với Nhiệm v�
 - **Loại** tự nhận từ link (Repo, Video, Bài FB, Âm thanh, Bài viết, Ghi chú, Trích dẫn); tiêu đề tự điền từ link khi trống.
 - **Tổng quan** (màn mở đầu): lời chào + "Mở bầu trời ↗", Xếp nhanh bài mới chưa có chủ đề
   (phím `1`–`8`), thẻ các chủ đề, Gặp lại hôm nay, Gần đây.
-- **Danh sách / Gallery / Sơ đồ / Canvas**, lọc theo chủ đề ở cột trái. Danh sách: lọc Loại, Có liên kết, thẻ (chỉ thẻ của
-  Knowledge); nhóm theo Tháng / Chủ đề / Loại; sắp xếp; chọn nhiều (gán chủ đề, xoá). Sơ đồ là "bầu trời": mỗi bài một ngôi sao.
+- **Danh sách / Gallery / Sơ đồ / Canvas**, lọc theo chủ đề ở cột trái. Danh sách: lọc Có liên kết, thẻ (chỉ thẻ của
+  Knowledge); nhóm theo Tháng / Chủ đề; sắp xếp; chọn nhiều (gán chủ đề, xoá). Sơ đồ là "bầu trời": mỗi bài một ngôi sao.
 - **Tìm kiếm** không cần dấu, nhiều từ, trong cả ghi chú và tên chủ đề; `#thẻ`.
 - **Trang đọc:** mục lục, `[[liên kết]]` + backlink, khung **Xung quanh** (cùng chủ đề / cùng nguồn / lưu gần thời
   điểm), sơ đồ nhỏ, ghi chú cá nhân, chế độ tập trung (`F`). **Nhiệm vụ liên kết**: việc đã gắn kèm trạng thái + hạn
@@ -314,7 +314,7 @@ Giao diện "Cực quang" trên nền trời đêm dùng chung với Nhiệm v�
   cũ trả muộn mang nhãn tháng mới, bỏ kỳ trước `opened_at`); thẻ hiện nợ sao kê kỳ trước còn treo — tiền trả
   trừ vào nợ cũ nhất trước.
 - Cho vay hiện lãi đơn theo ngày trên gốc còn lại, hỗ trợ tính lãi mất do rút tiết kiệm sớm (`forfeited_interest`).
-- **Lùi hẹn cho vay:** nút *Lùi hẹn* cạnh *Ghi khoản họ trả* (khoản chưa thu xong, đã có hẹn): chọn hẹn mới (gợi ý +1 tuần / +2 tuần / +1 tháng tính từ ngày xa hơn giữa hẹn cũ và hôm nay), lý do tùy chọn. Hẹn mới phải sau hẹn cũ; mỗi lần lùi lưu vào `due_history`, dòng *Hẹn trả* ghi “đã lùi N lần”, mục xổ *Lịch sử lùi hẹn* liệt kê `cũ → mới · lý do · ngày ghi`. Đổi ngày qua *Sửa* là chữa nhầm, không ghi vết.
+- **Lùi hẹn cho vay:** nút *Lùi hẹn* cạnh *Ghi khoản họ trả* (khoản chưa thu xong, đã có hẹn): chọn hẹn mới (gợi ý +1 tuần / +2 tuần / +1 tháng tính từ ngày xa hơn giữa hẹn cũ và hôm nay), lý do tùy chọn. Hẹn mới phải sau hẹn cũ; mỗi lần lùi lưu vào `due_history`, dòng *Hẹn trả* ghi “đã lùi N lần” (dòng trong danh sách Hub ghi “đã lùi hẹn N lần” ở dòng phụ và bấm xổ ra được như quỹ: mỗi lần lùi là một dòng con chỉ đọc — ngày bấm · “Lùi hẹn sang …” · hẹn cũ, lý do · “+N ngày”, “lần i”), mục xổ *Lịch sử lùi hẹn* liệt kê `cũ → mới · lý do · ngày ghi`. Đổi ngày qua *Sửa* là chữa nhầm, không ghi vết.
 - Quỹ tiết kiệm: Quản lý nhiều nơi gửi/sổ ngân hàng, lãi suất bình quân, đáo hạn, lock soft/term/external và yêu cầu rút term chờ 48 giờ. Nơi gửi có 4 loại: Chứng chỉ tiền gửi, Sổ tiết kiệm, Tích lũy linh hoạt, **Tích lũy An Gia** (gửi lần đầu X, góp cố định Y mỗi tháng vào ngày gửi, kỳ hạn theo năm; lãi dự kiến tính theo lịch góp; hub nhắc kỳ góp tháng này, sổ báo "thiếu … tiền góp" khi số đang gửi thấp hơn lịch; panel sổ có Góp tiền điền sẵn số còn thiếu; đáo hạn chỉ rút về). Ô quỹ trong form nơi gửi mặc định **Tích lũy chung** — quỹ riêng, app tự tạo khi cần — không còn lặng lẽ gắn vào quỹ mục tiêu đầu danh sách.
 - Sổ đã đáo hạn: nút Xử lý → rút về hoặc gửi lại (chỉ gốc / gốc + lãi). Sổ cũ đóng và vào "Lịch sử sổ đã tất toán" (mở lại được), gửi lại là một dòng sổ mới, lãi thực nhận ghi thành Thu › Lãi tiết kiệm; toast có Hoàn tác.
 
