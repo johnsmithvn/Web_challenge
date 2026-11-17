@@ -1428,7 +1428,8 @@ Knowledge có contract riêng, scoped trên `.kb-page`; không dùng glass/gradi
   `scrollbar-gutter: stable`.
 - **Chống nhảy**: lọc / đổi kiểu xem không được đổi chiều cao phần trên hay đẩy nút cạnh — hàng thẻ đếm theo phạm vi,
   nút bật / tắt giữ nguyên chữ (trạng thái bằng màu + `aria-pressed`), không thêm / bớt tab theo kết quả lọc.
-- **Đầu danh sách** `.kb-topic-head`: dải mở, không khung, không vạch dưới — chỉ quầng `--kb-topic` góc trên trái,
+- **Đầu danh sách** `.kb-topic-head`: dải mở, không khung, không vạch dưới — chỉ quầng `--kb-topic` sau tên (`::before`,
+  `radial-gradient(closest-side, …)` mờ hết trước mép; đừng đặt tâm ở góc khung — lộ cạnh thẳng thành góc vuông),
   không quả cầu; tên Spectral nghiêng 34px màu `--kb-topic` (không có thì `--kb-gold`; nền sáng pha 55% với `--kb-tx`),
   số bài là viên `--kb-p2`, hàng thẻ thẳng lề trái, không nhãn "Thẻ".
 - **Khối code trang đọc** (`KBCodeBlock.jsx`, cả bài Markdown lẫn Visual): khung `.kb-code` (nền `--kb-code-bg`, viền

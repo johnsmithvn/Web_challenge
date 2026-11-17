@@ -329,9 +329,20 @@
 /* ── Danh sách (KBListView · 4a) ───────────────────────────── */
 /* Đầu chủ đề: dải mở trên trời (chỉ quầng màu chủ đề), không khung, không vạch dưới */
 .kb-topic-head {
+  position: relative;
+  isolation: isolate;
   margin-bottom: 20px;
   padding: 8px 4px 0;
-  background: radial-gradient(60% 150% at 0% 0%, color-mix(in srgb, var(--kb-topic, var(--kb-accent)) 14%, transparent), transparent 70%);
+}
+/* Quầng sau tên: tâm nằm trong, mờ hết đúng tới mép khung (closest-side) nên không lộ cạnh / góc vuông.
+   Lấn ra ngoài header nhưng còn trong lề .kb-list-view (desktop 28/32px, mobile 18/14px) để vùng cuộn không cắt. */
+.kb-topic-head::before {
+  content: '';
+  position: absolute; z-index: -1;
+  top: -18px; left: -14px;
+  width: min(520px, calc(100% + 14px)); height: 120px;
+  background: radial-gradient(closest-side, color-mix(in srgb, var(--kb-topic, var(--kb-accent)) 16%, transparent), transparent);
+  pointer-events: none;
 }
 .kb-topic-head__top { display: flex; align-items: flex-start; gap: 18px; }
 .kb-topic-head__text { flex: 1; min-width: 0; }

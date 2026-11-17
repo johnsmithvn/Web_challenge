@@ -9,7 +9,7 @@ import ActionMenu from '../ActionMenu';
 import KBTopicPicker from './KBTopicPicker';
 
 /**
- * KBListView — Danh sách (4a): phần đầu chủ đề, một hàng Có liên kết · Nhóm theo · sắp xếp · Chọn,
+ * KBListView — Danh sách (4a): phần đầu chủ đề, một hàng Nhóm theo · Có liên kết · sắp xếp · Chọn,
  * nhóm thu gọn được, thẻ bài, thanh chọn nhiều nổi ở đáy.
  * Menu thao tác của bài (ActionMenu): nút ⋯ hiện khi rê vào thẻ, hoặc chuột phải vào thẻ.
  * Chống nhảy: hàng thẻ đếm theo phạm vi (tagCounts từ CollectPage), nút bật / tắt không đổi chữ.
@@ -244,16 +244,18 @@ export default function KBListView({
 
       {(total > 0 || filtering) && (
         <div className="kb-list-toolbar">
-          <button
-            className={`kb-btn-ghost${linkedOnly ? ' kb-btn-ghost--active' : ''}`}
-            onClick={onToggleLinked}
-            aria-pressed={linkedOnly}
-            title="Chỉ bài có liên kết [[wiki]] tới bài khác hoặc được trỏ về"
-          >
-            ↔ Có liên kết
-          </button>
           <span className="kb-list-toolbar__label">Nhóm theo</span>
           <Segmented items={GROUP_ITEMS} value={groupBy} onChange={onGroupBy} label="Nhóm theo" quiet />
+          <div className="kb-seg kb-seg--quiet">
+            <button
+              className={`kb-seg__item${linkedOnly ? ' is-active' : ''}`}
+              onClick={onToggleLinked}
+              aria-pressed={linkedOnly}
+              title="Chỉ bài có liên kết [[wiki]] tới bài khác hoặc được trỏ về"
+            >
+              Có liên kết
+            </button>
+          </div>
           {filtering && (
             <span className="kb-list-toolbar__result">
               {total} kết quả · <button className="kb-link" onClick={onClearFilter}>Xoá lọc</button>
