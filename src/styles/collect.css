@@ -461,7 +461,18 @@ span.kb-tag-chip { cursor: default; }
 .kb-pill--task { color: var(--kb-violet); }
 .kb-row__actions { display: flex; gap: 2px; opacity: 0; transition: opacity 0.15s; }
 .kb-row:hover .kb-row__actions,
-.kb-row:focus-within .kb-row__actions { opacity: 1; }
+.kb-row:focus-within .kb-row__actions,
+.kb-row.is-menu .kb-row__actions { opacity: 1; }
+.kb-row.is-menu { border-color: color-mix(in srgb, var(--kb-accent) 55%, transparent); }
+/* Màn cảm ứng không rê được: nút ⋯ luôn hiện */
+@media (hover: none) { .kb-row__actions { opacity: 1; } }
+
+/* ActionMenu (menu ⋯ / chuột phải) trong Kiến thức: map --am-* sang token kb */
+.kb-page {
+  --am-bg: var(--kb-pop); --am-line: var(--kb-line); --am-shadow: var(--kb-shadow);
+  --am-tx: var(--kb-tx); --am-dim: var(--kb-dim); --am-hover: var(--kb-p2); --am-danger: var(--kb-red);
+}
+.action-menu__item > .kb-dot { margin: 0 4px; } /* chấm chủ đề 8px chiếm chỗ bằng icon 16px */
 
 /* ── Sổ lệnh (KBSnippetsView) ──────────────────────────────────
    Hàng gọn một dòng (tên · dòng đầu của lệnh · công cụ · Copy); bấm hàng mới mở cả lệnh. */

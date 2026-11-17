@@ -1,5 +1,6 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import AppIcon from './AppIcon';
+import { usePopoverShell } from '../hooks/usePopoverShell';
 import { PRIORITY_LABELS } from '../utils/taskNlpParser';
 import { STATUS_META, ksStyle, taskCardModel } from '../utils/kanbanUtils';
 import { toDateStr } from '../utils/dateUtils';
@@ -82,28 +83,6 @@ const shiftStr = (base, n) => {
 };
 const shortDM = (v) => `${Number(v.slice(8, 10))}/${Number(v.slice(5, 7))}`;
 const monthOf = (v) => new Date(Number(v.slice(0, 4)), Number(v.slice(5, 7)) - 1, 1);
-
-// Đóng khi bấm ra ngoài / Esc, và đẩy popover (position: fixed) vào trong khung nhìn — lật lên khi sát đáy.
-function usePopoverShell(ref, onClose) {
-  useEffect(() => {
-    const down = (e) => { if (ref.current && !ref.current.contains(e.target)) onClose(); };
-    const key = (e) => { if (e.key === 'Escape') onClose(); };
-    window.addEventListener('pointerdown', down);
-    window.addEventListener('keydown', key);
-    return () => {
-      window.removeEventListener('pointerdown', down);
-      window.removeEventListener('keydown', key);
-    };
-  }, [ref, onClose]);
-
-  useLayoutEffect(() => {
-    const el = ref.current;
-    if (!el || getComputedStyle(el).position !== 'fixed') return;
-    const r = el.getBoundingClientRect();
-    if (r.bottom > window.innerHeight - 8) el.style.top = `${Math.max(8, window.innerHeight - r.height - 8)}px`;
-    if (r.right > window.innerWidth - 8) el.style.left = `${Math.max(8, window.innerWidth - r.width - 8)}px`;
-  }, [ref]);
-}
 
 /**
  * Lưới tháng (CN đầu tuần) có ngày âm dưới mỗi ô. `cellState(v)` → { sel, inRange, edge: 'a'|'b', off }

@@ -802,6 +802,18 @@ and brightens through `--active` and `:hover`. Prop `max` (yyyy-MM-dd) khoá ng�
 sau mốc đó: cell và shortcut vượt mốc dùng `:disabled` — `opacity: 0.3`,
 `cursor: not-allowed`, không đổi nền khi hover.
 
+### ActionMenu — `.action-menu*` (`action-menu.css`)
+
+Menu thao tác nổi của một mục (nút ⋯ hoặc chuột phải — chặn menu của trình duyệt), dùng chung cả app.
+`position: fixed` tại toạ độ con trỏ / dưới nút ⋯, `z-index: 150`, rộng `210–280px`, cao tối đa
+`min(70vh, 440px)` (cuộn trong), nền đặc, không `backdrop-filter`, `--radius-md`; mục `7px 10px` bo
+`--radius-sm`, icon 16px màu chữ phụ, mục nguy hiểm (Xoá) màu đỏ đặt cuối sau vạch ngăn. Bước con (vd chọn chủ đề)
+thay nội dung tại chỗ, mục đầu là "‹ quay lại". Đóng khi bấm ra ngoài / `Esc` (`usePopoverShell`, dùng chung với
+popover Nhiệm vụ); sát mép thì tự đẩy vào trong màn hình. Render tại chỗ (không portal) để ăn token module: màu qua
+`--am-bg/-line/-shadow/-tx/-dim/-hover/-danger`, mặc định token app, module map trên vùng của mình (Kiến thức:
+`.kb-page` trong `collect.css`). Nút ⋯ chỉ hiện khi rê vào mục (luôn hiện trên màn cảm ứng `hover: none`); mục
+đang mở menu giữ nút ⋯ và viền sáng.
+
 ### InfoTip — `.infotip*` (`infotip.css`)
 
 Nút tròn `18px` mang icon `question`, nền accent `20%` + viền accent `50%` **sẵn từ
@@ -1440,6 +1452,9 @@ Knowledge có contract riêng, scoped trên `.kb-page`; không dùng glass/gradi
   token `--kb-*` trên `.kb-reader`) + tên + hạn (trễ thì `--kb-red`); dưới là `.kb-rail-btn--link` "Gắn vào việc" (viền
   nét đứt) và `.kb-rail-btn` "Tạo việc từ bài này". Bộ chọn `LinkPicker` dùng chung với Nhiệm vụ: `.kb-page .tk-linkpick`
   map `--tk-*` sang `--kb-*` (`collect.css`).
+- **Menu thao tác của bài** (Danh sách): `ActionMenu` mở từ nút ⋯ cuối thẻ (hiện khi rê) hoặc chuột phải vào thẻ —
+  Sửa · Chuyển chủ đề › (bước con: danh sách chủ đề có chấm màu + Chưa xếp, ✓ chủ đề hiện tại) · Tạo việc từ bài ·
+  Chép [[liên kết]] · Xoá. Đang chọn nhiều thì không mở.
 - **Thùng rác** (`KBTrashView`): dùng lại `.kb-topic-head` + `.kb-row`; dòng `.kb-row--trash` không con trỏ tay, không sáng
   viền khi rê (không mở được); "Dọn sạch" là `.kb-btn-ghost--danger`, Xoá vĩnh viễn là `.kb-icon-btn--danger`. Mục ở cột trái
   dùng icon thùng rác màu `--kb-faint`.

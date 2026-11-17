@@ -1,0 +1,34 @@
+/* ActionMenu (ActionMenu.jsx) — menu thao tác nổi dùng chung (nút ⋯ / chuột phải).
+   Nền đặc, không backdrop-filter (popup, xem DESIGN › Elevation). Màu qua --am-*, mặc định token app;
+   module đặt --am-* trên vùng của mình (vd .kb-page trong collect.css). */
+.action-menu {
+  position: fixed;
+  z-index: 150;
+  min-width: 210px;
+  max-width: 280px;
+  max-height: min(70vh, 440px);
+  overflow-y: auto;
+  padding: 5px;
+  background: var(--am-bg, var(--bg-secondary));
+  border: 1px solid var(--am-line, var(--bg-glass-border));
+  border-radius: var(--radius-md);
+  box-shadow: var(--am-shadow, var(--shadow-md));
+}
+.action-menu__item {
+  display: flex; align-items: center; gap: 10px;
+  width: 100%;
+  padding: 7px 10px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--am-tx, var(--text-primary));
+  font: inherit; font-size: 13.5px; text-align: left;
+  cursor: pointer;
+}
+.action-menu__item > svg { flex: none; color: var(--am-dim, var(--text-secondary)); }
+.action-menu__item:hover { background: var(--am-hover, var(--bg-tertiary)); }
+.action-menu__item.is-danger,
+.action-menu__item.is-danger > svg { color: var(--am-danger, var(--red)); }
+.action-menu__label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.action-menu__item > .action-menu__end { margin-left: auto; color: var(--am-dim, var(--text-secondary)); }
+.action-menu__sep { height: 1px; margin: 4px 6px; background: var(--am-line, var(--bg-glass-border)); }

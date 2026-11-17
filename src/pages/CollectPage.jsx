@@ -736,6 +736,8 @@ export default function CollectPage() {
             onOpenReader={openReader}
             onOpenEditor={openEditor}
             onDelete={handleDeleteArticle}
+            onAssignTopic={handleAssignTopic}
+            onCreateTask={handleCreateTaskFromArticle}
             filtering={listFiltering}
             onClearFilter={clearListFilters}
           />

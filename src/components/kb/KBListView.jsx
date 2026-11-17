@@ -1,14 +1,17 @@
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import {
   KIND_META, contentKind, itemPlainText, readTime, safeHostname, parseWikiLinks,
 } from '../../utils/kbDeriveUtils';
 import { formatDate } from '../../utils/dateUtils';
+import { useToast } from '../../contexts/ToastContext';
 import AppIcon from '../AppIcon';
+import ActionMenu from '../ActionMenu';
 import KBTopicPicker from './KBTopicPicker';
 
 /**
  * KBListView — Danh sách (4a): phần đầu chủ đề, một hàng Có liên kết · Nhóm theo · sắp xếp · Chọn,
  * nhóm thu gọn được, thẻ bài, thanh chọn nhiều nổi ở đáy.
+ * Menu thao tác của bài (ActionMenu): nút ⋯ hiện khi rê vào thẻ, hoặc chuột phải vào thẻ.
  * Chống nhảy: hàng thẻ đếm theo phạm vi (tagCounts từ CollectPage), nút bật / tắt không đổi chữ.
  * Lọc / nhóm do CollectPage tính (groups) để J/K và ↑↓ ở trang đọc đi đúng thứ tự đang hiện.
  */
@@ -26,7 +29,7 @@ const GROUP_ITEMS = [
 ];
 
 /* ── Row ───────────────────────────────────────────────────── */
-function ListRow({ item, showTopic, isCursor, isBulk, isChecked, onToggleCheck, onClick, onEdit, onDelete }) {
+function ListRow({ item, showTopic, isCursor, isBulk, isChecked, isMenuOpen, onToggleCheck, onClick, onMenu }) {
   const kind = KIND_META[contentKind(item)];
   const topic = item._topic;
   const plainText = itemPlainText(item);
@@ -38,11 +41,16 @@ function ListRow({ item, showTopic, isCursor, isBulk, isChecked, onToggleCheck, 
 
   return (
     <article
-      className={`kb-row${isCursor ? ' kb-row--cursor' : ''}${isChecked ? ' kb-row--picked' : ''}`}
+      className={`kb-row${isCursor ? ' kb-row--cursor' : ''}${isChecked ? ' kb-row--picked' : ''}${isMenuOpen ? ' is-menu' : ''}`}
       onClick={() => (isBulk ? onToggleCheck(item.id) : onClick(item))}
+      onContextMenu={e => {
+        if (isBulk) return;
+        e.preventDefault();
+        onMenu(item, e.clientX, e.clientY);
+      }}
       role="button"
       tabIndex={0}
-      onKeyDown={e => e.key === 'Enter' && onClick(item)}
+      onKeyDown={e => e.key === 'Enter' && e.target === e.currentTarget && onClick(item)}
     >
       {isBulk && (
         <input
@@ -77,12 +85,22 @@ function ListRow({ item, showTopic, isCursor, isBulk, isChecked, onToggleCheck, 
         {taskCount > 0 && <span className="kb-pill kb-pill--task" title={`${taskCount} nhiệm vụ`}>◇ {taskCount}</span>}
         {noteCount > 0 && <span className="kb-pill" title={`${noteCount} ghi chú`}>✎ {noteCount}</span>}
         {!isBulk && (
-          <span className="kb-row__actions kb-hide">
-            <button className="kb-icon-btn" onClick={e => { e.stopPropagation(); onEdit(item); }} title="Sửa (E)" aria-label="Sửa">
-              <AppIcon name="pencil" size={14} />
-            </button>
-            <button className="kb-icon-btn kb-icon-btn--danger" onClick={e => { e.stopPropagation(); onDelete(item); }} title="Xoá" aria-label="Xoá">
-              <AppIcon name="trash" size={14} />
+          <span className="kb-row__actions">
+            <button
+              className="kb-icon-btn"
+              // Không cho pointerdown tới window: menu đang mở thì bấm lại ⋯ là đóng (không đóng rồi mở lại)
+              onPointerDown={e => e.stopPropagation()}
+              onClick={e => {
+                e.stopPropagation();
+                const r = e.currentTarget.getBoundingClientRect();
+                onMenu(item, r.left, r.bottom + 4, true);
+              }}
+              title="Thao tác"
+              aria-label={`Thao tác với ${item.title}`}
+              aria-haspopup="menu"
+              aria-expanded={isMenuOpen}
+            >
+              <AppIcon name="dots" size={16} weight="bold" />
             </button>
           </span>
         )}
@@ -156,11 +174,48 @@ export default function KBListView({
   cursorId, activeTagIds, onToggleTag,
   linkedOnly, onToggleLinked, groupBy, onGroupBy, sort, onSort,
   bulk, onToggleBulk, picked, onTogglePick, onSelectAll, onDeselectAll, onBulkAssign, onBulkDelete,
-  onOpenReader, onOpenEditor, onDelete,
+  onOpenReader, onOpenEditor, onDelete, onAssignTopic, onCreateTask,
   filtering, onClearFilter,
 }) {
+  const { showToast } = useToast();
   const [collapsed, setCollapsed] = useState(() => new Set());
   const [assigning, setAssigning] = useState(false);
+  const [menu, setMenu] = useState(null); // { item, x, y, step: 'main' | 'topic' }
+
+  // toggle (nút ⋯): bấm lại đúng bài đang mở menu thì đóng; chuột phải luôn mở tại chỗ con trỏ
+  const openMenu = (item, x, y, toggle = false) =>
+    setMenu(m => (toggle && m?.item.id === item.id ? null : { item, x, y, step: 'main' }));
+  const closeMenu = useCallback(() => setMenu(null), []);
+
+  const copyWikiLink = async (item) => {
+    const link = `[[${item.title}]]`;
+    try {
+      await navigator.clipboard.writeText(link);
+      showToast(`Đã chép ${link}`);
+    } catch {
+      showToast('Không chép được. Thử lại.');
+    }
+  };
+
+  const menuItems = !menu ? [] : menu.step === 'topic'
+    ? [
+      { key: 'back', icon: 'caretLeft', label: 'Chuyển chủ đề', keepOpen: true, onSelect: () => setMenu(m => ({ ...m, step: 'main' })) },
+      ...[...topics, { id: null, name: 'Chưa xếp', color: 'var(--kb-gold)' }].map((t, i) => ({
+        key: t.id || 'none',
+        divider: i === 0,
+        icon: <span className="kb-dot" style={{ '--kb-topic': t.color }} />,
+        label: t.name,
+        checked: (menu.item.topic_id || null) === t.id,
+        onSelect: () => onAssignTopic(menu.item, t.id),
+      })),
+    ]
+    : [
+      { key: 'edit', icon: 'pencil', label: 'Sửa', onSelect: () => onOpenEditor(menu.item) },
+      { key: 'topic', icon: 'folder', label: 'Chuyển chủ đề', sub: true, onSelect: () => setMenu(m => ({ ...m, step: 'topic' })) },
+      { key: 'task', icon: 'plusCircle', label: 'Tạo việc từ bài', onSelect: () => onCreateTask(menu.item) },
+      { key: 'wiki', icon: 'linkSimple', label: 'Chép [[liên kết]]', onSelect: () => copyWikiLink(menu.item) },
+      { key: 'delete', icon: 'trash', label: 'Xoá', danger: true, divider: true, onSelect: () => onDelete(menu.item) },
+    ];
 
   // Thẻ có trong phạm vi; thẻ đang bật luôn còn chip để tắt
   const tags = scopeTags.filter(t => tagCounts[t.id] > 0 || activeTagIds.includes(t.id));
@@ -264,10 +319,10 @@ export default function KBListView({
                         isCursor={item.id === cursorId}
                         isBulk={bulk}
                         isChecked={picked.includes(item.id)}
+                        isMenuOpen={menu?.item.id === item.id}
                         onToggleCheck={onTogglePick}
                         onClick={onOpenReader}
-                        onEdit={onOpenEditor}
-                        onDelete={onDelete}
+                        onMenu={openMenu}
                       />
                     ))}
                   </div>
@@ -276,6 +331,16 @@ export default function KBListView({
             );
           })}
         </div>
+      )}
+
+      {menu && (
+        <ActionMenu
+          key={menu.step}
+          at={menu}
+          items={menuItems}
+          onClose={closeMenu}
+          label={`Thao tác với ${menu.item.title}`}
+        />
       )}
 
       {/* Thanh chọn nhiều — nổi ở đáy vùng cuộn */}

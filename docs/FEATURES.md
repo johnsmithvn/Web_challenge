@@ -249,7 +249,8 @@ Giao diện "Cực quang" trên nền trời đêm dùng chung với Nhiệm v�
 - **Tổng quan** (màn mở đầu): lời chào + "Mở bầu trời ↗", Xếp nhanh bài mới chưa có chủ đề
   (phím `1`–`8`), thẻ các chủ đề, Gặp lại hôm nay, Gần đây.
 - **Danh sách / Gallery / Sơ đồ / Canvas**, lọc theo chủ đề ở cột trái. Danh sách: lọc Có liên kết, thẻ (chỉ thẻ của
-  Knowledge); nhóm theo Tháng / Chủ đề; sắp xếp; chọn nhiều (gán chủ đề, xoá). Sơ đồ là "bầu trời": mỗi bài một ngôi sao.
+  Knowledge); nhóm theo Tháng / Chủ đề; sắp xếp; chọn nhiều (gán chủ đề, xoá). Mỗi bài có menu ⋯ (hoặc chuột phải):
+  Sửa, Chuyển chủ đề, Tạo việc từ bài, Chép [[liên kết]], Xoá. Sơ đồ là "bầu trời": mỗi bài một ngôi sao.
 - **Tìm kiếm** không cần dấu, nhiều từ, trong cả ghi chú và tên chủ đề; `#thẻ`.
 - **Trang đọc:** mục lục, `[[liên kết]]` + backlink, khung **Xung quanh** (cùng chủ đề / cùng nguồn / lưu gần thời
   điểm), sơ đồ nhỏ, ghi chú cá nhân, chế độ tập trung (`F`). **Nhiệm vụ liên kết**: việc đã gắn kèm trạng thái + hạn
