@@ -2,7 +2,8 @@ import { useState, useRef, useEffect } from 'react';
 
 /**
  * KBLinkModal — Modal liên kết bài viết.
- * Hiển thị danh sách các bài viết có thể nối `[[...]]`.
+ * Hiển thị danh sách các bài viết có thể nối `[[...]]`. Bấm dòng để nối / gỡ, modal giữ mở để chọn nhiều bài
+ * (`currentArticle` là bản sống nên "đã nối" cập nhật ngay); đóng bằng Esc / bấm nền.
  */
 export default function KBLinkModal({
   open,
@@ -61,10 +62,8 @@ export default function KBLinkModal({
                 <button
                   key={a.id}
                   className="kb-palette__row"
-                  onClick={() => {
-                    onToggleLink(a);
-                    onClose();
-                  }}
+                  onClick={() => onToggleLink(a)}
+                  aria-pressed={isLinked}
                 >
                   <span className="kb-dot" style={a._topic ? { '--kb-topic': a._topic.color } : undefined} />
                   <span className="kb-palette__label">{a.title}</span>
@@ -78,7 +77,7 @@ export default function KBLinkModal({
         </div>
 
         <div className="kb-palette__footer">
-          <span>esc đóng</span>
+          <span>bấm để nối / gỡ, chọn được nhiều bài · esc đóng</span>
         </div>
       </div>
     </div>
