@@ -27,6 +27,38 @@ export function parseWikiLinks(md = '') {
   return links;
 }
 
+const RELATED = 'Liên quan: ';
+
+/**
+ * Nối / gỡ `[[title]]` trong thân bài (hộp "Liên kết bài viết").
+ * Nối: thêm dòng "Liên quan: [[title]]" cuối bài. Gỡ: bỏ dòng đó; chỗ khác trong bài còn `[[title]]` thì giữ chữ, bỏ ngoặc.
+ * Thân bài là JSON doc Tiptap (bài Trực quan) thì sửa trên cây node — nối chuỗi thô vào JSON sẽ làm hỏng bài.
+ * @returns {string} thân bài mới
+ */
+export function toggleWikiLink(body = '', title) {
+  const marker = `[[${title}]]`;
+  const line = RELATED + marker;
+  let doc = null;
+  try { doc = JSON.parse(body); } catch { /* không phải JSON → markdown */ }
+
+  if (doc?.type === 'doc') {
+    const texts = [];
+    const walk = (n) => { if (typeof n.text === 'string') texts.push(n); n.content?.forEach(walk); };
+    walk(doc);
+    if (!texts.some((n) => n.text.includes(marker))) {
+      doc.content = [...(doc.content || []), { type: 'paragraph', content: [{ type: 'text', text: line }] }];
+    } else {
+      const paraText = (n) => (n.content || []).map((c) => c.text || '').join('').trim();
+      doc.content = doc.content.filter((n) => !(n.type === 'paragraph' && paraText(n) === line));
+      for (const n of texts) n.text = n.text.replaceAll(marker, title);
+    }
+    return JSON.stringify(doc);
+  }
+
+  if (!body.includes(marker)) return body.trimEnd() ? `${body.trimEnd()}\n\n${line}` : line;
+  return body.split('\n').filter((l) => l.trim() !== line).join('\n').replaceAll(marker, title).trimEnd();
+}
+
 /* ── Slugify (Vietnamese-safe) ─────────────────────────────── */
 /**
  * Slug hóa giữ ký tự tiếng Việt.

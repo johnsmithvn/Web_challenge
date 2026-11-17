@@ -812,8 +812,10 @@ có ✓ cuối dòng và không đóng menu khi bấm; nhãn nhóm `.action-menu
 thay nội dung tại chỗ, mục đầu là "‹ quay lại". Đóng khi bấm ra ngoài / `Esc` (`usePopoverShell`, dùng chung với
 popover Nhiệm vụ); sát mép thì tự đẩy vào trong màn hình. Render tại chỗ (không portal) để ăn token module: màu qua
 `--am-bg/-line/-shadow/-tx/-dim/-hover/-danger`, mặc định token app, module map trên vùng của mình (Kiến thức:
-`.kb-page` trong `collect.css`). Nút ⋯ chỉ hiện khi rê vào mục (luôn hiện trên màn cảm ứng `hover: none`); mục
-đang mở menu giữ nút ⋯ và viền sáng.
+`.kb-page` trong `collect.css`; Nhiệm vụ: `.tasks-workspace` trong `tasks-aurora.css` → `--tk-popover-*`). Nút ⋯ chỉ
+hiện khi rê vào mục (luôn hiện trên màn cảm ứng `hover: none`); mục đang mở menu giữ nút ⋯ và viền sáng.
+Nhiệm vụ: `TaskActionMenu` vẽ menu, nút `.tk-more-btn` 24px trong suốt cuối `.tk-card__top` / `.tk-row__aside` / cạnh
+phải `.tk-mcard`.
 
 ### InfoTip — `.infotip*` (`infotip.css`)
 

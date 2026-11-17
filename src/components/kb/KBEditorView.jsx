@@ -8,10 +8,12 @@ import {
   parseWikiLinks,
   guessTitle,
   suggestTopic,
+  toggleWikiLink,
 } from '../../utils/kbDeriveUtils';
 import UrlInputPopover from '../UrlInputPopover';
 import AppIcon from '../AppIcon';
 import KBTopicPicker from './KBTopicPicker';
+import KBLinkModal from './KBLinkModal';
 
 const TiptapEditor = lazy(() => import('../TiptapEditor'));
 
@@ -31,7 +33,9 @@ export default function KBEditorView({
   defaultTopicId = null, // bài mới viết khi đang xem một chủ đề → vào sẵn chủ đề đó
   topics,
   allArticles,
+  linkOpen = false, // hộp "Liên kết bài viết": CollectPage giữ cờ mở (chuỗi Esc), trình soạn vẽ nó trên bản nháp
   onOpenLinkModal,
+  onCloseLinkModal,
 }) {
   const savedMode = localStorage.getItem(EDITOR_MODE_KEY) || 'markdown';
   const initialFormat = initial?.content_format || (isNew ? savedMode : (initial?.body?.startsWith('{"type":"doc"') ? 'tiptap' : 'markdown'));
@@ -150,6 +154,14 @@ export default function KBEditorView({
 
   return (
     <div className="kb-editor" style={{ animation: 'kb-in .22s ease' }}>
+      <KBLinkModal
+        open={linkOpen}
+        onClose={onCloseLinkModal}
+        currentArticle={{ id: draft.id, title: draft.title, body: draft.body }}
+        allArticles={allArticles}
+        onToggleLink={(a) => setDraft((d) => ({ ...d, body: toggleWikiLink(d.body, a.title) }))}
+      />
+
       {/* Top action bar */}
       <div className="kb-editor__bar">
         <button className="kb-back-btn" onClick={onCancel}>← Hủy</button>

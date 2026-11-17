@@ -205,6 +205,14 @@ export const statusKeyOf = (task) =>
     ? task.status
     : 'todo';
 
+/** Thứ Hai tuần sau (YYYY-MM-DD) cho "Dời hạn › Tuần sau"; hôm nay là Thứ Hai thì là Thứ Hai kế tiếp (+7). */
+export function nextMondayStr(today) {
+  const [y, m, d] = today.split('-').map(Number);
+  const next = new Date(y, m - 1, d);
+  next.setDate(d + ((8 - next.getDay()) % 7 || 7));
+  return toDateStr(next);
+}
+
 /** Hạn của việc cho Kiến thức (cột Nhiệm vụ liên kết, bộ chọn việc): "hạn 28/11 09:00" hoặc "trễ 2 ngày". */
 export function taskDue(task, today) {
   if (!task.due_date) return { text: 'chưa có hạn' };

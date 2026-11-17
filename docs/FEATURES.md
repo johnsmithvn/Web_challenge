@@ -135,6 +135,9 @@ Tài liệu này chỉ mô tả tính năng đang chạy. Feature đã xóa và 
     tạo nhanh (không ngày). Bấm thẻ → ngăn chi tiết **nổi đè** lên bảng (không đẩy các cột co lại; mobile là sheet
     dưới có phủ mờ). Chỉ khi đăng nhập.
   - `list` (Danh sách công việc): Chia việc theo Quá hạn, Hôm nay, Sắp tới; kèm thanh Mini Summary Bar (`Quá hạn | Hôm nay | Sắp tới`).
+  - **Menu ⋯ của việc** (thẻ Kanban, hàng Danh sách, thẻ mobile; nút ⋯ hiện khi rê, luôn hiện trên cảm ứng; chuột
+    phải vào việc mở cùng menu): Trạng thái › · Ưu tiên › · Đổi hạn… · Dời hạn › (Hôm nay / Ngày mai / Thứ Hai tuần
+    sau) · Thêm việc con · Nhân bản (kèm thẻ) · Chép tên việc · Xoá (hỏi lại). Việc đã xong ẩn Đổi / Dời hạn.
   - `agenda` (Lịch biểu): Dải ngày 45 ngày quanh ngày chọn, hiển thị cả ngày lễ và task theo timeline dọc.
   - `day` (Lịch Ngày): Lưới 24 giờ với trục thời gian thực (vạch đỏ), gom task cả ngày (All-day) và task có giờ.
     Khối dài (≥ ~1g45) dồn nội dung lên đầu và hiện **việc con** (tick được, bấm tên mở hộp việc con) vừa đủ chiều

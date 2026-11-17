@@ -303,6 +303,7 @@ function migrateTiptapContent(content) {
 export default function TiptapEditor({ value, onChange, onSave }) {
   const onSaveRef = useRef(onSave);
   useEffect(() => { onSaveRef.current = onSave; }, [onSave]);
+  const emittedRef = useRef(value); // JSON editor vừa phát ra — value khác nó = đổi từ ngoài (vd. hộp Liên kết bài viết)
 
   const editor = useEditor({
     extensions: [
@@ -335,6 +336,7 @@ export default function TiptapEditor({ value, onChange, onSave }) {
     content: migrateTiptapContent(value),
     onUpdate: ({ editor }) => {
       const json = JSON.stringify(editor.getJSON());
+      emittedRef.current = json;
       const text = editor.getText();
       const words = text.trim() ? text.trim().split(/\s+/).filter(Boolean).length : 0;
       const chars = editor.storage?.characterCount?.characters?.() ?? text.length;
@@ -399,6 +401,11 @@ export default function TiptapEditor({ value, onChange, onSave }) {
     },
   });
 
+  // useEditor chỉ đọc `content` lúc tạo → nạp lại khi value đổi từ ngoài (onUpdate phát lại → draft khớp, không lặp)
+  useEffect(() => {
+    if (editor && value !== emittedRef.current) editor.commands.setContent(migrateTiptapContent(value));
+  }, [editor, value]);
+
   const words = editor?.storage?.characterCount?.words?.() ?? 0;
 
   return (
@@ -459,6 +466,14 @@ export function TiptapReadOnly({ content }) {
       attributes: { class: 'tp-content tp-content--readonly' },
     },
   });
+
+  // Bài đổi khi đang đọc (nối [[liên kết]] từ hộp Liên kết bài viết) → vẽ lại
+  const shownRef = useRef(content);
+  useEffect(() => {
+    if (!editor || content === shownRef.current) return;
+    shownRef.current = content;
+    editor.commands.setContent(migrateTiptapContent(content), { emitUpdate: false });
+  }, [editor, content]);
 
   return (
     <div className="kb-prose tp-readonly">

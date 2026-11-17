@@ -255,6 +255,11 @@ Snapshot đã tồn tại là bất biến. Schema change mới phải dùng mig
 Dọn dẹp bảng cũ (tùy chọn):
 - `data/drop_incubator_tables.sql` (gỡ bỏ các bảng `intention_*` của phân hệ Ươm mầm đã ngưng phát triển).
 
+Sửa dữ liệu một lần (database đã dùng trước v6.37.0, không cần cho fresh install):
+- `data/repair_v6.37.0_kb_tiptap_wikilink.sql` — bài Kiến thức Trực quan bị nút "Liên kết bài viết" cũ cộng
+  `Liên quan: [[…]]` vào JSON làm hỏng thân bài; tách JSON gốc, đưa các dòng đó thành đoạn văn. Chỉ sửa `body` +
+  `content_format` của dòng mang dấu hiệu lỗi, chạy lại được.
+
 Không chạy `data/migration_v5.0.0_activity_logs_v2.sql` sau baseline fresh vì thay đổi đã nằm trong
 baseline. `data/migration_v4.31.0_recurrence_chain.sql` và `data/RUNBOOK.sql` là hồ sơ/upgrade cũ,
 không thuộc fresh-install order hiện tại.

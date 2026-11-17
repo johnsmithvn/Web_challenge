@@ -29,7 +29,7 @@ import KBOverview from '../components/kb/KBOverview';
 import KBTrashView from '../components/kb/KBTrashView';
 import KBSnippetsView from '../components/kb/KBSnippetsView';
 
-import { filterArticles, pushRecent, deriveGraph, groupArticles } from '../utils/kbDeriveUtils';
+import { filterArticles, pushRecent, deriveGraph, groupArticles, toggleWikiLink } from '../utils/kbDeriveUtils';
 
 // "Mở gần đây" — per-device convenience, so localStorage (RULES §4: new keys use vl_).
 const RECENT_KEY = 'vl_kb_recent';
@@ -492,19 +492,13 @@ export default function CollectPage() {
   }, [selectedArticle, taskForNew, updateItem, addItem, addCentralTag, linkTag, unlinkTag, linkCollection, fetchItems, showToast]);
 
   // Toggle wiki link in article
+  // (trình soạn tự giữ hộp này trên bản nháp — xem KBEditorView)
   const handleToggleWikiLink = useCallback(async (targetArticle) => {
-    if (!selectedArticle) return;
-    const marker = `[[${targetArticle.title}]]`;
     const body = selectedArticle.body || '';
-    let newBody;
-    if (body.includes(marker)) {
-      newBody = body.replace(new RegExp(`\\s*\\[\\[${targetArticle.title.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\]\\]`, 'g'), '');
-      showToast(`Đã gỡ liên kết tới "${targetArticle.title}"`);
-    } else {
-      newBody = body.trimEnd() + `\n\nLiên quan: ${marker}`;
-      showToast(`Đã nối tới "${targetArticle.title}"`);
-    }
-    await updateItem(selectedArticle.id, { body: newBody });
+    showToast(body.includes(`[[${targetArticle.title}]]`)
+      ? `Đã gỡ liên kết tới "${targetArticle.title}"`
+      : `Đã nối tới "${targetArticle.title}"`);
+    await updateItem(selectedArticle.id, { body: toggleWikiLink(body, targetArticle.title) });
   }, [selectedArticle, updateItem, showToast]);
 
   // Keyboard Shortcuts Handler (Global)
@@ -805,7 +799,9 @@ export default function CollectPage() {
             allArticles={articlesWithTasks}
             isNew={!selectedArticle}
             defaultTopicId={currentTopic?.id ?? null}
+            linkOpen={linkOpen}
             onOpenLinkModal={() => setLinkOpen(true)}
+            onCloseLinkModal={() => setLinkOpen(false)}
           />
         ) : null}
       </main>
@@ -818,7 +814,7 @@ export default function CollectPage() {
       />
 
       <KBLinkModal
-        open={linkOpen}
+        open={linkOpen && view === 'reader'}
         onClose={() => setLinkOpen(false)}
         currentArticle={selectedArticle}
         allArticles={articlesWithTasks}

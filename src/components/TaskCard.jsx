@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import AppIcon from './AppIcon';
 import { ElfBloom, ElfCardVine, ElfCardFireflies, ElfLateNest } from './TaskElfDecor';
 import { useTheme } from '../contexts/ThemeContext';
@@ -93,8 +93,13 @@ export function SubtaskGrip({ title, size = 14, ...props }) {
   );
 }
 
-function SubtaskPanel({ variant, subtasks, parentDue, onToggleSub, onOpenSub, onAddSub, onOpenMore, onReorderSub, onPrioritySub, onFocusSub }) {
+function SubtaskPanel({ variant, subtasks, parentDue, focusAdd, onToggleSub, onOpenSub, onAddSub, onOpenMore, onReorderSub, onPrioritySub, onFocusSub }) {
   const [val, setVal] = useState('');
+  // "Thêm việc con" từ menu ⋯: focusAdd là số đếm, mỗi lần tăng thì focus ô thêm
+  const addRef = useRef(null);
+  useEffect(() => {
+    if (focusAdd) addRef.current?.focus();
+  }, [focusAdd]);
   const shown = subtasks.slice(0, SUB_LIMIT);
   const { rowProps, handleProps } = useSubtaskReorder(subtasks, (next) => onReorderSub?.(next));
   return (
@@ -131,6 +136,7 @@ function SubtaskPanel({ variant, subtasks, parentDue, onToggleSub, onOpenSub, on
       <label className="tk-subs__add">
         <span className="tk-subs__add-icon"><AppIcon name="plus" size={13} /></span>
         <input
+          ref={addRef}
           value={val}
           placeholder={variant === 'mobile' ? 'Thêm việc con' : 'Thêm việc con, Enter'}
           onChange={(e) => setVal(e.target.value)}
@@ -166,6 +172,9 @@ export default function TaskCard({
   onReorderSub,
   onPrioritySub,
   onFocusSub,
+  onMenu,        // ({ x, y, toggle }) — menu ⋯ / chuột phải (TaskActionMenu do view vẽ)
+  menuOpen = false,
+  focusAddSub = 0,
   dragProps,
 }) {
   const { taskStyle } = useTheme();
@@ -251,11 +260,36 @@ export default function TaskCard({
     </button>
   );
 
+  // Menu thao tác: nút ⋯ (hiện khi rê, luôn hiện trên màn cảm ứng) và chuột phải vào thẻ
+  const moreBtn = onMenu && (
+    <button
+      type="button"
+      className="tk-more-btn"
+      title="Thao tác"
+      aria-label={`Thao tác với ${task.title}`}
+      aria-haspopup="menu"
+      aria-expanded={menuOpen}
+      // Không cho pointerdown tới window: menu đang mở thì bấm lại ⋯ là đóng (không đóng rồi mở lại)
+      onPointerDown={(e) => e.stopPropagation()}
+      onClick={stop((e) => {
+        const r = e.currentTarget.getBoundingClientRect();
+        onMenu({ x: r.left, y: r.bottom + 4, toggle: true });
+      })}
+    >
+      <AppIcon name="dots" size={16} weight="bold" />
+    </button>
+  );
+  const onContextMenu = onMenu && ((e) => {
+    e.preventDefault();
+    onMenu({ x: e.clientX, y: e.clientY });
+  });
+
   const subsPanel = expanded && (
     <SubtaskPanel
       variant={variant}
       subtasks={subtasks}
       parentDue={task.due_date}
+      focusAdd={focusAddSub}
       onFocusSub={onFocusSub}
       onToggleSub={onToggleSub}
       onOpenSub={onOpenSub}
@@ -269,7 +303,7 @@ export default function TaskCard({
   if (variant === 'row') {
     return (
       <div className="tk-row-wrap">
-        <div className={`tk-row${selected ? ' is-selected' : ''}`} style={style} onClick={() => onOpen?.(task)} {...dragProps}>
+        <div className={`tk-row${selected ? ' is-selected' : ''}${menuOpen ? ' is-menu' : ''}`} style={style} onClick={() => onOpen?.(task)} onContextMenu={onContextMenu} {...dragProps}>
           <span className="tk-k-bar" />
           {statusBtn}
           <div className="tk-row__text">
@@ -285,6 +319,7 @@ export default function TaskCard({
             {prChip}
             {badge()}
             {m.late && <span className="tk-late tk-late--fixed">{m.late}</span>}
+            {moreBtn}
           </div>
         </div>
         {subsPanel}
@@ -294,7 +329,7 @@ export default function TaskCard({
 
   if (variant === 'mobile') {
     return (
-      <div className={`tk-mcard${selected ? ' is-selected' : ''}`} style={style} onClick={() => onOpen?.(task)} {...dragProps}>
+      <div className={`tk-mcard${selected ? ' is-selected' : ''}${menuOpen ? ' is-menu' : ''}`} style={style} onClick={() => onOpen?.(task)} onContextMenu={onContextMenu} {...dragProps}>
         <span className="tk-k-bar tk-k-bar--3" />
         {elfDeco}
         {statusBtn}
@@ -311,6 +346,7 @@ export default function TaskCard({
           </div>
           {subsPanel}
         </div>
+        {moreBtn}
       </div>
     );
   }
@@ -318,7 +354,7 @@ export default function TaskCard({
   // variant === 'card' (Kanban desktop)
   const hasMeta = !!(m.run || subtasks.length || m.repeat || m.tags.length || docs.length);
   return (
-    <div className={`tk-card${selected ? ' is-selected' : ''}`} style={style} onClick={() => onOpen?.(task)} {...dragProps}>
+    <div className={`tk-card${selected ? ' is-selected' : ''}${menuOpen ? ' is-menu' : ''}`} style={style} onClick={() => onOpen?.(task)} onContextMenu={onContextMenu} {...dragProps}>
       <span className="tk-k-bar" />
       {elfDeco}
       {taskStyle === 'elf' && m.done && <ElfBloom />}
@@ -331,6 +367,7 @@ export default function TaskCard({
           </button>
         )}
         {m.late && <span className="tk-late">{m.late}</span>}
+        {moreBtn}
       </div>
       <div className="tk-card__main">
         {statusBtn}

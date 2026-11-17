@@ -1397,6 +1397,63 @@
   width: 76px;
 }
 
+/* Nút ⋯ mở TaskActionMenu: hiện khi rê / focus / đang mở; máy cảm ứng luôn hiện */
+.tasks-workspace {
+  --am-bg: var(--tk-popover-bg);
+  --am-line: var(--tk-popover-border);
+  --am-shadow: var(--tk-popover-shadow);
+  --am-tx: var(--tk-text-main);
+  --am-dim: var(--tk-text-sub);
+  --am-hover: var(--tk-hover);
+  --am-danger: var(--tk-ks-late-fg);
+}
+
+.tk-more-btn {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--tk-text-mute);
+  cursor: pointer;
+  opacity: 0;
+}
+
+.tk-more-btn:hover {
+  background: var(--tk-hover);
+  color: var(--tk-text-main);
+}
+
+.tk-card:hover .tk-more-btn,
+.tk-row:hover .tk-more-btn,
+.tk-mcard:hover .tk-more-btn,
+.tk-more-btn:focus-visible,
+.tk-more-btn[aria-expanded="true"] {
+  opacity: 1;
+}
+
+.tk-card__top > .tk-more-btn {
+  margin-left: auto;
+}
+
+.tk-card__top > .tk-late + .tk-more-btn {
+  margin-left: 0;
+}
+
+.tk-mcard > .tk-more-btn {
+  align-self: flex-start;
+}
+
+@media (hover: none) {
+  .tk-more-btn {
+    opacity: 1;
+  }
+}
+
 .tk-subs-btn {
   height: 24px;
   padding: 0 7px;

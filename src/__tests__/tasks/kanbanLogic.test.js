@@ -12,6 +12,7 @@ import {
   matchTaskSearch,
   calculateKanbanCounts,
   computeDoneStreak,
+  nextMondayStr,
 } from '../../utils/kanbanUtils.js';
 
 const ids = (list) => list.map((t) => t.id);
@@ -240,6 +241,15 @@ console.log('calculateKanbanCounts 4 pills realtime count: OK');
   assert.equal(computeDoneStreak([it('2026-10-11', true), it('2026-10-08', true), it('2026-10-07', false)], T), 2, 'ngày không có việc bỏ qua, gặp ngày dở thì dừng');
   assert.equal(computeDoneStreak([it('2026-10-20', false), it('2026-10-11', true)], T), 1, 'việc tương lai không ảnh hưởng');
   console.log('computeDoneStreak: OK');
+}
+
+/* ── nextMondayStr: "Dời hạn › Tuần sau" ─────────────────────────── */
+{
+  assert.equal(nextMondayStr('2026-11-17'), '2026-11-23', 'Thứ Ba → Thứ Hai tuần sau');
+  assert.equal(nextMondayStr('2026-11-22'), '2026-11-23', 'Chủ nhật → ngày mai');
+  assert.equal(nextMondayStr('2026-11-23'), '2026-11-30', 'Thứ Hai → Thứ Hai kế tiếp, không phải hôm nay');
+  assert.equal(nextMondayStr('2026-12-29'), '2027-01-04', 'qua năm mới');
+  console.log('nextMondayStr: OK');
 }
 
 console.log('\n✅ kanbanLogic — logic thật của Kanban PASS');

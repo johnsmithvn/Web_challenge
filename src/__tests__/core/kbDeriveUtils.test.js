@@ -6,6 +6,7 @@
 import assert from 'node:assert/strict';
 import {
   parseWikiLinks,
+  toggleWikiLink,
   slugifyVi,
   deriveGraph,
   findBacklinks,
@@ -489,6 +490,31 @@ const daysAgo = d => new Date(NOW - d * 86400000).toISOString();
   assert.deepEqual(suggestByTitle('làm cho', items), []);
   assert.deepEqual(suggestByTitle('', items), []);
   console.log('suggestByTitle: OK');
+}
+
+/* ── toggleWikiLink ─────────────────────────────────────────── */
+{
+  // Markdown: nối thêm dòng "Liên quan", gỡ bỏ dòng đó và bỏ ngoặc chỗ khác
+  assert.equal(toggleWikiLink('', 'A'), 'Liên quan: [[A]]');
+  assert.equal(toggleWikiLink('Mở bài\n', 'A'), 'Mở bài\n\nLiên quan: [[A]]');
+  assert.equal(toggleWikiLink('Mở bài\n\nLiên quan: [[A]]', 'A'), 'Mở bài');
+  assert.equal(toggleWikiLink('Xem [[A]] nhé\n\nLiên quan: [[A]]', 'A'), 'Xem A nhé');
+  assert.equal(toggleWikiLink('Liên quan: [[A]]\n\nLiên quan: [[B]]', 'A'), '\nLiên quan: [[B]]');
+  assert.deepEqual(parseWikiLinks(toggleWikiLink('x', 'A (b)')), ['A (b)']);
+
+  // Tiptap: kết quả vẫn là JSON doc hợp lệ, không nối chuỗi thô
+  const tdoc = JSON.stringify({ type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Mở "bài"' }] }] });
+  const linked = toggleWikiLink(tdoc, 'A');
+  const parsed = JSON.parse(linked);
+  assert.equal(parsed.content.length, 2);
+  assert.deepEqual(parsed.content[1], { type: 'paragraph', content: [{ type: 'text', text: 'Liên quan: [[A]]' }] });
+  assert.equal(toggleWikiLink(linked, 'A'), tdoc);
+  // Gỡ trong câu: giữ chữ, bỏ ngoặc
+  const inline = JSON.stringify({ type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Xem [[A]] nhé' }] }] });
+  assert.equal(JSON.parse(toggleWikiLink(inline, 'A')).content[0].content[0].text, 'Xem A nhé');
+  // Doc rỗng (không có content)
+  assert.equal(JSON.parse(toggleWikiLink('{"type":"doc"}', 'A')).content.length, 1);
+  console.log('toggleWikiLink: OK');
 }
 
 console.log('\n✅ All kbDeriveUtils checks passed.');

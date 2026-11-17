@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect, useMemo } from 'react';
 import { StatusPopover, PriorityPopover, TaskDatePickerPopover } from './TaskFloatingPopovers';
 import TaskCard from './TaskCard';
+import TaskActionMenu from './TaskActionMenu';
 import { toDateStr } from '../utils/dateUtils';
 import { getKanbanRange, matchTaskSearch, taskCardModel } from '../utils/kanbanUtils';
 import { shiftDateDays } from '../utils/taskNlpParser';
@@ -60,8 +61,10 @@ export default function TaskListSection({
     return new Date(d + 'T00:00:00').toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
   }
 
-  const [popover, setPopover] = useState(null); // { type, task, x, y }
+  const [popover, setPopover] = useState(null); // { type, task, x, y } — type 'menu' = menu ⋯ (TaskActionMenu)
+  const closePopover = useCallback(() => setPopover(null), []);
   const [expanded, setExpanded] = useState(() => new Set());
+  const [addSub, setAddSub] = useState(null); // { id, n } — "Thêm việc con" từ menu: mở bảng việc con + focus ô thêm
   const [shut, setShut] = useState({ done: true, skip: true });
 
   // Việc đã xong 30 ngày gần nhất, lọc lại theo ngày địa phương
@@ -161,10 +164,26 @@ export default function TaskListSection({
     onReorderSub: reorderSubtasks,
     onPrioritySub: (s, e) => openPop('priority', s)(e),
     onFocusSub: focusSubtask,
+    menuOpen: popover?.type === 'menu' && popover.task.id === task.id,
+    onMenu: ({ x, y, toggle }) => setPopover((p) => (
+      toggle && p?.type === 'menu' && p.task.id === task.id ? null : { type: 'menu', task, x, y }
+    )),
+    focusAddSub: addSub?.id === task.id ? addSub.n : 0,
   });
 
   return (
     <div className={isMobile ? 'tk-mlist' : 'tk-list-panel'}>
+      <TaskActionMenu
+        menu={popover?.type === 'menu' ? popover : null}
+        onClose={closePopover}
+        taskModel={taskModel}
+        onStatus={changeStatus}
+        onPickDate={(task, x, y) => setPopover({ type: 'date', task, x, y })}
+        onAddSub={(task) => {
+          setExpanded((prev) => new Set(prev).add(task.id));
+          setAddSub((s) => ({ id: task.id, n: (s?.n || 0) + 1 }));
+        }}
+      />
       {popover?.type === 'status' && (
         <StatusPopover
           currentStatus={popover.task.completed ? 'done' : popover.task.status}

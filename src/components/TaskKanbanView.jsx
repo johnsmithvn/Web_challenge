@@ -13,6 +13,7 @@ import {
 import { parseTaskQuickText } from '../utils/taskNlpParser';
 import { sortSubtasks } from '../utils/subtaskUtils';
 import { StatusPopover, PriorityPopover, TaskDatePickerPopover } from './TaskFloatingPopovers';
+import TaskActionMenu from './TaskActionMenu';
 import '../styles/tasks-aurora.css';
 
 /*
@@ -81,8 +82,10 @@ export default function TaskKanbanView({
   const [touchX, setTouchX] = useState(null);
   const [draggedTaskId, setDraggedTaskId] = useState(null);
   const [dragOverCol, setDragOverCol] = useState(null);
-  const [popover, setPopover] = useState(null); // { type, task, x, y }
+  const [popover, setPopover] = useState(null); // { type, task, x, y } — type 'menu' = menu ⋯ (TaskActionMenu)
+  const closePopover = useCallback(() => setPopover(null), []);
   const [expanded, setExpanded] = useState(() => new Set());
+  const [addSub, setAddSub] = useState(null); // { id, n } — "Thêm việc con" từ menu: mở bảng việc con + focus ô thêm
   const [addingCol, setAddingCol] = useState(null);
   const [addText, setAddText] = useState('');
 
@@ -188,6 +191,11 @@ export default function TaskKanbanView({
     onReorderSub: reorderSubtasks,
     onPrioritySub: (s, e) => openPop('priority', s)(e),
     onFocusSub: focusSubtask,
+    menuOpen: popover?.type === 'menu' && popover.task.id === task.id,
+    onMenu: ({ x, y, toggle }) => setPopover((p) => (
+      toggle && p?.type === 'menu' && p.task.id === task.id ? null : { type: 'menu', task, x, y }
+    )),
+    focusAddSub: addSub?.id === task.id ? addSub.n : 0,
   });
 
   const columns = COLUMNS.map((key) => ({ key, ...STATUS_META[key], tasks: grouped[key] || [] }));
@@ -195,6 +203,17 @@ export default function TaskKanbanView({
 
   const popovers = (
     <>
+      <TaskActionMenu
+        menu={popover?.type === 'menu' ? popover : null}
+        onClose={closePopover}
+        taskModel={taskModel}
+        onStatus={handleMoveTo}
+        onPickDate={(task, x, y) => setPopover({ type: 'date', task, x, y })}
+        onAddSub={(task) => {
+          setExpanded((prev) => new Set(prev).add(task.id));
+          setAddSub((s) => ({ id: task.id, n: (s?.n || 0) + 1 }));
+        }}
+      />
       {popover?.type === 'status' && (
         <StatusPopover
           currentStatus={popover.task.completed ? 'done' : popover.task.status}
