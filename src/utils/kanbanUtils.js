@@ -205,6 +205,17 @@ export const statusKeyOf = (task) =>
     ? task.status
     : 'todo';
 
+/** Hạn của việc cho Kiến thức (cột Nhiệm vụ liên kết, bộ chọn việc): "hạn 28/11 09:00" hoặc "trễ 2 ngày". */
+export function taskDue(task, today) {
+  if (!task.due_date) return { text: 'chưa có hạn' };
+  const open = statusKeyOf(task) !== 'done' && task.status !== 'skip';
+  if (open && task.due_date < today) {
+    return { text: `trễ ${Math.round((Date.parse(today) - Date.parse(task.due_date)) / 864e5)} ngày`, late: true };
+  }
+  const [, m, d] = task.due_date.split('-');
+  return { text: `hạn ${Number(d)}/${Number(m)}${task.due_time ? ` ${task.due_time.slice(0, 5)}` : ''}` };
+}
+
 // ── Mô hình thẻ việc (đúng logic card() của mockup) ───────────────────────
 
 const VI_DOW = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];

@@ -7,9 +7,10 @@ import { useToast } from '../../contexts/ToastContext';
 import AppIcon from '../AppIcon';
 import ActionMenu from '../ActionMenu';
 import KBTopicPicker from './KBTopicPicker';
+import KBTaskPicker from './KBTaskPicker';
 
 /**
- * KBListView — Danh sách (4a): phần đầu chủ đề, một hàng Nhóm theo · Có liên kết · sắp xếp · Chọn,
+ * KBListView — Danh sách (4a): phần đầu chủ đề, một hàng Nhóm theo · Bộ lọc · sắp xếp · Chọn,
  * nhóm thu gọn được, thẻ bài, thanh chọn nhiều nổi ở đáy.
  * Menu thao tác của bài (ActionMenu): nút ⋯ hiện khi rê vào thẻ, hoặc chuột phải vào thẻ.
  * Chống nhảy: hàng thẻ đếm theo phạm vi (tagCounts từ CollectPage), nút bật / tắt không đổi chữ.
@@ -26,6 +27,20 @@ const GROUP_ITEMS = [
   { key: 'month', label: 'Tháng' },
   { key: 'topic', label: 'Chủ đề' },
   { key: 'none', label: 'Không' },
+];
+
+// Menu "Bộ lọc": bật / tắt (AND) — cùng nghĩa với viên ↔ ◇ ✎ trên thẻ bài
+const FILTER_TOGGLES = [
+  { key: 'linked', icon: 'arrowsLeftRight', label: 'Có liên kết [[ ]]' },
+  { key: 'tasks', icon: 'listChecks', label: 'Có nhiệm vụ' },
+  { key: 'notes', icon: 'notePencil', label: 'Có ghi chú' },
+];
+// Thời gian lưu: chọn một, bấm lại thì bỏ (giá trị như `time` của filterArticles)
+const TIME_ITEMS = [
+  { key: '7', label: '7 ngày qua' },
+  { key: '30', label: '30 ngày qua' },
+  { key: '90', label: '90 ngày qua' },
+  { key: 'old', label: 'Cũ hơn 90 ngày' },
 ];
 
 /* ── Row ───────────────────────────────────────────────────── */
@@ -46,7 +61,7 @@ function ListRow({ item, showTopic, isCursor, isBulk, isChecked, isMenuOpen, onT
       onContextMenu={e => {
         if (isBulk) return;
         e.preventDefault();
-        onMenu(item, e.clientX, e.clientY);
+        onMenu(item, e.clientX, e.clientY, e.currentTarget);
       }}
       role="button"
       tabIndex={0}
@@ -93,7 +108,7 @@ function ListRow({ item, showTopic, isCursor, isBulk, isChecked, isMenuOpen, onT
               onClick={e => {
                 e.stopPropagation();
                 const r = e.currentTarget.getBoundingClientRect();
-                onMenu(item, r.left, r.bottom + 4, true);
+                onMenu(item, r.left, r.bottom + 4, e.currentTarget, true);
               }}
               title="Thao tác"
               aria-label={`Thao tác với ${item.title}`}
@@ -172,20 +187,45 @@ export default function KBListView({
   groups, total, scopeTags, tagCounts, topics, heading, unsortedCount,
   onManageTopics, onManageTags, onQuickSort, onNewArticle,
   cursorId, activeTagIds, onToggleTag,
-  linkedOnly, onToggleLinked, groupBy, onGroupBy, sort, onSort,
+  filters, onFilters, groupBy, onGroupBy, sort, onSort,
   bulk, onToggleBulk, picked, onTogglePick, onSelectAll, onDeselectAll, onBulkAssign, onBulkDelete,
-  onOpenReader, onOpenEditor, onDelete, onAssignTopic, onCreateTask,
+  onOpenReader, onOpenEditor, onDelete, onAssignTopic, onCreateTask, pickTasks, onLinkTask,
   filtering, onClearFilter,
 }) {
   const { showToast } = useToast();
   const [collapsed, setCollapsed] = useState(() => new Set());
   const [assigning, setAssigning] = useState(false);
-  const [menu, setMenu] = useState(null); // { item, x, y, step: 'main' | 'topic' }
+  const [menu, setMenu] = useState(null); // { item, x, y, anchor, step: 'main' | 'topic' }
 
-  // toggle (nút ⋯): bấm lại đúng bài đang mở menu thì đóng; chuột phải luôn mở tại chỗ con trỏ
-  const openMenu = (item, x, y, toggle = false) =>
-    setMenu(m => (toggle && m?.item.id === item.id ? null : { item, x, y, step: 'main' }));
+  // toggle (nút ⋯): bấm lại đúng bài đang mở menu thì đóng; chuột phải luôn mở tại chỗ con trỏ.
+  // anchor: nút ⋯ hoặc thẻ bài — chỗ neo bộ chọn việc khi bấm "Gắn vào việc…"
+  const openMenu = (item, x, y, anchor, toggle = false) =>
+    setMenu(m => (toggle && m?.item.id === item.id ? null : { item, x, y, anchor, step: 'main' }));
   const closeMenu = useCallback(() => setMenu(null), []);
+
+  // Bộ chọn việc: { id, anchorEl }. Bài lấy bản sống trong danh sách để dấu "đã gắn" cập nhật khi bấm;
+  // bài rời danh sách (vd đang lọc Có nhiệm vụ mà bỏ việc cuối) thì đóng luôn
+  const [taskPick, setTaskPick] = useState(null);
+  const closeTaskPick = useCallback(() => setTaskPick(null), []);
+  const pickArticle = taskPick && groups.flatMap(g => g.items).find(a => a.id === taskPick.id);
+  if (taskPick && !pickArticle) setTaskPick(null); // chỉnh state lúc render (React docs), không cần effect
+
+  const [filterAt, setFilterAt] = useState(null); // { x, y } — menu Bộ lọc đang mở
+  const closeFilter = useCallback(() => setFilterAt(null), []);
+  const filterOn = Object.values(filters).some(Boolean);
+  const filterItems = [
+    ...FILTER_TOGGLES.map(f => ({
+      key: f.key, icon: f.icon, label: f.label, keepOpen: true,
+      checked: filters[f.key],
+      onSelect: () => onFilters({ ...filters, [f.key]: !filters[f.key] }),
+    })),
+    { key: 'time-head', heading: 'Thời gian lưu', divider: true },
+    ...TIME_ITEMS.map(t => ({
+      key: `time-${t.key}`, label: t.label, keepOpen: true,
+      checked: filters.time === t.key,
+      onSelect: () => onFilters({ ...filters, time: filters.time === t.key ? '' : t.key }),
+    })),
+  ];
 
   const copyWikiLink = async (item) => {
     const link = `[[${item.title}]]`;
@@ -212,6 +252,7 @@ export default function KBListView({
     : [
       { key: 'edit', icon: 'pencil', label: 'Sửa', onSelect: () => onOpenEditor(menu.item) },
       { key: 'topic', icon: 'folder', label: 'Chuyển chủ đề', sub: true, onSelect: () => setMenu(m => ({ ...m, step: 'topic' })) },
+      { key: 'link', icon: 'link', label: 'Gắn vào việc…', onSelect: () => setTaskPick({ id: menu.item.id, anchorEl: menu.anchor }) },
       { key: 'task', icon: 'plusCircle', label: 'Tạo việc từ bài', onSelect: () => onCreateTask(menu.item) },
       { key: 'wiki', icon: 'linkSimple', label: 'Chép [[liên kết]]', onSelect: () => copyWikiLink(menu.item) },
       { key: 'delete', icon: 'trash', label: 'Xoá', danger: true, divider: true, onSelect: () => onDelete(menu.item) },
@@ -248,12 +289,18 @@ export default function KBListView({
           <Segmented items={GROUP_ITEMS} value={groupBy} onChange={onGroupBy} label="Nhóm theo" quiet />
           <div className="kb-seg kb-seg--quiet">
             <button
-              className={`kb-seg__item${linkedOnly ? ' is-active' : ''}`}
-              onClick={onToggleLinked}
-              aria-pressed={linkedOnly}
-              title="Chỉ bài có liên kết [[wiki]] tới bài khác hoặc được trỏ về"
+              className={`kb-seg__item${filterOn ? ' is-active' : ''}`}
+              // Như nút ⋯: menu đang mở thì bấm lại là đóng
+              onPointerDown={e => e.stopPropagation()}
+              onClick={e => {
+                const r = e.currentTarget.getBoundingClientRect();
+                setFilterAt(at => (at ? null : { x: r.left, y: r.bottom + 4 }));
+              }}
+              aria-haspopup="menu"
+              aria-expanded={!!filterAt}
             >
-              Có liên kết
+              <AppIcon name="funnel" size={14} />
+              Bộ lọc
             </button>
           </div>
           {filtering && (
@@ -333,6 +380,19 @@ export default function KBListView({
             );
           })}
         </div>
+      )}
+
+      {filterAt && <ActionMenu at={filterAt} items={filterItems} onClose={closeFilter} label="Bộ lọc" />}
+
+      {pickArticle && (
+        <KBTaskPicker
+          article={pickArticle}
+          anchorEl={taskPick.anchorEl}
+          pickTasks={pickTasks}
+          onLinkTask={(task, linked) => onLinkTask(pickArticle, task, linked)}
+          onCreateTask={() => onCreateTask(pickArticle)}
+          onClose={closeTaskPick}
+        />
       )}
 
       {menu && (

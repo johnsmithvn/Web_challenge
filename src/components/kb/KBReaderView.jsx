@@ -13,13 +13,11 @@ import {
   getOutboundLinks,
   findBacklinks,
   safeHostname,
-  normalizeVi,
-  suggestByTitle,
 } from '../../utils/kbDeriveUtils';
 import { formatDate, formatDateTime, toDateStr } from '../../utils/dateUtils';
-import { STATUS_META, statusKeyOf } from '../../utils/kanbanUtils';
+import { STATUS_META, statusKeyOf, taskDue } from '../../utils/kanbanUtils';
 import AppIcon from '../AppIcon';
-import LinkPicker from '../LinkPicker';
+import KBTaskPicker from './KBTaskPicker';
 import { KBTopicSelect } from './KBTopicPicker';
 import MediaPreview from '../MediaPreview';
 import { stripMediaTag } from '../../utils/mediaUtils';
@@ -41,17 +39,6 @@ function RailSection({ title, count, action, children }) {
       {children}
     </section>
   );
-}
-
-// Hạn của việc cho cột "Nhiệm vụ liên kết" / bộ chọn việc: "hạn 28/11 09:00" hoặc "trễ 2 ngày"
-function taskDue(task, today) {
-  if (!task.due_date) return { text: 'chưa có hạn' };
-  const open = statusKeyOf(task) !== 'done' && task.status !== 'skip';
-  if (open && task.due_date < today) {
-    return { text: `trễ ${Math.round((Date.parse(today) - Date.parse(task.due_date)) / 864e5)} ngày`, late: true };
-  }
-  const [, m, d] = task.due_date.split('-');
-  return { text: `hạn ${Number(d)}/${Number(m)}${task.due_time ? ` ${task.due_time.slice(0, 5)}` : ''}` };
 }
 
 function RailRow({ article, meta, onOpen }) {
@@ -87,9 +74,8 @@ export default function KBReaderView({
   onOpenTask,     // (task) => mở ngăn việc ở trang Nhiệm vụ
 }) {
   const [focusMode, setFocusMode] = useState(false);
-  // Bộ chọn việc: { anchorEl, start } — `start` = việc đã gắn lúc mở (nhóm "Đã gắn" đứng yên khi gắn / bỏ)
+  // Bộ chọn việc (KBTaskPicker): { anchorEl } khi đang mở
   const [taskPick, setTaskPick] = useState(null);
-  const [taskQuery, setTaskQuery] = useState('');
   const [readProg, setReadProg] = useState(0);
   const miniCanvasRef = useRef(null);
   const topicSelectRef = useRef(null);
@@ -153,37 +139,7 @@ export default function KBReaderView({
   const olderDone = linkedTaskIds.size - tasks.length;
   const today = toDateStr();
 
-  const toggleTaskPick = (e) => {
-    if (taskPick) {
-      setTaskPick(null);
-      return;
-    }
-    setTaskPick({ anchorEl: e.currentTarget, start: tasks.filter(t => statusKeyOf(t) !== 'done') });
-    setTaskQuery('');
-  };
-  const pickItem = (t) => {
-    const due = taskDue(t, today);
-    return { id: t.id, title: t.title, linked: linkedTaskIds.has(t.id), meta: due.text, metaTone: due.late ? 'late' : undefined, raw: t };
-  };
-  let taskGroups = [];
-  if (taskPick) {
-    const q = normalizeVi(taskQuery.trim());
-    if (q) {
-      taskGroups = [{ key: 'found', label: 'Kết quả', items: pickTasks.filter(t => normalizeVi(t.title).includes(q)).slice(0, 30).map(pickItem) }];
-    } else {
-      const startIds = new Set(taskPick.start.map(t => t.id));
-      const rest = pickTasks.filter(t => !startIds.has(t.id));
-      const sugg = suggestByTitle(article.title, rest);
-      const shown = new Set(sugg.map(t => t.id));
-      const byStatus = st => rest.filter(t => !shown.has(t.id) && statusKeyOf(t) === st).slice(0, 8);
-      taskGroups = [
-        { key: 'linked', label: 'Đã gắn', items: taskPick.start.map(pickItem) },
-        { key: 'sugg', label: 'Gợi ý · trùng chữ với tên bài', items: sugg.map(pickItem) },
-        { key: 'doing', label: 'Đang làm', items: byStatus('doing').map(pickItem) },
-        { key: 'todo', label: 'Cần làm', items: byStatus('todo').map(pickItem) },
-      ];
-    }
-  }
+  const toggleTaskPick = (e) => setTaskPick(p => (p ? null : { anchorEl: e.currentTarget }));
 
   // "+ Gán chủ đề" mở luôn ô chọn chủ đề trên thanh trên: click vào ô gõ của SearchSelect
   // nổi lên khung điều khiển, khung mở menu và focus ô gõ
@@ -374,20 +330,12 @@ export default function KBReaderView({
   return (
     <div className={`kb-reader${focusMode ? ' kb-reader--focus' : ''}`} style={{ animation: 'kb-up .25s ease' }}>
       {taskPick && (
-        <LinkPicker
+        <KBTaskPicker
+          article={article}
           anchorEl={taskPick.anchorEl}
-          label="Gắn bài vào việc"
-          placeholder="Tìm việc…"
-          groups={taskGroups}
-          query={taskQuery}
-          onQuery={setTaskQuery}
-          onToggle={item => onLinkTask(item.raw, !item.linked)}
-          createLabel={`Tạo việc “${article.title}”`}
-          onCreate={() => {
-            setTaskPick(null);
-            onCreateTask();
-          }}
-          emptyText={taskQuery.trim() ? 'Không có việc nào khớp.' : 'Chưa có việc nào đang mở.'}
+          pickTasks={pickTasks}
+          onLinkTask={onLinkTask}
+          onCreateTask={onCreateTask}
           onClose={() => setTaskPick(null)}
         />
       )}

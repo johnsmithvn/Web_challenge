@@ -148,6 +148,18 @@ const daysAgo = d => new Date(NOW - d * 86400000).toISOString();
   assert.deepEqual(filterArticles(arts, { linked: new Set(['2', '3']) }).map(a => a.id), ['2']);
   assert.equal(filterArticles(arts, { linked: null }).length, 2);
 
+  // "Có nhiệm vụ" / "Có ghi chú": thiếu số đếm coi như 0; bật cả hai là AND
+  const counted = [
+    { id: 'a', title: 'A', _linkedTaskCount: 2, _noteCount: 0 },
+    { id: 'b', title: 'B', _linkedTaskCount: 1, _noteCount: 3 },
+    { id: 'c', title: 'C' },
+  ];
+  const ids = p => filterArticles(counted, { sort: 'old', ...p }).map(a => a.id).sort().join(',');
+  assert.equal(ids({ withTasks: true }), 'a,b');
+  assert.equal(ids({ withNotes: true }), 'b');
+  assert.equal(ids({ withTasks: true, withNotes: true }), 'b');
+  assert.equal(ids({}), 'a,b,c');
+
   // Sort newest
   const newest = filterArticles(arts, { sort: 'new' });
   assert.equal(newest[0].id, '1');

@@ -42,6 +42,8 @@ const LIBRARY_VIEWS = ['overview', 'list', 'gallery', 'graph', 'canvas'];
 
 const UNSORTED_HEADING = { kind: 'none', name: 'Chưa xếp', description: 'Bài chưa vào chủ đề nào. Xếp nhanh từng bài ở Tổng quan, hoặc bấm Chọn để gán nhiều bài một lần.' };
 const ALL_HEADING = { kind: 'all', name: 'Tất cả bài' };
+// Menu "Bộ lọc" của Danh sách: time '' | '7' | '30' | '90' | 'old' (như filterArticles)
+const NO_LIST_FILTERS = { linked: false, tasks: false, notes: false, time: '' };
 
 // Toast / hộp xác nhận thùng rác: tên bài khi một bài, "N bài" khi nhiều
 const countLabel = list => (list.length === 1 ? `"${list[0].title}"` : `${list.length} bài`);
@@ -87,7 +89,7 @@ export default function CollectPage() {
   const [activeTagIds, setActiveTagIds] = useState([]);
   const [sort, setSort] = useState('new');
   const [filterTaskId, setFilterTaskId] = useState('');
-  const [linkedOnly, setLinkedOnly] = useState(false);
+  const [listFilters, setListFilters] = useState(NO_LIST_FILTERS);
   const [groupBy, setGroupBy] = useState('month'); // month | topic | none
 
   const isMobile = useIsMobile();
@@ -173,9 +175,12 @@ export default function CollectPage() {
     sort,
     taskId: filterTaskId,
     topic: topicFilter,
-    linked: linkedOnly ? linkedIds : null,
+    linked: listFilters.linked ? linkedIds : null,
+    withTasks: listFilters.tasks,
+    withNotes: listFilters.notes,
+    time: listFilters.time,
   }), groupBy, { topics }), [
-    articlesWithTasks, search, activeTagIds, sort, filterTaskId, topicFilter, linkedOnly, linkedIds, groupBy, topics,
+    articlesWithTasks, search, activeTagIds, sort, filterTaskId, topicFilter, listFilters, linkedIds, groupBy, topics,
   ]);
   const filteredArticles = useMemo(() => groups.flatMap(g => g.items), [groups]);
 
@@ -195,12 +200,12 @@ export default function CollectPage() {
   );
 
   // Filters inside the list ("Xoá lọc"); the topic scope is the sidebar's
-  const listFiltering = !!(search || linkedOnly || activeTagIds.length > 0 || filterTaskId);
+  const listFiltering = !!(search || Object.values(listFilters).some(Boolean) || activeTagIds.length > 0 || filterTaskId);
   const hasFilter = listFiltering || !!topicFilter;
 
   const clearListFilters = useCallback(() => {
     setSearch('');
-    setLinkedOnly(false);
+    setListFilters(NO_LIST_FILTERS);
     setActiveTagIds([]);
     setFilterTaskId('');
     setCursor(0);
@@ -719,8 +724,8 @@ export default function CollectPage() {
             cursorId={filteredArticles[cursor]?.id}
             activeTagIds={activeTagIds}
             onToggleTag={toggleTag}
-            linkedOnly={linkedOnly}
-            onToggleLinked={() => { setLinkedOnly(v => !v); setCursor(0); }}
+            filters={listFilters}
+            onFilters={f => { setListFilters(f); setCursor(0); }}
             groupBy={groupBy}
             onGroupBy={g => { setGroupBy(g); setCursor(0); }}
             sort={sort}
@@ -738,6 +743,8 @@ export default function CollectPage() {
             onDelete={handleDeleteArticle}
             onAssignTopic={handleAssignTopic}
             onCreateTask={handleCreateTaskFromArticle}
+            pickTasks={pendingTasks}
+            onLinkTask={handleLinkTask}
             filtering={listFiltering}
             onClearFilter={clearListFilters}
           />

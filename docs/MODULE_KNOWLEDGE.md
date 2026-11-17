@@ -170,8 +170,9 @@ Bài chưa xếp cũ hơn 30 ngày không hiện ở đây (xếp hàng loạt t
   định nghĩa của phạm vi đang xem (một chủ đề · Chưa xếp · Tất cả bài). Nút **Xếp nhanh** (Chưa xếp)
   hoặc **Quản lý chủ đề**. Hàng **thẻ** (không nhãn "Thẻ" — dấu # đã nói rõ) để lọc (AND) và "Quản lý thẻ": thẻ đếm trong **phạm vi** (`scopeTagCounts` ở
   `CollectPage`), không theo bộ lọc, nên lọc không làm hàng thẻ biến mất và cả danh sách nhảy.
-- **Thanh lọc (một hàng, cùng kiểu chữ trơn `.kb-seg--quiet`):** **Nhóm theo** Tháng / Chủ đề / Không · **Có liên kết**
-  (bật / tắt, kết hợp được với mọi kiểu nhóm: chỉ bài có `[[ ]]` đi hoặc được trỏ về) · "N kết quả · Xoá lọc" · sắp xếp Mới nhất / Cũ nhất / Dài nhất · Chọn. Nút bật / tắt giữ nguyên chữ (trạng thái bằng màu)
+- **Thanh lọc (một hàng, cùng kiểu chữ trơn `.kb-seg--quiet`):** **Nhóm theo** Tháng / Chủ đề / Không · **Bộ lọc** (nút phễu,
+  sáng khi có lọc, mở `ActionMenu`: Có liên kết `[[ ]]` (đi hoặc được trỏ về) · Có nhiệm vụ · Có ghi chú — bật / tắt, AND;
+  Thời gian lưu 7 / 30 / 90 ngày qua / Cũ hơn 90 ngày — chọn một; menu không đóng khi tick) · "N kết quả · Xoá lọc" · sắp xếp Mới nhất / Cũ nhất / Dài nhất · Chọn. Nút bật / tắt giữ nguyên chữ (trạng thái bằng màu)
   để các nút cạnh không bị đẩy.
 - **Không có lọc Loại** (bỏ ở v6.33.0): Loại tự suy từ link nên với kho thiên về ghi chú gần như không tách được gì, và
   trùng vai với Chủ đề. Loại vẫn hiện ở biểu tượng + meta từng bài, Gallery, Tổng quan.
@@ -405,7 +406,7 @@ Cần đăng nhập.
 - [ ] Soạn Markdown / Visual, media YouTube / Drive, `[[ ]]`, backlink, Sơ đồ, Canvas, Gallery, chọn nhiều, thẻ, J/K, ⌘Z.
 - [ ] Bài mới dán link GitHub, tiêu đề trống → tự `owner/repo`; chọn chủ đề và Kiểu; bỏ trống chủ đề → Chưa xếp.
 - [ ] Chủ đề ở cột trái lọc đúng Danh sách / Gallery / Sơ đồ / Canvas; Chưa xếp + Chọn nhiều + Gán chủ đề chuyển cả loạt.
-- [ ] Danh sách: Nhóm theo Tháng / Chủ đề / Không, Có liên kết, thu gọn nhóm; bật lọc không làm đầu danh sách / nút nhảy; `J`/`K` đi đúng thứ tự đang hiện.
+- [ ] Danh sách: Nhóm theo Tháng / Chủ đề / Không, Bộ lọc (liên kết / nhiệm vụ / ghi chú / thời gian lưu), thu gọn nhóm; bật lọc không làm đầu danh sách / nút nhảy; `J`/`K` đi đúng thứ tự đang hiện.
 - [ ] Tổng quan: Xếp nhanh chỉ bài 30 ngày, phím `1`–`8`, `→`; thẻ chủ đề mở đúng danh sách; Gặp lại; Mở gần đây.
 - [ ] Xoá → bài vào Thùng rác, Hoàn tác / `⌘Z` trả về còn đủ thẻ, ghi chú, liên kết task; Thùng rác: Khôi phục, Xoá vĩnh viễn, Dọn sạch (có xác nhận).
 - [ ] Trang đọc: đổi chủ đề bằng select hiện ngay; Xung quanh 3 nhóm không lặp; thêm ghi chú → số ghi chú ở danh sách cập nhật.

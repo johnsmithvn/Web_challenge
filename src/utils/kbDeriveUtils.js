@@ -205,16 +205,20 @@ export function ageDays(item, now = Date.now()) {
  * @param {string} params.kind - contentKind() value, '' = all
  * @param {string} params.time - '' | '7' | '30' | '90' (saved within N days) | 'old' (> 90 days)
  * @param {Set<string>|null} params.linked - keep only these ids ("Có liên kết"), null = no filter
+ * @param {boolean} params.withTasks - only bài gắn ít nhất 1 việc ("Có nhiệm vụ")
+ * @param {boolean} params.withNotes - only bài có ghi chú ("Có ghi chú")
  * @param {number} params.now - clock for `time` (ms)
  * @returns {Array}
  */
 export function filterArticles(articles, {
   q = '', type = 'all', tags = [], sort = 'new', taskId = '',
-  topic = '', kind = '', time = '', linked = null, now = Date.now(),
+  topic = '', kind = '', time = '', linked = null, withTasks = false, withNotes = false, now = Date.now(),
 } = {}) {
   let list = articles.filter(a => a.type !== 'inbox' && a.status !== 'archived');
 
   if (linked) list = list.filter(a => linked.has(a.id));
+  if (withTasks) list = list.filter(a => a._linkedTaskCount > 0);
+  if (withNotes) list = list.filter(a => a._noteCount > 0);
 
   // Type filter
   if (type && type !== 'all') {
