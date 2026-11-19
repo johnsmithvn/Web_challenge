@@ -190,7 +190,9 @@ export default function Navbar() {
   const isFinance = location.pathname.startsWith('/finance');
   // Knowledge có hàng trên + tab đáy riêng (khi đã đăng nhập; chưa thì cần thanh chung để đăng nhập)
   const isKnowledge = location.pathname.startsWith('/collect') && !!user;
-  const hideGlobalMobileNav = isBody || isFinance || isKnowledge;
+  // Chốn cũng vậy: thanh trên + tab đáy riêng trên điện thoại khi đã đăng nhập (body.in-chon-workspace)
+  const isChon = location.pathname.startsWith('/chon') && !!user;
+  const hideGlobalMobileNav = isBody || isFinance || isKnowledge || isChon;
   if (isLanding && !user) return showAuth ? <AuthModal onClose={() => setShowAuth(false)} /> : null;
 
   return (

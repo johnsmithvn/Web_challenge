@@ -951,27 +951,45 @@
 
 /* ── Điện thoại (≤768px): giữ thanh Life Hub + tab đáy chung, trang cuộn tự nhiên ── */
 @media (max-width: 768px) {
-  .chon-page { height: auto; min-height: 100dvh; overflow: visible; }
-  .chon-shell { height: auto; padding: 12px 14px 0; gap: 12px; }
-  .chon-brand__icon { width: 36px; height: 36px; border-radius: 11px; }
-  .chon-brand__title { font-size: 24px; }
-  .chon-brand__sub { display: none; }
-  .chon-search { order: 3; flex-basis: 100%; max-width: none; height: 44px; }
-  .chon-header__add { width: 44px; height: 44px; padding: 0; border-radius: 50%; }
-  .chon-header__add-label { display: none; }
-  .chon-tab { padding: 0 12px; font-size: 14px; }
-  .chon-filters { flex-direction: column; align-items: stretch; gap: 8px; }
+  /* Khung điện thoại (như Knowledge / Body): ẩn thanh Life Hub + tab đáy chung (body.in-chon-workspace), trang cao đúng
+     màn hình, xếp dọc: thanh trên · (ô tìm) · lọc · NỘI DUNG CUỘN · tab đáy riêng. Chỉ phần giữa cuộn. */
+  body.in-chon-workspace .chon-page { height: 100dvh; display: flex; flex-direction: column; overflow: hidden; }
+  /* Chưa đăng nhập: còn thanh chung của app */
+  body:not(.in-chon-workspace) .chon-page {
+    height: auto; min-height: calc(100dvh - var(--topbar-height, 52px) - var(--bottom-tabs-height, 60px));
+  }
+  .chon-shell { flex: 1; min-height: 0; height: auto; padding: 0; gap: 0; }
+
+  /* Thanh trên (mockup 2B): đèn · tên màn · tìm · ⋯ · ＋ */
+  .chon-mbar {
+    flex: none; display: flex; align-items: center; gap: 2px;
+    padding: calc(10px + env(safe-area-inset-top, 0px)) 10px 8px 14px;
+  }
+  .chon-mbar__icon { width: 32px; height: 32px; border-radius: 10px; box-shadow: none; }
+  .chon-mbar__title {
+    flex: 1; min-width: 0; margin: 0 0 0 8px; font-family: var(--chon-display); font-weight: 500; font-size: 22px;
+    line-height: 1.1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .chon-mbar__btn { width: 40px; height: 40px; color: var(--chon-dim); }
+  .chon-mbar__btn.is-on { color: var(--chon-lamp); background: var(--chon-lamp-soft); }
+  .chon-mbar__add { width: 40px; height: 40px; padding: 0; margin-left: 4px; border-radius: 50%; box-shadow: 0 0 18px var(--chon-glow); }
+  .chon-search--m { flex: none; margin: 0 14px 10px; max-width: none; height: 44px; }
+
+  /* Lọc: hàng loại chốn cuộn ngang; hàng ô chọn KHÔNG cuộn (menu position: absolute không bị cắt) */
+  .chon-filters { flex: none; flex-direction: column; align-items: stretch; gap: 8px; padding: 0 14px 10px; min-height: 0; }
   .chon-filters__kinds {
     display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; margin: 0 -14px; padding: 0 14px;
   }
   .chon-filters__kinds > * { flex: none; }
-  /* Không cuộn: menu thả xuống của Khu vực / Dịp (position: absolute) không bị cắt */
   .chon-filters__more { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
   .chon-filters__more .chon-filters__sep { display: none; }
   .chon-select { width: auto; flex: 1 1 120px; }
-  .chon-main { display: block; }
-  .chon-list { overflow: visible; padding: 0 0 calc(var(--bottom-fab-pad, 40px) + 72px); }
+
+  /* Nội dung giữa: cuộn bên trong */
+  .chon-main { flex: 1; min-height: 0; display: block; overflow-y: auto; overscroll-behavior: contain; padding: 2px 14px 24px; }
+  .chon-list { overflow: visible; padding: 0; gap: 12px; }
   .chon-grid { grid-template-columns: minmax(0, 1fr); gap: 10px; }
+
   /* Thẻ thành hàng ngang gọn để thấy nhiều chốn */
   .chon-card { flex-direction: row; }
   .chon-card:hover { transform: none; }
@@ -983,9 +1001,37 @@
   .chon-card__body { padding: 10px 40px 10px 12px; gap: 3px; }
   .chon-card__name { font-size: 18px; }
   .chon-card__more { top: 4px; bottom: auto; right: 2px; }
-  .chon-main--map .chon-map-pane { padding-bottom: calc(var(--bottom-fab-pad, 40px) + 56px); }
-  .chon-main--map .chon-map { height: calc(100dvh - 300px); min-height: 360px; }
+  .chon-trip-card .chon-card__src { display: flex; left: 6px; top: auto; bottom: 6px; height: 22px; padding: 0 7px; font-size: 11px; }
+
+  /* Tab Bản đồ: bản đồ lấp đầy phần giữa, không bo, không viền hai bên */
+  .chon-main--map { display: flex; padding: 0; overflow: hidden; }
+  .chon-main--map .chon-map-pane { flex: 1; min-height: 0; padding: 0; }
+  .chon-main--map .chon-map { height: 100%; min-height: 0; border-radius: 0; border-width: 1px 0 0; }
   .chon-map__missing { top: 14px; right: 66px; }   /* điện thoại không có nhóm lớp bản đồ ở trên */
+
+  /* Tab đáy riêng (như .kb-tabbar): Về Life Hub · Muốn đến · Đã đến · Chuyến đi · Bản đồ */
+  .chon-tabbar {
+    position: relative; z-index: 2; flex: none;
+    display: grid; grid-template-columns: 44px repeat(4, minmax(0, 1fr));
+    height: calc(60px + env(safe-area-inset-bottom, 0px)); padding-bottom: env(safe-area-inset-bottom, 0px);
+    border-top: 1px solid var(--chon-line); background: color-mix(in srgb, var(--chon-pop) 92%, transparent);
+  }
+  .chon-tabbar__item {
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; min-width: 0;
+    padding: 0; border: 0; background: none; color: var(--chon-faint); font: 500 11px var(--chon-font);
+    text-decoration: none; -webkit-tap-highlight-color: transparent;
+  }
+  .chon-tabbar__item.is-on { color: var(--chon-lamp-tx); font-weight: 600; }
+  .chon-tabbar__item.is-on svg { color: var(--chon-lamp); }
+  .chon-tabbar__item--home { margin: 12px 0; border-right: 1px solid var(--chon-line); color: var(--chon-dim); }
+  .chon-tabbar__icon { position: relative; display: inline-flex; }
+  .chon-tabbar__n {
+    position: absolute; top: -6px; left: 14px; min-width: 17px; height: 17px; padding: 0 4px; box-sizing: border-box;
+    border-radius: 999px; display: flex; align-items: center; justify-content: center;
+    background: var(--chon-lamp-soft); color: var(--chon-lamp-tx); font-size: 10.5px; font-weight: 700;
+  }
+  .chon-tabbar__item.is-on .chon-tabbar__n { background: var(--chon-lamp); color: var(--chon-on-lamp); }
+  .chon-tabbar__label { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
   .chon-sheet-backdrop { align-items: flex-end; padding: 0; }
   .chon-sheet { max-width: none !important; max-height: 94dvh; border-radius: 26px 26px 0 0; border-bottom: 0; animation-name: chon-up; }
@@ -998,12 +1044,14 @@
   .chon-input, .chon-search input { font-size: 16px; } /* iOS không phóng to khi focus */
 
   .chon-detail { width: 100%; border-left: 0; animation-name: chon-up; }
+  .chon-detail__hero { box-sizing: border-box; height: calc(168px + env(safe-area-inset-top, 0px)); padding-top: env(safe-area-inset-top, 0px); }
+  .chon-detail__bar { top: calc(12px + env(safe-area-inset-top, 0px)); }
   .chon-detail__cta { padding-bottom: calc(18px + env(safe-area-inset-bottom)); }
   .chon-plan { align-items: flex-end; padding: 0; }
   .chon-plan__box { border-radius: 22px 22px 0 0; padding-bottom: calc(8px + env(safe-area-inset-bottom)); }
 
   /* Chuyến đi: xếp dọc; bảng so sánh cuộn ngang trong khung, cột tiêu chí dính trái */
-  .chon-shell--trip { overflow: visible; padding-bottom: calc(var(--bottom-fab-pad, 40px) + 72px); }
+  .chon-shell--trip { overflow-y: auto; overscroll-behavior: contain; padding: calc(12px + env(safe-area-inset-top, 0px)) 14px 24px; }
   .chon-trip__title { font-size: 28px; }
   .chon-trip__actions .chon-btn { height: 44px; padding: 0 14px; }
   .chon-trip__grid { grid-template-columns: minmax(0, 1fr); }

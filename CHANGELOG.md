@@ -27,6 +27,12 @@
   trí". Form Lưu chốn có "Tôi đang ở đây" (cắm ghim ở vị trí hiện tại).
 
 ### Fixed
+- **Chốn — giao diện điện thoại làm lại theo mẫu Knowledge / Body (plan §6) (`ChonPage.jsx`, `chon.css`, `Navbar.jsx`,
+  `navbar.css`, `QuickCapture.jsx`):** trước đây chồng 5 lớp (thanh Life Hub · header Chốn · hàng 5 tab tràn ngang · 2
+  hàng lọc) rồi mới tới thẻ, trang cuộn cả khối, nút ＋ QuickCapture đè lên thẻ. Giờ: ẩn thanh + tab đáy chung
+  (`body.in-chon-workspace`), thanh trên gọn (đèn · tên màn · tìm · ⋯ · ＋), ô tìm mở khi cần, nội dung giữa cuộn,
+  **tab đáy riêng** (Về Life Hub · Muốn đến · Đã đến · Chuyến đi · Bản đồ có huy hiệu số), bản đồ lấp đầy, Thùng rác
+  trong menu ⋯; trang chuyến và chi tiết chốn chừa vùng tai thỏ (`safe-area`). Máy tính không đổi.
 - **Chốn — điện thoại: menu Khu vực / Dịp bị cắt:** thanh lọc cuộn ngang (`overflow-x`) cắt menu `position: absolute`
   của SearchSelect. Tách hai hàng: loại chốn cuộn ngang, ô chọn + Gần tôi không cuộn (máy tính vẫn một hàng).
 - **Chốn — menu thả xuống Khu vực / Dịp bị bản đồ đè:** lớp Leaflet (z-index 400+) nay bị nhốt trong khung bản đồ

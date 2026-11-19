@@ -1497,8 +1497,12 @@ Nocturne, Dashboard, Knowledge).
 - **Hình minh hoạ theo loại** (`ChonKindArt.jsx`) thay ảnh bìa: SVG nét sáng, màu `--kc`, quầng radial theo `--kc`
   trên `--chon-art-bg`; thẻ đã đến quầng màu đèn.
 - **Khung**: máy tính Workspace pattern (`100dvh`, header + tab + thanh lọc đứng yên, danh sách cuộn trong, bản đồ cột
-  phải `minmax(360px, 42%)`). Điện thoại (≤768px) giữ thanh Life Hub + tab đáy chung, trang cuộn tự nhiên, thẻ thành
-  hàng ngang (hình 96px), bản đồ là tab riêng, sheet thành bottom sheet, chi tiết toàn màn.
+  phải `minmax(360px, 42%)`). **Điện thoại (≤768px) như Knowledge / Body**: đã đăng nhập thì ẩn thanh Life Hub + tab
+  đáy chung (`body.in-chon-workspace`, `navbar.css`) và ẩn nút ＋ QuickCapture; trang cao `100dvh`, xếp dọc: thanh trên
+  `.chon-mbar` (đèn · tên màn Spectral 22px · tìm · ⋯ Thùng rác / Lên chuyến đi · ＋ tròn) · ô tìm mở khi bấm tìm · lọc
+  (hàng loại cuộn ngang, hàng ô chọn không cuộn) · **nội dung giữa cuộn** · tab đáy `.chon-tabbar` (Về Life Hub · Muốn
+  đến · Đã đến · Chuyến đi · Bản đồ, số đếm dạng huy hiệu). Thẻ thành hàng ngang (hình 96px), bản đồ lấp đầy phần giữa,
+  sheet thành bottom sheet, chi tiết toàn màn; mọi thanh tính `env(safe-area-inset-*)`.
 - **Hộp thoại** `ChonSheet` (riêng, giống `body-modal-panel` của Body): máy tính giữa màn 560 / 440px, điện thoại bottom
   sheet có tay nắm; Esc / bấm nền đóng, focus ô đầu, trả focus khi đóng. Chi tiết chốn là ngăn phải 460px.
   **Mọi lớp nổi render qua `ChonLayer` (portal ra `<body>`, class `.chon-layer` mang cùng token)** — `.chon-page` có

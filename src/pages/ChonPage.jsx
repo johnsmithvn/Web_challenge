@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, lazy, Suspense } from 'react';
-import { useLocation, useNavigate, useParams } from 'react-router-dom';
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 import { usePlaces } from '../hooks/usePlaces';
@@ -93,6 +93,16 @@ export default function ChonPage() {
   const [tripSheet, setTripSheet] = useState(null);  // { trip?, prefill? }
 
   useEffect(() => { if (user) { fetchPlaces(); fetchTrips(); } }, [user, fetchPlaces, fetchTrips]);
+
+  // Điện thoại: Chốn có thanh trên + tab đáy riêng → ẩn thanh Life Hub + tab đáy chung (như Knowledge / Body).
+  // Chưa đăng nhập thì giữ thanh chung để còn nút đăng nhập.
+  useEffect(() => {
+    if (!user) return undefined;
+    document.body.classList.add('in-chon-workspace');
+    return () => document.body.classList.remove('in-chon-workspace');
+  }, [user]);
+  const [searchOpen, setSearchOpen] = useState(false);   // điện thoại: ô tìm mở dưới thanh trên
+  const [topMenu, setTopMenu] = useState(null);          // điện thoại: menu ⋯ của thanh trên ({ at })
 
   // Danh mục Tài chính theo tuỳ chỉnh của user (tên, mức cần thiết) cho Thắp đèn / Chốt chuyến
   const [finCats, setFinCats] = useState(DEFAULT_FINANCE_CATS);
@@ -319,6 +329,13 @@ export default function ChonPage() {
     { key: 'trash', icon: 'trash', label: 'Bỏ vào thùng rác', danger: true, divider: true, onSelect: () => handleTrash(menu.place) },
   ] : [];
 
+  // Tab đáy điện thoại: đổi màn; đang ở trang chuyến / chi tiết thì về danh sách
+  const goTab = useCallback((id) => {
+    setTab(id);
+    setSearchOpen(false);
+    if (tripId || placeId) navigate('/chon');
+  }, [tripId, placeId, navigate]);
+
   // ── Chuyến đi ──
   const goTrip = useCallback(t => navigate(`/chon/trip/${t.id}`), [navigate]);
   const backToTrips = useCallback(() => { setTab('trips'); navigate('/chon'); }, [navigate]);
@@ -512,6 +529,7 @@ export default function ChonPage() {
             </div>
           )}
         </div>
+        {isMobile && <ChonTabbar tab="trips" counts={counts} tripCount={trips.length} onTab={goTab} />}
         {overlays}
       </div>
     );
@@ -524,6 +542,37 @@ export default function ChonPage() {
       <SkyBackground isMobile={isMobile} calm />
 
       <div className="chon-shell">
+        {isMobile ? (
+          <>
+            <header className="chon-mbar">
+              <span className="chon-brand__icon chon-mbar__icon" aria-hidden="true"><AppIcon name="lantern" size={18} /></span>
+              <h1 className="chon-mbar__title">{MOBILE_TITLES[tab] || 'Chốn'}</h1>
+              {!onTrips && tab !== 'trash' && (
+                <button type="button" className={`chon-icon-btn chon-mbar__btn${searchOpen || query ? ' is-on' : ''}`}
+                  aria-label="Tìm chốn" aria-pressed={searchOpen || !!query}
+                  onClick={() => { if (searchOpen) { setSearchOpen(false); setQuery(''); } else setSearchOpen(true); }}>
+                  <AppIcon name="search" size={19} />
+                </button>
+              )}
+              <button type="button" className="chon-icon-btn chon-mbar__btn" aria-label="Thêm thao tác"
+                onClick={e => { const r = e.currentTarget.getBoundingClientRect(); setTopMenu({ at: { x: Math.max(8, r.right - 220), y: r.bottom + 4 } }); }}>
+                <AppIcon name="dots" size={19} weight="bold" />
+              </button>
+              <button type="button" className="chon-btn chon-btn--lamp chon-mbar__add"
+                aria-label={onTrips ? 'Lên chuyến đi' : 'Lưu chốn'} onClick={() => (onTrips ? setTripSheet({}) : setCapture({}))}>
+                <AppIcon name="plus" size={18} weight="bold" />
+              </button>
+            </header>
+            {(searchOpen || query) && !onTrips && tab !== 'trash' && (
+              <label className="chon-search chon-search--m">
+                <AppIcon name="search" size={16} />
+                <input ref={searchRef} type="search" value={query} onChange={e => setQuery(e.target.value)} autoFocus
+                  placeholder="Tìm quán, món, khu vực, người giới thiệu…" aria-label="Tìm chốn" />
+              </label>
+            )}
+          </>
+        ) : (
+        <>
         <header className="chon-header">
           <div className="chon-brand">
             <span className="chon-brand__icon" aria-hidden="true"><AppIcon name="lantern" size={23} /></span>
@@ -559,17 +608,14 @@ export default function ChonPage() {
           <button type="button" role="tab" aria-selected={onTrips} className={`chon-tab${onTrips ? ' is-on' : ''}`} onClick={() => setTab('trips')}>
             <AppIcon name="flag" size={17} />Chuyến đi<span className="chon-tab__count">{trips.length}</span>
           </button>
-          {isMobile && (
-            <button type="button" role="tab" aria-selected={tab === 'map'} className={`chon-tab${tab === 'map' ? ' is-on' : ''}`} onClick={() => setTab('map')}>
-              <AppIcon name="mapTrifold" size={17} />Bản đồ
-            </button>
-          )}
           <button type="button" role="tab" aria-selected={tab === 'trash'} aria-label="Thùng rác"
             className={`chon-tab chon-tab--end${tab === 'trash' ? ' is-on' : ''}`} onClick={() => setTab('trash')}>
             <AppIcon name="trash" size={16} />{!isMobile && 'Thùng rác'}
             {trash.length + tripTrash.length > 0 && <span className="chon-tab__count">{trash.length + tripTrash.length}</span>}
           </button>
         </div>
+        </>
+        )}
 
         {tab !== 'trash' && !onTrips && (
           <div className="chon-filters" role="group" aria-label="Lọc chốn">
@@ -717,8 +763,51 @@ export default function ChonPage() {
         </div>
       </div>
 
+      {isMobile && <ChonTabbar tab={tab} counts={counts} tripCount={trips.length} onTab={goTab} />}
       {overlays}
+      {topMenu && (
+        <ChonLayer>
+          <ActionMenu
+            at={topMenu.at}
+            label="Thao tác của Chốn"
+            onClose={() => setTopMenu(null)}
+            items={[
+              { key: 'trip', icon: 'flag', label: 'Lên chuyến đi', onSelect: () => setTripSheet({}) },
+              { key: 'trash', icon: 'trash', label: `Thùng rác${trash.length + tripTrash.length ? ` (${trash.length + tripTrash.length})` : ''}`, onSelect: () => setTab('trash') },
+            ]}
+          />
+        </ChonLayer>
+      )}
     </div>
+  );
+}
+
+const MOBILE_TITLES = { want: 'Muốn đến', visited: 'Đã đến', trips: 'Chuyến đi', map: 'Bản đồ', trash: 'Thùng rác' };
+
+/** Tab đáy riêng của Chốn trên điện thoại (như .kb-tabbar của Knowledge): Về Life Hub · 4 màn. */
+function ChonTabbar({ tab, counts, tripCount, onTab }) {
+  const items = [
+    { id: 'want', icon: 'lantern', label: 'Muốn đến', n: counts.want },
+    { id: 'visited', icon: 'lantern', fill: true, label: 'Đã đến', n: counts.visited },
+    { id: 'trips', icon: 'flag', label: 'Chuyến đi', n: tripCount },
+    { id: 'map', icon: 'mapTrifold', label: 'Bản đồ' },
+  ];
+  return (
+    <nav className="chon-tabbar" aria-label="Màn của Chốn">
+      <Link to="/" className="chon-tabbar__item chon-tabbar__item--home" aria-label="Về Life Hub" title="Về Life Hub">
+        <AppIcon name="house" size={20} />
+      </Link>
+      {items.map(it => (
+        <button key={it.id} type="button" className={`chon-tabbar__item${tab === it.id ? ' is-on' : ''}`}
+          aria-pressed={tab === it.id} onClick={() => onTab(it.id)}>
+          <span className="chon-tabbar__icon">
+            <AppIcon name={it.icon} size={20} weight={it.fill || tab === it.id ? 'fill' : 'regular'} />
+            {it.n > 0 && <span className="chon-tabbar__n">{it.n > 99 ? '99+' : it.n}</span>}
+          </span>
+          <span className="chon-tabbar__label">{it.label}</span>
+        </button>
+      ))}
+    </nav>
   );
 }
 

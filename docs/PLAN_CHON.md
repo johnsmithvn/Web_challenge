@@ -4,8 +4,8 @@
 **Người duyệt:** user
 
 **Lệch so với plan khi code G1** (đã chốt trong lúc làm):
-- Điện thoại **giữ** thanh Life Hub + tab đáy chung (không ẩn như Knowledge); tab Muốn đến / Đã đến / Bản đồ nằm trên,
-  không ở đáy. Ít đụng `navbar.css` hơn, vẫn có đường sang module khác.
+- Điện thoại: G1 từng giữ thanh Life Hub + tab đáy chung (lệch §6) → chồng nhiều lớp, tab tràn ngang. **Đã quay về §6**
+  (v6.40.0): ẩn thanh chung, thanh trên + tab đáy riêng như Knowledge, nội dung giữa cuộn.
 - Ảnh trong cảm nhận, sửa lần ghé, bong bóng cụm trên bản đồ, danh mục Tài chính theo override của user: để sau ở
   G1, **đã làm ở v6.40.0**. Bong bóng dùng `clusterByGrid` (lưới điểm ảnh theo zoom, O(n)); `nearbyClusters` giữ cho gợi
   ý "một buổi" ở đầu danh sách.

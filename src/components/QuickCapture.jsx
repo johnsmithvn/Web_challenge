@@ -23,6 +23,8 @@ export default function QuickCapture() {
   if (pathname.startsWith('/accounts')) return null;
   // Kiến thức có nút Viết bài mới riêng, và trên điện thoại có tab đáy riêng — nút tròn sẽ đè lên.
   if (pathname.startsWith('/collect')) return null;
+  // Chốn có nút ＋ Lưu chốn riêng và trên điện thoại có tab đáy riêng — nút tròn sẽ đè lên thẻ / sheet.
+  if (pathname.startsWith('/chon')) return null;
   return <QuickCaptureCore />;
 }
 
