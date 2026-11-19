@@ -1474,6 +1474,39 @@ Knowledge có contract riêng, scoped trên `.kb-page`; không dùng glass/gradi
   (vạch đọc dùng `scaleX`).
 - **Focus**: `.kb-page :focus-visible` viền `2px --kb-accent`; Giảm chuyển động tắt chuyển động trong `.kb-page`.
 
+### Chốn (Đèn lồng) — `.chon-*` (`chon.css`)
+
+Module "nơi muốn đến & nơi đã qua". Mockup: canvas "Sổ Địa Điểm · 2 hướng", Hướng 2 (2A–2D); plan
+[`docs/PLAN_CHON.md`](docs/PLAN_CHON.md). Contract scoped trên `.chon-page` — hệ token scoped thứ năm (sau Vault, Finance
+Nocturne, Dashboard, Knowledge).
+
+- **Nền**: `<SkyBackground calm />` + `--sky-base` như Knowledge. Không backdrop-filter; lớp nổi (sheet, ngăn chi tiết,
+  menu) nền đặc `--chon-pop`.
+- **Token** (tối = mặc định, sáng = `[data-theme="light"] .chon-page`, "đèn lồng buổi sớm" nền giấy ngà): `--chon-p1`
+  (thẻ) / `--chon-p2` (chip, ô nhập) / `--chon-p3` (hover), `--chon-pop`, `--chon-bar` (nhãn nổi trên hình / bản đồ),
+  `--chon-line` / `--chon-line-2`, chữ `--chon-tx` / `--chon-tx-2` / `--chon-dim` / `--chon-faint`; nhấn **đèn lồng**
+  `--chon-lamp` (tối `#F5B45E`, sáng `#E9A447`, chữ trên nó `--chon-on-lamp`) + `--chon-lamp-tx` (chữ màu đèn: tối
+  `#F7CE94`, sáng `#8F4E0E` để đủ tương phản) + `--chon-lamp-soft` / `--chon-lamp-line` / `--chon-glow`; xanh vị trí
+  `--chon-blue*` (Gần tôi, chấm "tôi"), `--chon-red` (quá hẹn, lỗi), nền hình `--chon-art-bg` / nét phụ `--chon-art-hi`.
+  Màu loại chốn `--chon-kind-{food,cafe,outing,travel,stay,other}` → class `.chon-kind--<id>` đặt `--kc` để icon, chip,
+  quầng hình dùng. `--am-*` (ActionMenu) và token SearchSelect map sang `--chon-*`.
+- **Chữ**: tiêu đề / tên chốn Spectral (`--chon-display`), phần nhấn in nghiêng màu đèn ("Nơi muốn đến *&* nơi đã
+  qua", nhãn sao "Ngon, đáng đi"); chữ Be Vietnam Pro.
+- **Đèn lồng = trạng thái**: đèn tắt (nét) = muốn đến, đèn sáng (tô `--chon-lamp`) = đã đến — icon `lantern` trong
+  `AppIcon.jsx` (`weight="fill"` = sáng), ghim bản đồ, nút góc thẻ, nút đáy chi tiết. Luôn kèm chữ / `aria-label`.
+- **Hình minh hoạ theo loại** (`ChonKindArt.jsx`) thay ảnh bìa: SVG nét sáng, màu `--kc`, quầng radial theo `--kc`
+  trên `--chon-art-bg`; thẻ đã đến quầng màu đèn.
+- **Khung**: máy tính Workspace pattern (`100dvh`, header + tab + thanh lọc đứng yên, danh sách cuộn trong, bản đồ cột
+  phải `minmax(360px, 42%)`). Điện thoại (≤768px) giữ thanh Life Hub + tab đáy chung, trang cuộn tự nhiên, thẻ thành
+  hàng ngang (hình 96px), bản đồ là tab riêng, sheet thành bottom sheet, chi tiết toàn màn.
+- **Hộp thoại** `ChonSheet` (riêng, giống `body-modal-panel` của Body): máy tính giữa màn 560 / 440px, điện thoại bottom
+  sheet có tay nắm; Esc / bấm nền đóng, focus ô đầu, trả focus khi đóng. Chi tiết chốn là ngăn phải 460px.
+- **Bản đồ** (`ChonMap.jsx`, Leaflet + OpenStreetMap): tile gốc sáng, tối dùng `--chon-tile-filter` (đảo màu kéo về xanh
+  đêm), sáng ngả giấy nhẹ; ghim `divIcon` HTML theo token; nút nổi `--chon-bar`; ghi công © OpenStreetMap luôn hiện.
+- **Chuyển động**: sheet nảy nhẹ, ngăn chi tiết trượt, đèn thắp sáng dần + quầng thở ở màn Thắp đèn. Giảm chuyển động
+  (`:root[data-reduce-motion]`) tắt mọi animation / transition trong `.chon-page`; Leaflet tạo với `zoomAnimation`
+  / `fadeAnimation` tắt khi bật cài đặt.
+
 ### Body (Ngân hà) — `.body-*` (`body.css`)
 
 Plan + bảng token đầy đủ: [`docs/PLAN_BODY_NGAN_HA.md`](docs/PLAN_BODY_NGAN_HA.md); mockup `design/body-ngan-ha/`.
@@ -1625,8 +1658,9 @@ Bật Giảm chuyển động (Cài đặt) thì tắt mọi chuyển động n�
 
 - **Do** use `src/styles/global.css` as the default source for colour, radius,
   spacing and shadow tokens. The only domain-scoped token systems are Vault
-  Ops console in `accounts.css`, Finance Nocturne (`--n-*`) in `finance.css` and the home dashboard
-  palette (`--dash-*`) in `dashboard.css`.
+  Ops console in `accounts.css`, Finance Nocturne (`--n-*`) in `finance.css`, the home dashboard
+  palette (`--dash-*`) in `dashboard.css`, and the module palettes Knowledge (`--kb-*`), Body (`--body-*`)
+  and Chốn (`--chon-*`, `chon.css`).
 - **Home dashboard palette (`dashboard.css`):** the redesigned home page follows its own design file,
   so `.dash-workspace` declares a scoped `--dash-*` palette (paper light by default, override under
   `[data-theme="dark"] .dash-workspace`) — the third scoped system next to Vault (Ops console) and Finance

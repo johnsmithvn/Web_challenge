@@ -32,5 +32,10 @@
       "purpose": "maskable"
     }
   ],
+  "share_target": {
+    "action": "/chon",
+    "method": "GET",
+    "params": { "title": "title", "text": "text", "url": "url" }
+  },
   "categories": ["lifestyle", "productivity", "finance"]
 }

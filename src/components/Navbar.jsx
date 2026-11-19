@@ -17,13 +17,15 @@ import '../styles/auth.css';
 const PRIMARY_NAV = [
   { to: '/tasks',     icon: 'pushPin', label: 'Nhiệm Vụ' },
   { to: '/collect',   icon: 'book', label: 'Knowledge' },
+  { to: '/chon',      icon: 'lantern', label: 'Chốn' },
   { to: '/finance',   icon: 'wallet', label: 'Finance' },
   { to: '/body',      icon: 'barbell', label: 'Body' },
   { to: '/accounts',  icon: 'lock', label: 'Tài Khoản' },
 ];
 
 // Bottom tabs giữ 5 workflow thường dùng để vùng chạm không bị co quá nhỏ.
-const MOBILE_PRIMARY_NAV = PRIMARY_NAV.filter(link => link.to !== '/accounts');
+// Chốn nằm ở menu Thêm trên điện thoại.
+const MOBILE_PRIMARY_NAV = PRIMARY_NAV.filter(link => link.to !== '/accounts' && link.to !== '/chon');
 
 const FINANCE_NAV = [
   { to: '/finance/overview', icon: 'chartDonut', label: 'Tổng quan' },
@@ -40,6 +42,7 @@ const SECONDARY_NAV = [
 ];
 
 const MOBILE_MORE_NAV = [
+  { to: '/chon', icon: 'lantern', label: 'Chốn' },
   { to: '/accounts', icon: 'lock', label: 'Tài Khoản' },
   ...SECONDARY_NAV,
 ];

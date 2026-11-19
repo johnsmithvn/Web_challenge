@@ -1,0 +1,33 @@
+{
+  "_note": "Chốn: loại chốn, dịp, quay lại, nền tảng nguồn. `id` khớp CHECK trong migration places_v6_38_0.sql. `finance` = danh mục khi Thắp đèn ghi chi phí vào Tài chính: `category` là key nhóm, `sub` là key danh mục con THẬT trong finance-categories.json (null = chỉ nhóm). Màu từng loại nằm ở chon.css (--chon-kind-<id>), không ở đây.",
+  "kinds": [
+    { "id": "food",   "label": "Ăn uống",  "icon": "forkKnife", "finance": { "category": "food",     "sub": "food.eatout" } },
+    { "id": "cafe",   "label": "Cà phê",   "icon": "coffee",    "finance": { "category": "food",     "sub": "food.drinks" } },
+    { "id": "outing", "label": "Đi chơi",  "icon": "compass",   "finance": { "category": "personal", "sub": null } },
+    { "id": "travel", "label": "Du lịch",  "icon": "mountains", "finance": { "category": "personal", "sub": "entertainment.travel" } },
+    { "id": "stay",   "label": "Lưu trú",  "icon": "bed",       "finance": { "category": "personal", "sub": "entertainment.travel" } },
+    { "id": "other",  "label": "Khác",     "icon": "mapPin",    "finance": { "category": "other",    "sub": null } }
+  ],
+  "occasions": [
+    { "id": "friends", "label": "Nhóm bạn" },
+    { "id": "date",    "label": "Hẹn hò" },
+    { "id": "family",  "label": "Gia đình" },
+    { "id": "solo",    "label": "Một mình" }
+  ],
+  "revisit": [
+    { "id": "yes",   "label": "Sẽ quay lại" },
+    { "id": "maybe", "label": "Có thể" },
+    { "id": "no",    "label": "Một lần thôi" }
+  ],
+  "platforms": [
+    { "id": "tiktok",      "label": "TikTok",      "video": true },
+    { "id": "facebook",    "label": "Facebook",    "video": false },
+    { "id": "instagram",   "label": "Instagram",   "video": false },
+    { "id": "youtube",     "label": "YouTube",     "video": true },
+    { "id": "threads",     "label": "Threads",     "video": false },
+    { "id": "google_maps", "label": "Google Maps", "video": false },
+    { "id": "web",         "label": "Trang web",   "video": false },
+    { "id": "friend",      "label": "Bạn kể",      "video": false },
+    { "id": "other",       "label": "Khác",        "video": false }
+  ]
+}

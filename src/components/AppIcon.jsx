@@ -21,9 +21,36 @@ import {
   Gauge, ChartBar, Books, Flask, FlagPennant, Wind, Crosshair, XCircle, Stairs, FirstAidKit, Info,
   Path, Shuffle, LockSimple, Metronome, ArrowsLeftRight, Checks, Target, SlidersHorizontal,
   Planet, RocketLaunch, StarFour, Stack, WarningDiamond, HandPointing, FastForward, CircleDashed, Cookie, Fish,
+  ForkKnife, Compass, Mountains, Bed, MapTrifold, NavigationArrow, ShareNetwork,
 } from '@phosphor-icons/react';
 
+/**
+ * Đèn lồng của module Chốn (Phosphor không có). `weight="fill"` = đèn đã thắp (thân tô màu),
+ * còn lại = đèn tắt (nét). Cùng API size / weight / color / style với icon Phosphor.
+ */
+function Lantern({ size = 18, weight = 'regular', color = 'currentColor', style, ...props }) {
+  const lit = weight === 'fill';
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color}
+      strokeWidth={weight === 'bold' ? 2.2 : 1.8} strokeLinecap="round" strokeLinejoin="round" style={style} {...props}>
+      <path d="M10 2.5h4M12 2.5v2M12 17.5V20M10.5 21.5h3" />
+      <rect x="6.5" y="4.5" width="11" height="13" rx="5.5" fill={lit ? color : 'none'} />
+      {/* Đèn sáng: nan tre tối hơn thân (đen mờ) để vẫn thấy trên nền tô màu */}
+      <path d="M9.7 5c-.9 2.4-.9 9.6 0 12M14.3 5c.9 2.4.9 9.6 0 12" {...(lit ? { stroke: '#000', strokeOpacity: 0.32 } : {})} />
+    </svg>
+  );
+}
+
 const ICONS = {
+  // Chốn
+  lantern: Lantern,
+  forkKnife: ForkKnife,
+  compass: Compass,
+  mountains: Mountains,
+  bed: Bed,
+  mapTrifold: MapTrifold,
+  navigationArrow: NavigationArrow,
+  share: ShareNetwork,
   // Body · Ngân hà
   planet: Planet,
   rocketLaunch: RocketLaunch,

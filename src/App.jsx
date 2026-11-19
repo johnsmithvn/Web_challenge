@@ -23,6 +23,8 @@ const FinancePage       = lazy(() => import('./pages/FinancePage'));
 const AccountsPage      = lazy(() => import('./pages/AccountsPage'));
 const SettingsPage      = lazy(() => import('./pages/SettingsPage'));
 const BodyPage          = lazy(() => import('./pages/BodyPage'));
+// Chốn: nơi muốn đến & nơi đã qua (docs/PLAN_CHON.md)
+const ChonPage          = lazy(() => import('./pages/ChonPage'));
 // FX Lab (sidebar → Khác): xem trước hiệu ứng / kịch bản nền trang Nhiệm vụ
 const FxLabPage         = lazy(() => import('./pages/FxLabPage'));
 
@@ -36,6 +38,7 @@ const ROUTE_META = {
   '/accounts':   { title: 'Vault — Life Hub',                                                  desc: 'Account Vault mã hóa toàn bộ nội dung bằng AES-GCM phía client.' },
   '/settings':   { title: 'Cài Đặt — Life Hub',                                                  desc: 'Quản lý tags, quotes và hồ sơ cá nhân.' },
   '/body':       { title: 'Body · Thể Hình & Sức Khỏe — Life Hub',                            desc: 'Lộ trình tập luyện, theo dõi cơ thể và tiến bộ từng buổi tập.' },
+  '/chon':       { title: 'Chốn — Life Hub',                                                   desc: 'Nơi muốn đến & nơi đã qua: lưu quán, thắp đèn khi đã đến, ghi cảm nhận.' },
   '/fx-lab':     { title: 'FX Lab — Life Hub',                                                 desc: 'Xem trước hiệu ứng và kịch bản nền trang Nhiệm vụ.' },
 };
 
@@ -45,6 +48,8 @@ function PageMeta() {
     ? ROUTE_META['/finance']
     : pathname.startsWith('/body')
     ? ROUTE_META['/body']
+    : pathname.startsWith('/chon')
+    ? ROUTE_META['/chon']
     : ROUTE_META[pathname] || ROUTE_META['/'];
   useEffect(() => {
     document.title = meta.title;
@@ -62,6 +67,8 @@ function AppShell() {
     ? '/body'
     : pathname.startsWith('/finance')
     ? '/finance'
+    : pathname.startsWith('/chon')
+    ? '/chon'
     : pathname;
 
   return (
@@ -89,6 +96,8 @@ function AppShell() {
                 <Route path="/finance/:screen"  element={<FinancePage />} />
                 <Route path="/body"             element={<BodyPage />} />
                 <Route path="/body/:screen"     element={<BodyPage />} />
+                <Route path="/chon"             element={<ChonPage />} />
+                <Route path="/chon/:placeId"    element={<ChonPage />} />
                 <Route path="/incubator"    element={<Navigate to="/tasks" replace />} />
                 <Route path="/accounts"     element={<AccountsPage key={user?.id || 'guest'} />} />
                 <Route path="/settings"     element={<SettingsPage />} />

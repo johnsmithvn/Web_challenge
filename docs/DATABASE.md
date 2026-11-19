@@ -1,18 +1,19 @@
 # DATABASE.md — Life Hub
 
-**Target:** Supabase PostgreSQL · **Version:** v6.32.0 · **Updated:** 2026-10-25
+**Target:** Supabase PostgreSQL · **Version:** v6.38.0 · **Updated:** 2026-11-19
 
 Runbook cài đặt duy nhất nằm trong [`README.md`](../README.md). File này mô tả trạng thái schema cuối,
 không thay thế SQL thật.
 
 ## Trạng thái schema cuối
 
-Sau khi chạy đủ baseline và các migration domain, database có **37 bảng public đang hoạt động**:
+Sau khi chạy đủ baseline và các migration domain, database có **40 bảng public đang hoạt động**:
 
 - 12 bảng core
 - 12 bảng Finance (11 bảng chính + junction tag)
 - 2 bảng Vault
 - 11 bảng Body (Thể hình & Sức khỏe)
+- 3 bảng Chốn (v6.38.0)
 
 `data/schema_v4.24.0.sql` tự nó chỉ là baseline đã hợp nhất tới v5.0. Nó không phải snapshot độc lập
 của toàn bộ v6.2.
@@ -29,6 +30,9 @@ auth.users
 ├─ finance_* ── finance_transaction_tags ── tags
 ├─ accounts
 ├─ vault_config
+├─ places ── place_sources ··→ collections        (··→ = tham chiếu chéo module, SET NULL)
+│     │  └─ place_visits ··→ finance_transactions
+│     └─ ··→ user_tasks (plan_task_id)
 └─ body_*
    ├─ body_custom_exercises
    ├─ body_routines ── body_routine_items
@@ -139,6 +143,18 @@ Chi tiết: [`DESIGN_ACCOUNT_VAULT.md`](DESIGN_ACCOUNT_VAULT.md).
 | `body_weekly_checkins` | Đánh giá thể trạng và vòng eo theo tuần | `UNIQUE (user_id, week_number, year)` |
 | `body_exercise_videos` | Link video thị phạm user tự gắn cho từng bài | `PRIMARY KEY (user_id, exercise_key)` — 1 link/bài; `video_url` chỉ `http(s)://`, ≤ 2048 ký tự; `exercise_key` là key JSON hoặc id bài tự tạo (không FK) |
 
+### Chốn (nơi muốn đến & đã qua) — 3 bảng (v6.38.0)
+
+Thiết kế: [`PLAN_CHON.md`](PLAN_CHON.md). Own-row RLS 4 policy / bảng, grant chỉ `authenticated`.
+
+| Table | Vai trò | Ràng buộc đáng chú ý |
+|---|---|---|
+| `places` | Một chốn: tên, loại (`food\|cafe\|outing\|travel\|stay\|other`), khu vực, địa chỉ, toạ độ, link Maps, giá/người, giờ mở, món nên thử, hợp với dịp nào, ghi chú | `lat`/`lng` cùng có hoặc cùng NULL; `occasions <@ {friends,date,family,solo}`; `UNIQUE (id, user_id)` làm đích FK hai cột; `plan_task_id` FK `(plan_task_id, user_id) → user_tasks (id, user_id) ON DELETE SET NULL (plan_task_id)`; `archived_at` = Thùng rác. **Không có cột trạng thái**: đã đến = có `place_visits` |
+| `place_sources` | Ai giới thiệu (gộp nhiều lần lưu): nền tảng, link, tác giả, lời trích, hoặc bài Kiến thức | FK `(place_id, user_id) → places` cascade; `collection_id → collections ON DELETE SET NULL` + trigger `places_check_refs` kiểm cùng chủ |
+| `place_visits` | Mỗi lần thắp đèn: ngày, sao 1–5, quay lại (`yes\|maybe\|no`), món đã gọi / món ngon, số người, cảm nhận, ảnh, chi phí | FK `(place_id, user_id) → places` cascade; `liked_dishes <@ dishes`; `visited_on ≤ hôm nay + 1`; `finance_tx_id → finance_transactions ON DELETE SET NULL` + trigger kiểm cùng chủ |
+
+Không thêm cột nào vào `user_tasks`, `collections`, `finance_transactions`: liên kết nằm hết ở bảng Chốn.
+
 ## View
 
 `tagged_items` hợp nhất ba junction plaintext:
@@ -183,6 +199,16 @@ từ UI ngoài data owner `useFinance`.
 
 Cả hai `SECURITY INVOKER` (RLS giới hạn trong dữ liệu của chính user), chỉ cấp `EXECUTE` cho `authenticated`;
 gọi qua `useCollectionTopics`.
+
+### Chốn RPC (v6.38.0)
+
+- `light_place(p_place_id, p_visited_on, p_rating, p_revisit, p_dishes, p_liked_dishes, p_party_size, p_note,
+  p_photos, p_spent, p_to_finance, p_category_id, p_subcategory_id, p_necessity)` — thắp đèn: ghi `place_visits` và,
+  nếu `p_to_finance`, một giao dịch chi `finance_transactions` (`merchant` = tên chốn) trong **một transaction**; lỗi
+  bước nào cũng rollback cả hai. Danh mục + `necessity` do app tính bằng `deriveNecessity` của Finance.
+- Trigger function `places_check_refs()` — bài Kiến thức / giao dịch được trỏ tới phải cùng `user_id`.
+
+`light_place` là `SECURITY INVOKER`, chỉ cấp `EXECUTE` cho `authenticated`; gọi qua `usePlaces`.
 
 ## RLS và grants
 
@@ -251,6 +277,7 @@ Snapshot đã tồn tại là bất biến. Schema change mới phải dùng mig
 23. `supabase/migrations/20261025000000_knowledge_topics_v6_32_0.sql` (cần Postgres 15+)
 24. `supabase/migrations/20261105000000_finance_lending_due_history_v6_35_0.sql`
 25. `supabase/migrations/20261108000000_knowledge_snippets_v6_36_0.sql`
+26. `supabase/migrations/20261119000000_places_v6_38_0.sql` (cần Postgres 15+, sau Tasks v6.19.0 + Finance)
 
 Dọn dẹp bảng cũ (tùy chọn):
 - `data/drop_incubator_tables.sql` (gỡ bỏ các bảng `intention_*` của phân hệ Ươm mầm đã ngưng phát triển).

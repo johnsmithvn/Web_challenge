@@ -1,5 +1,27 @@
 # CHANGELOG
 
+## v6.38.0 — 2026-11-19
+
+### Added
+- **Module mới Chốn — nơi muốn đến & nơi đã qua (`/chon`, `/chon/:placeId`; plan `docs/PLAN_CHON.md`, giai đoạn 1):**
+  lưu quán ăn, cà phê, chỗ đi chơi, du lịch, chỗ ở mình muốn đến; tới nơi thì **thắp đèn** (đã đến) và ghi cảm nhận.
+  Màn Muốn đến / Đã đến dạng thẻ có hình minh hoạ theo loại + bản đồ cột phải; lọc loại / khu vực / dịp / Gần tôi,
+  tìm không dấu (tên, món, khu vực, người giới thiệu); gợi ý cụm "3 chốn cách nhau dưới 1 km". Form Lưu chốn (nhập
+  tay, phần chi tiết gập sẵn), dán link Google Maps đầy đủ tự lấy toạ độ, gợi ý gộp khi trùng tên + khu vực. Chi
+  tiết chốn: Ai giới thiệu (nhiều nguồn), Món nên thử, Gần đây cũng muốn đến, Những lần ghé. Thắp đèn: sao, có quay
+  lại không, món đã gọi / món ngon, cảm nhận, số người, chi phí. Thùng rác. Phím `N` lưu chốn, `/` tìm.
+  - **Nối module khác:** Hẹn ngày → tạo việc "Đi <tên chốn>" bên Nhiệm vụ (`places.plan_task_id`); chi phí khi thắp
+    đèn → giao dịch chi bên Tài chính (nơi chi = tên chốn, danh mục theo loại chốn) trong cùng transaction với lần
+    ghé (RPC `light_place`); nguồn giới thiệu trỏ được tới bài Kiến thức, "Viết thành bài Kiến thức" tạo bài từ
+    các cảm nhận; Chỉ đường mở Google Maps; Rủ bạn dùng Chia sẻ của máy; Android: Chia sẻ một link → Life Hub mở
+    form Lưu chốn điền sẵn (`manifest.json` `share_target`).
+  - **Database (`supabase/migrations/20261119000000_places_v6_38_0.sql`, Postgres 15+):** bảng `places`,
+    `place_sources`, `place_visits`, trigger `places_check_refs`, RPC `light_place`. Additive, không sửa bảng module khác.
+  - **Code:** `usePlaces.js`, `placeLogic.js` (+ test `placeLogic.test.js`), `place-kinds.json`, `ChonPage.jsx`,
+    `components/chon/*`, `chon.css` (token `--chon-*`, tối + sáng), icon đèn lồng trong `AppIcon.jsx`, mục Chốn ở
+    sidebar (điện thoại: menu Thêm).
+  - **Dependency mới:** `leaflet` 1.9.4 (bản đồ, tile OpenStreetMap, chỉ tải khi bản đồ hiện).
+
 ## v6.37.0 — 2026-11-10
 
 ### Added

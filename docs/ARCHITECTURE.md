@@ -25,7 +25,7 @@ ThemeProvider
 src/
 ├─ App.jsx             route, shell, provider wiring
 ├─ pages/              một page theo route (Tasks, Finance, Accounts, Inbox, Collect, Focus, Settings)
-├─ components/         UI dùng lại; components/finance (màn Finance), components/kb (màn Knowledge)
+├─ components/         UI dùng lại; components/finance (màn Finance), components/kb (màn Knowledge), components/chon (Chốn)
 ├─ hooks/              state + Supabase/domain actions
 ├─ contexts/           Auth, Theme, Toast
 ├─ utils/              logic thuần: kbDeriveUtils, calendarTimeUtils, lunarUtils, financeLogic, vaultCrypto
@@ -58,6 +58,7 @@ không bị stale khi thêm/xóa component.
 | `/inbox` | `InboxPage` | Lazy | Auth-only |
 | `/collect` | `CollectPage` | Lazy | Auth-only |
 | `/finance`, `/finance/:screen` | `FinancePage` | Lazy | Auth-only |
+| `/chon`, `/chon/:placeId` | `ChonPage` | Lazy | Auth-only; `/chon?share=1&title=&text=&url=` = đích Chia sẻ Android (`manifest.json` `share_target`) |
 | `/accounts` | `AccountsPage` | Lazy | Auth-only + Vault unlock |
 | `/settings` | `SettingsPage` | Lazy | Auth-only |
 | `/fx-lab` | `FxLabPage` | Lazy | Sidebar → Khác → FX Lab (mobile: menu Thêm): xem trước hiệu ứng nền trang Nhiệm vụ, không đụng dữ liệu; đổi Kiểu/Ngày-Đêm thật, rời trang trả lại (RULES #15) |
@@ -136,6 +137,29 @@ useCollections / useCollectionTopics / useCollectionNotes / useTags
   `useWorkouts`, `useBiometrics`, `useCollections().fetchStats` (đếm + `created_at`, không kéo nội dung/tag).
   Không gọi `useAccounts`: Vault chưa mở khóa thì không có số liệu để hiện. Mọi phép tính nằm ở
   `utils/dashboardMetrics.js` (thuần, có test).
+
+### Chốn
+
+```text
+ChonPage (tab Muốn đến / Đã đến / Thùng rác, lọc, vị trí, /chon/:placeId = chi tiết)
+  ├─ SkyBackground calm
+  ├─ ChonPlaceCard · ChonMap (Leaflet, tải lười) · ChonPlaceDetail
+  ├─ ChonCaptureSheet (Lưu / Sửa, bản đồ nhỏ) · ChonLightSheet (Thắp đèn)
+  └─ ChonPlanDialog (lazy, mount useUserTasks.addTask chỉ khi mở)
+        ↓
+placeLogic (pure: placeState, filterPlaces, nearbyClusters, parseMapsUrl, detectPlatform, findDuplicatePlace, clean*…)
+        ↓
+usePlaces → places / place_sources / place_visits, RPC light_place (+ finance_transactions)
+useCollections (fetchLinkOptions, addItem cho "Viết thành bài")
+```
+
+- Đã đến = có `place_visits` (không có cột trạng thái). Liên kết sang module khác chỉ nằm ở bảng Chốn
+  (`places.plan_task_id`, `place_sources.collection_id`, `place_visits.finance_tx_id`).
+- Thắp đèn có chi phí ghi hai bảng trong RPC `light_place` (SECURITY INVOKER) — không optimistic. Danh mục + necessity
+  tính ở client từ `place-kinds.json` + `finance-categories.json` (`deriveNecessity`), chưa đọc override danh mục
+  riêng của user bên Finance.
+- Bản đồ: tile OpenStreetMap tải trực tiếp từ `tile.openstreetmap.org` (OSM thấy vùng đang xem); vị trí người dùng chỉ
+  nằm trong state, không lưu.
 
 ### Finance
 

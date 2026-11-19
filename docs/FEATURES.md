@@ -16,6 +16,7 @@ Tài liệu này chỉ mô tả tính năng đang chạy. Feature đã xóa và 
 | Knowledge | `/collect` | — | ✅ |
 | Finance | `/finance/:screen?` | — | ✅ |
 | Body | `/body` | — | ✅ |
+| Chốn | `/chon`, `/chon/:placeId` | — | ✅ |
 | Vault | `/accounts` | — | Login + Vault unlock |
 | Cài đặt | `/settings` | — | ✅ |
 
@@ -447,6 +448,36 @@ Module quản lý toàn diện thể trạng và rèn luyện thể chất, tuâ
 - **Sinh trắc học:** Tính toán BMI chuẩn WHO châu Á kèm kim đồng hồ gauge (dải cân theo chiều cao thật; chưa có chiều cao thì không có kim), BMR (Mifflin-St Jeor, cần chiều cao + giới tính + năm sinh trong Hồ sơ), TDEE và Body Score (0-100) trên dữ liệu thực tế; lưới 9 chỉ số ghi rõ Đã đo / Công thức / Chưa đo (không tự điền giá trị đoán); xu hướng lọc 7 ngày / 30 ngày / 3 tháng / năm, cần ≥ 2 lần đo; mục tiêu chỉ có cân nặng (`goal_weight_kg`); đo thước dây US Navy ra % mỡ và tỉ lệ eo/cao; đánh dấu các lần cân đo lệch giờ (outlier). Màn chia 3 tab: Phân tích (đồng hồ BMI theo vùng, xu hướng, 9 chỉ số, thành phần cơ thể), Lịch sử (nhóm theo ngày, bấm một lần đo để xem chi tiết / đánh dấu lệch giờ / xóa — mobile là bottom sheet), Hồ sơ (BMR/TDEE, tiến độ mục tiêu cân, form hồ sơ). Thêm cân đo: chỉ bắt buộc cân nặng, Ctrl+Enter để lưu, mobile là bottom sheet.
 - **Dinh dưỡng tối giản:** Ghi nhận 4 bữa ăn với calo & macro (đạm, carb, béo) tự động cân đối theo TDEE, chọn nhanh từ danh sách món mẫu đã lưu, ngày theo múi giờ địa phương (`toDateStr`). Biểu đồ **7 ngày qua** (kcal từng ngày tới hôm nay, đường mục tiêu; ngày chưa ghi tính 0, trung bình chỉ tính ngày có ghi — `sumKcalByDay`). Theo dõi nước uống chưa làm.
 - **Check-in tuần:** Đánh giá thể trạng 4 tiêu chí (1-5 sao, khởi tạo 0 để tránh gửi điểm giả), cân nặng trung bình tuần và số đo vòng eo; tính số tuần theo chuẩn ISO-8601.
+
+## 9b. Chốn — nơi muốn đến & nơi đã qua (`/chon`)
+
+Plan: [`PLAN_CHON.md`](PLAN_CHON.md). Auth-only. Sidebar → Chốn (điện thoại: menu Thêm).
+
+- **Vòng đời:** Muốn đến → **Thắp đèn** (đã đến) → cảm nhận. Không có cột trạng thái: chốn có ít nhất một lần ghé là
+  Đã đến. Ghé lại nhiều lần được ("Thắp thêm một lần"), mỗi lần một dòng lịch sử.
+- **Danh sách (máy tính):** tab Muốn đến / Đã đến (có đếm) / Thùng rác; thẻ có hình minh hoạ theo loại (Ăn uống, Cà
+  phê, Đi chơi, Du lịch, Lưu trú), nhãn nguồn (TikTok, Reel FB…), nút đèn, lời trích, "lưu 3 tuần trước", khoảng
+  cách (khi bật Gần tôi), viên hẹn ("Hẹn T6 22/11", quá hẹn thì đỏ). Bản đồ cột phải: ghim đèn tắt / đèn sáng, lớp
+  Muốn đến / Đã đến / Tất cả, rê thẻ thì ghim sáng, bấm ghim mở chi tiết. Menu ⋯ / chuột phải: Mở · Sửa · Thắp đèn ·
+  Hẹn ngày · Chỉ đường · Rủ bạn · Bỏ vào thùng rác.
+- **Lọc / tìm:** loại, khu vực (gộp cách viết hoa / không dấu), dịp (Nhóm bạn, Hẹn hò, Gia đình, Một mình), Gần tôi
+  (xin quyền vị trí, xếp gần trước), tìm không dấu trong tên, khu vực, địa chỉ, món, ghi chú, người giới thiệu, lời
+  trích, cảm nhận. Gợi ý cụm: ≥ 3 chốn muốn đến trong bán kính 1 km → "Xem cụm trên bản đồ".
+- **Lưu chốn:** chỉ bắt buộc tên. Loại · khu vực · địa chỉ · dán link Google Maps đầy đủ (tự lấy toạ độ + tên; link
+  rút gọn `maps.app.goo.gl` thì nhắc mở link rồi chép link đầy đủ) · bản đồ nhỏ chạm để cắm / kéo ghim · Ai giới thiệu
+  (link tự nhận nền tảng, tác giả, lời trích, "Bạn kể"). "Thêm chi tiết": món nên thử, hợp với, giá / người, giờ mở,
+  ghi chú. Trùng tên + khu vực → gợi ý gộp lời giới thiệu vào chốn có sẵn. Ctrl+Enter lưu, Esc đóng. Nút Hẹn ngày lưu
+  xong mở luôn hộp hẹn. Không tự lấy tiêu đề / ảnh từ link TikTok, FB (chưa làm).
+- **Chi tiết:** Chỉ đường (Google Maps), Hẹn ngày, Rủ bạn (Chia sẻ của máy, không có thì chép vào clipboard); Những
+  lần ghé (xoá được, giao dịch Tài chính giữ nguyên); Ai giới thiệu (thêm / xoá, chọn bài Kiến thức làm nguồn, "Viết
+  thành bài Kiến thức"); Món nên thử có đếm số lần nhắc; Gần đây cũng muốn đến (≤ 3 chốn trong 1 km) + Gom một tối.
+- **Thắp đèn:** ngày đến (mặc định hôm nay, đổi được, không sau hôm nay), 1–5 sao + nhãn, Sẽ quay lại / Có thể / Một
+  lần thôi, món đã gọi (chạm = ngon ♥, chạm nữa = gọi thường, chạm nữa = bỏ), cảm nhận, số người, chi phí (gõ `360k`)
+  + công tắc ghi Tài chính (nhóm theo loại chốn, cùng transaction với lần ghé). "Để sau" đóng không lưu.
+- **Hẹn ngày:** tạo việc "Đi <tên chốn>" bên Nhiệm vụ (hạn = ngày chọn, giờ tuỳ chọn); xoá việc → chốn hết hẹn.
+- **Android:** cài PWA rồi Chia sẻ một link → Life Hub → form Lưu chốn mở sẵn link + lời trích.
+
+**Data:** `places`, `place_sources`, `place_visits`, RPC `light_place` (xem `DATABASE.md`).
 
 ## 10. Media, widget và PWA
 
