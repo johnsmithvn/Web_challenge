@@ -1512,6 +1512,13 @@ Nocturne, Dashboard, Knowledge).
   `.chon-pill--status.is-{planning,booked,done,cancelled}` (chấm + chữ).
 - **Bản đồ** (`ChonMap.jsx`, Leaflet + OpenStreetMap): tile gốc sáng, tối dùng `--chon-tile-filter` (đảo màu kéo về xanh
   đêm), sáng ngả giấy nhẹ; ghim `divIcon` HTML theo token; nút nổi `--chon-bar`; ghi công © OpenStreetMap luôn hiện.
+  Bong bóng cụm `.chon-cluster` 46px tô đặc màu đèn, số đậm `--chon-on-lamp`, quầng sáng (mockup 2A); cả cụm đã đến
+  thêm vòng viền. Thẻ cụm `.chon-cpop` (popup Leaflet, nền `--chon-pop`): dòng khu vực · bán kính, danh sách chấm đèn,
+  nút đặc "Mở lộ trình N điểm". Bản đồ nhỏ của form: chip góc trên + thanh địa chỉ `.chon-map__caption` (nằm trên
+  dòng ghi công OSM — ghi công không được ẩn). Khung `.chon-map` có
+  `isolation: isolate` để z-index 400+ của Leaflet không đè menu / popover bên ngoài.
+- **Ảnh lần ghé** `.chon-photo`: ô vuông 64px (trong form) / 72px (lịch sử ghé), bo 12px, `object-fit: cover`.
+- **Popover ngày trong sheet**: nổi `position: fixed` cạnh nút (`popoverAt`), không đặt trong vùng cuộn của sheet.
 - **Chuyển động**: sheet nảy nhẹ, ngăn chi tiết trượt, đèn thắp sáng dần + quầng thở ở màn Thắp đèn. Giảm chuyển động
   (`:root[data-reduce-motion]`) tắt mọi animation / transition trong `.chon-page`; Leaflet tạo với `zoomAnimation`
   / `fadeAnimation` tắt khi bật cài đặt.

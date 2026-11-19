@@ -6,10 +6,9 @@
 **Lệch so với plan khi code G1** (đã chốt trong lúc làm):
 - Điện thoại **giữ** thanh Life Hub + tab đáy chung (không ẩn như Knowledge); tab Muốn đến / Đã đến / Bản đồ nằm trên,
   không ở đáy. Ít đụng `navbar.css` hơn, vẫn có đường sang module khác.
-- **Ảnh trong cảm nhận chưa làm** (cột `place_visits.photos` có sẵn, RPC nhận `p_photos`; UI "Thêm ảnh" để sau).
-- Chưa có cụm số (bong bóng "3") trên bản đồ: gợi ý cụm hiện ở đầu danh sách, bấm thì bản đồ căn khung vừa cụm.
-- Danh mục Tài chính khi thắp đèn lấy từ bản mặc định (`finance-categories.json`), chưa đọc override danh mục của user.
-- Sửa lần ghé (`updateVisit` có trong hook) chưa có UI — G1 chỉ xoá lần ghé.
+- Ảnh trong cảm nhận, sửa lần ghé, bong bóng cụm trên bản đồ, danh mục Tài chính theo override của user: để sau ở
+  G1, **đã làm ở v6.40.0**. Bong bóng dùng `clusterByGrid` (lưới điểm ảnh theo zoom, O(n)); `nearbyClusters` giữ cho gợi
+  ý "một buổi" ở đầu danh sách.
 
 Module mới **Chốn** (Hướng 2 của canvas "Sổ Địa Điểm · 2 hướng"): lưu quán ăn, quán cà phê, chỗ đi chơi, chuyến
 du lịch mình **muốn đến**; tới nơi thì **thắp đèn** (đã đến) và ghi **cảm nhận**. Đèn tắt = chưa đi, đèn sáng = đã

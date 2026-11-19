@@ -20,7 +20,8 @@ import ChonMap from '../components/chon/ChonMap';
 import ChonLayer from '../components/chon/ChonLayer';
 import ChonTripCard from '../components/chon/ChonTripCard';
 import ChonTripSheet from '../components/chon/ChonTripSheet';
-import { KINDS, OCCASIONS, kindOf } from '../components/chon/chonData';
+import { KINDS, OCCASIONS, kindOf, DEFAULT_FINANCE_CATS } from '../components/chon/chonData';
+import { mergeCategoryOverrides } from '../utils/financeLogic';
 import { formatTripRange } from '../utils/tripLogic';
 import {
   filterPlaces, sortPlaces, placeState, areaOptions, nearbyClusters, formatDistance, directionsUrl, timeAgo,
@@ -63,7 +64,7 @@ export default function ChonPage() {
 
   const {
     places, trash, isLoading, loadError, fetchPlaces, addPlace, updatePlace, archivePlace, restorePlace, deletePlace,
-    addSource, deleteSource, lightPlace, deleteVisit, setPlanTask,
+    addSource, deleteSource, lightPlace, updateVisit, deleteVisit, setPlanTask, fetchCategoryOverrides,
   } = usePlaces();
   const tripApi = useTrips();
   const { trips, tripTrash, tripsLoading, fetchTrips, addTrip, updateTrip, archiveTrip, restoreTrip, deleteTrip } = tripApi;
@@ -86,11 +87,21 @@ export default function ChonPage() {
   // ── Hộp thoại ──
   const [capture, setCapture] = useState(() => shareFromQuery(location.search)); // { place?, prefill? }
   const [lighting, setLighting] = useState(null);    // place
+  const [editingVisit, setEditingVisit] = useState(null); // { place, visit }
   const [planning, setPlanning] = useState(null);    // place
   const [menu, setMenu] = useState(null);            // { place, at }
   const [tripSheet, setTripSheet] = useState(null);  // { trip?, prefill? }
 
   useEffect(() => { if (user) { fetchPlaces(); fetchTrips(); } }, [user, fetchPlaces, fetchTrips]);
+
+  // Danh mục Tài chính theo tuỳ chỉnh của user (tên, mức cần thiết) cho Thắp đèn / Chốt chuyến
+  const [finCats, setFinCats] = useState(DEFAULT_FINANCE_CATS);
+  useEffect(() => {
+    if (!user) return undefined;
+    let alive = true;
+    fetchCategoryOverrides().then(rows => { if (alive) setFinCats(mergeCategoryOverrides(DEFAULT_FINANCE_CATS, rows)); });
+    return () => { alive = false; };
+  }, [user, fetchCategoryOverrides]);
 
   // Chia sẻ từ Android: form đã mở sẵn lúc vào trang (shareFromQuery); xoá query để tải lại không mở lại.
   useEffect(() => {
@@ -119,6 +130,12 @@ export default function ChonPage() {
     () => (isMobile ? list : filterPlaces(places, { tab: mapLayer, kind, area, occasion, query })),
     [isMobile, list, places, mapLayer, kind, area, occasion, query],
   );
+  // Chốn mới nhất có toạ độ: tâm bản đồ khi chưa có gì khác để căn (thay vì đóng cứng một thành phố)
+  const recentCenter = useMemo(() => {
+    const p = places.find(x => Number.isFinite(x.lat) && Number.isFinite(x.lng));
+    return p ? { lat: p.lat, lng: p.lng } : null;
+  }, [places]);
+  const missingCoords = useMemo(() => mapPlaces.filter(p => !Number.isFinite(p.lat)).length, [mapPlaces]);
   const detail = placeId ? (places.find(p => p.id === placeId) || null) : null;
   const openTrip = tripId ? (trips.find(t => t.id === tripId) || null) : null;
   // Chốn đích → chuyến (thẻ "Hà Giang loop" có link sang chuyến của nó)
@@ -225,6 +242,14 @@ export default function ChonPage() {
     const r = await deletePlace(p.id);
     if (r.error) showToast(r.error, { icon: 'warning' });
   }, [confirm, deletePlace, showToast]);
+
+  const handleEditVisit = useCallback(async (value) => {
+    const { place: p, visit: v } = editingVisit;
+    const r = await updateVisit(p.id, v.id, value);
+    if (r.error) { showToast(r.error, { icon: 'warning' }); return false; }
+    showToast('Đã lưu lần ghé');
+    return true;
+  }, [editingVisit, updateVisit, showToast]);
 
   const handleDeleteVisit = useCallback(async (p, v) => {
     const ok = await confirm({
@@ -343,7 +368,7 @@ export default function ChonPage() {
 
   const planTripFor = useCallback(p => setTripSheet({ prefill: { title: p.name, region: p.area, place_id: p.id } }), []);
 
-  const anyModal = !!(capture || lighting || planning || menu || detail || tripSheet || tripId);
+  const anyModal = !!(capture || lighting || editingVisit || planning || menu || detail || tripSheet || tripId);
 
   // Phím tắt: / tìm, N lưu chốn
   useEffect(() => {
@@ -407,6 +432,7 @@ export default function ChonPage() {
           onOpenPlace={openPlace}
           onAddSource={handleAddSource}
           onDeleteSource={handleDeleteSource}
+          onEditVisit={(p, v) => setEditingVisit({ place: p, visit: v })}
           onDeleteVisit={handleDeleteVisit}
           onWriteArticle={handleWriteArticle}
           fetchArticles={fetchLinkOptions}
@@ -424,7 +450,11 @@ export default function ChonPage() {
         />
       )}
 
-      {lighting && <ChonLightSheet place={lighting} onSave={handleLight} onClose={() => setLighting(null)} />}
+      {lighting && <ChonLightSheet place={lighting} finCats={finCats} onSave={handleLight} onClose={() => setLighting(null)} />}
+      {editingVisit && (
+        <ChonLightSheet place={editingVisit.place} visit={editingVisit.visit} finCats={finCats}
+          onSave={handleEditVisit} onClose={() => setEditingVisit(null)} />
+      )}
 
       {tripSheet && (
         <ChonTripSheet
@@ -463,6 +493,7 @@ export default function ChonPage() {
                 places={places}
                 today={today}
                 api={tripApi}
+                finCats={finCats}
                 onBack={backToTrips}
                 onEdit={() => setTripSheet({ trip: openTrip })}
                 onTrash={() => handleTrashTrip(openTrip)}
@@ -542,14 +573,19 @@ export default function ChonPage() {
 
         {tab !== 'trash' && !onTrips && (
           <div className="chon-filters" role="group" aria-label="Lọc chốn">
-            <button type="button" className={`chon-chip${!kind ? ' is-on' : ''}`} aria-pressed={!kind} onClick={() => setKind('')}>Tất cả</button>
-            {KINDS.filter(k => k.id !== 'other' || kindCounts.other).map(k => (
-              <button key={k.id} type="button" className={`chon-chip chon-kind--${k.id}${kind === k.id ? ' is-on' : ''}`}
-                aria-pressed={kind === k.id} onClick={() => setKind(kind === k.id ? '' : k.id)}>
-                <AppIcon name={k.icon} size={15} className="chon-chip__icon" />{k.label}
-                <span className="chon-chip__n">{kindCounts[k.id] || 0}</span>
-              </button>
-            ))}
+            {/* Điện thoại: hàng loại chốn cuộn ngang; hàng ô chọn bên dưới KHÔNG cuộn — menu thả xuống của ô chọn
+                là position: absolute, nằm trong khung cuộn sẽ bị cắt. Máy tính: hai nhóm display: contents = một hàng. */}
+            <div className="chon-filters__kinds">
+              <button type="button" className={`chon-chip${!kind ? ' is-on' : ''}`} aria-pressed={!kind} onClick={() => setKind('')}>Tất cả</button>
+              {KINDS.filter(k => k.id !== 'other' || kindCounts.other).map(k => (
+                <button key={k.id} type="button" className={`chon-chip chon-kind--${k.id}${kind === k.id ? ' is-on' : ''}`}
+                  aria-pressed={kind === k.id} onClick={() => setKind(kind === k.id ? '' : k.id)}>
+                  <AppIcon name={k.icon} size={15} className="chon-chip__icon" />{k.label}
+                  <span className="chon-chip__n">{kindCounts[k.id] || 0}</span>
+                </button>
+              ))}
+            </div>
+            <div className="chon-filters__more">
             <span className="chon-filters__sep" aria-hidden="true" />
             <SearchSelect
               className="chon-select"
@@ -558,6 +594,7 @@ export default function ChonPage() {
               value={area}
               onChange={v => setArea(v || '')}
               placeholder="Khu vực"
+              searchPlaceholder="Tìm khu vực…"
               ariaLabel="Lọc theo khu vực"
               noResultsText="Chưa có khu vực này"
             />
@@ -568,6 +605,7 @@ export default function ChonPage() {
               value={occasion}
               onChange={v => setOccasion(v || '')}
               placeholder="Dịp"
+              searchPlaceholder="Chọn dịp"
               ariaLabel="Lọc theo dịp"
               inputProps={{ inputMode: 'none' }}
             />
@@ -579,6 +617,7 @@ export default function ChonPage() {
                 Bỏ lọc
               </button>
             )}
+            </div>
           </div>
         )}
 
@@ -664,6 +703,8 @@ export default function ChonPage() {
               <ChonMap
                 places={mapPlaces}
                 origin={origin}
+                fallbackCenter={recentCenter}
+                missingCount={missingCoords}
                 hoveredId={hoveredId}
                 focus={mapFocus}
                 onSelect={openPlace}

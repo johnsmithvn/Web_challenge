@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import AppIcon from '../AppIcon';
 import { useTheme } from '../../contexts/ThemeContext';
-import { hasCoords, placeState } from '../../utils/placeLogic';
+import { hasCoords, placeState, clusterByGrid, distanceM, formatDistance, routeUrl } from '../../utils/placeLogic';
 
 /**
  * Bản đồ Chốn — Leaflet + OpenStreetMap (docs/PLAN_CHON.md quyết định #1).
@@ -14,7 +14,28 @@ import { hasCoords, placeState } from '../../utils/placeLogic';
  *    ({ points: [{lat,lng}] } → khung vừa các điểm), `onSelect(place)`, `layer` + `onLayer`, `onLocate`.
  *  - `mini` (form Lưu chốn): một ghim kéo được, chạm bản đồ để cắm; `pin`, `onPinChange`.
  */
-const DEFAULT_CENTER = [10.7769, 106.7009]; // trung tâm TP.HCM khi chưa có gì để căn
+// Chưa có gì để căn (không ghim, không vị trí, không chốn có toạ độ): toàn cảnh Việt Nam — không đoán thành phố.
+const VN_CENTER = [16.2, 106.3];
+const VN_ZOOM = 5;
+
+/**
+ * Vị trí của tôi CHỈ khi trình duyệt đã cho phép từ trước — không bật hộp hỏi quyền lúc mở bản đồ
+ * (hỏi quyền chỉ khi user bấm "Gần tôi" / "Về vị trí của tôi" / "Dùng vị trí của tôi").
+ */
+async function silentPosition() {
+  try {
+    if (!navigator.geolocation || !navigator.permissions?.query) return null;
+    const st = await navigator.permissions.query({ name: 'geolocation' });
+    if (st.state !== 'granted') return null;
+    return await new Promise(resolve => navigator.geolocation.getCurrentPosition(
+      pos => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+      () => resolve(null),
+      { enableHighAccuracy: false, timeout: 8000, maximumAge: 600000 },
+    ));
+  } catch {
+    return null;
+  }
+}
 const OSM_URL = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
 const OSM_ATTR = '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a>';
 
@@ -32,7 +53,7 @@ const escapeHtml = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<':
 
 export default function ChonMap({
   places = [], origin = null, hoveredId = null, focus = null, onSelect, layer, onLayer, onLocate,
-  mini = false, pin = null, onPinChange,
+  mini = false, pin = null, onPinChange, fallbackCenter = null, missingCount = 0, caption = '',
 }) {
   const { reduceMotion } = useTheme();
   const boxRef = useRef(null);
@@ -61,7 +82,8 @@ export default function ChonMap({
         zoomAnimation: !reduceMotion,
         fadeAnimation: !reduceMotion,
         markerZoomAnimation: !reduceMotion,
-      }).setView(DEFAULT_CENTER, mini ? 13 : 12);
+      }).setView(hasCoords(fallbackCenter) ? [fallbackCenter.lat, fallbackCenter.lng] : VN_CENTER,
+        hasCoords(fallbackCenter) ? 13 : VN_ZOOM);
       L.tileLayer(OSM_URL, { maxZoom: 19, attribution: OSM_ATTR }).addTo(map);
       map.attributionControl.setPrefix(false);
       groupRef.current = L.layerGroup().addTo(map);
@@ -79,9 +101,22 @@ export default function ChonMap({
       pinRef.current = null;
       meRef.current = null;
     };
-    // reduceMotion / mini chỉ đọc lúc tạo bản đồ
+    // reduceMotion / mini / fallbackCenter chỉ đọc lúc tạo bản đồ
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Chưa có ghim nào để căn và cũng không có chốn gợi ý → thử vị trí của tôi (chỉ khi đã được phép sẵn)
+  useEffect(() => {
+    if (!ready || hasCoords(fallbackCenter) || hasCoords(pin) || places.some(hasCoords)) return undefined;
+    let alive = true;
+    silentPosition().then(pos => {
+      if (!alive || !pos || !mapRef.current || fittedRef.current || pinRef.current) return;
+      mapRef.current.setView([pos.lat, pos.lng], mini ? 15 : 13);
+    });
+    return () => { alive = false; };
+    // chỉ thử một lần lúc bản đồ sẵn sàng
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ready]);
 
   // Khung đổi cỡ (đổi tab, mở cột) → Leaflet phải đo lại
   useEffect(() => {
@@ -91,16 +126,76 @@ export default function ChonMap({
     return () => ro.disconnect();
   }, [ready]);
 
-  // ── Ghim các chốn ──
+  // Mức zoom hiện tại → gom ghim thành bong bóng ở zoom xa
+  const [zoom, setZoom] = useState(12);
+  useEffect(() => {
+    if (!ready || mini) return undefined;
+    const map = mapRef.current;
+    const onZoom = () => setZoom(map.getZoom());
+    map.on('zoomend', onZoom);
+    return () => { map.off('zoomend', onZoom); };
+  }, [ready, mini]);
+
+  // ── Ghim các chốn (+ bong bóng cụm) ──
   useEffect(() => {
     if (!ready || mini) return;
     const L = LRef.current;
+    const map = mapRef.current;
     const group = groupRef.current;
     group.clearLayers();
     const next = new Map();
-    const pts = [];
-    for (const p of places) {
-      if (!hasCoords(p)) continue;
+    const pts = places.filter(hasCoords).map(p => [p.lat, p.lng]);
+    const { singles, clusters } = clusterByGrid(places, map.getZoom());
+
+    for (const c of clusters) {
+      const n = c.places.length;
+      const litAll = c.places.every(p => placeState(p).state === 'visited');
+      const m = L.marker([c.center.lat, c.center.lng], {
+        icon: L.divIcon({
+          className: `chon-cluster${litAll ? ' is-lit' : ''}`,
+          html: `<span class="chon-cluster__dot">${n}</span>`,
+          iconSize: [44, 44],
+          iconAnchor: [22, 22],
+        }),
+        keyboard: true,
+        title: `${n} chốn`,
+        alt: `Cụm ${n} chốn — mở danh sách`,
+        riseOnHover: true,
+      });
+      // Thẻ cụm (mockup 2A): "Quận 4 · 3 chốn trong 900 m", danh sách (bấm = mở chốn), Mở lộ trình N điểm, Phóng to.
+      const area = c.places.find(p => p.area)?.area || '';
+      let span = 0;
+      c.places.forEach((a, i) => c.places.slice(i + 1).forEach(b => { span = Math.max(span, distanceM(a, b)); }));
+      const route = routeUrl(c.places);
+      const html = `<div class="chon-cpop">
+        <p class="chon-cpop__head">${escapeHtml([area, `${n} chốn trong ${formatDistance(Math.max(span, 50))}`].filter(Boolean).join(' · '))}</p>
+        <ul class="chon-cpop__list">${c.places.slice(0, 8).map(p => `<li><button type="button" data-id="${escapeHtml(p.id)}">
+          <span class="chon-cpop__dot${placeState(p).state === 'visited' ? ' is-lit' : ''}" aria-hidden="true"></span>${escapeHtml(p.name)}</button></li>`).join('')}
+          ${n > 8 ? `<li class="chon-cpop__more">+${n - 8} chốn nữa</li>` : ''}</ul>
+        ${route ? `<a class="chon-cpop__route" href="${escapeHtml(route)}" target="_blank" rel="noopener noreferrer">Mở lộ trình ${Math.min(n, 10)} điểm</a>` : ''}
+        <button type="button" class="chon-cpop__zoom" data-act="zoom">Phóng to vùng này</button>
+      </div>`;
+      m.bindPopup(html, { className: 'chon-cpop-wrap', closeButton: true, maxWidth: 280, minWidth: 240, offset: [0, -14] });
+      m.on('popupopen', (e) => {
+        const el = e.popup.getElement();
+        el?.querySelectorAll('[data-id]').forEach(btn => btn.addEventListener('click', () => {
+          const p = c.places.find(x => String(x.id) === btn.dataset.id);
+          map.closePopup();
+          if (p) cbRef.current.onSelect?.(p);
+        }));
+        el?.querySelector('[data-act="zoom"]')?.addEventListener('click', () => {
+          map.closePopup();
+          const b = c.places.map(p => [p.lat, p.lng]);
+          const same = b.every(([la, ln]) => Math.abs(la - b[0][0]) < 1e-5 && Math.abs(ln - b[0][1]) < 1e-5);
+          if (same) map.setView(b[0], Math.min(map.getZoom() + 3, 18));
+          else map.fitBounds(b, { padding: [60, 60], maxZoom: 17 });
+        });
+      });
+      m.addTo(group);
+      c.places.forEach(p => next.set(p.id, m));   // rê thẻ của chốn trong cụm → bong bóng sáng
+    }
+
+    for (const p of singles) {
       const lit = placeState(p).state === 'visited';
       const icon = L.divIcon({
         className: `chon-pin${lit ? ' is-lit' : ''}`,
@@ -115,27 +210,26 @@ export default function ChonMap({
       m.on('click', () => cbRef.current.onSelect?.(p));
       m.addTo(group);
       next.set(p.id, m);
-      pts.push([p.lat, p.lng]);
     }
     markersRef.current = next;
-    // Căn khung một lần khi lần đầu có ghim; sau đó giữ nguyên chỗ user đang xem.
+    // Căn khung một lần khi lần đầu có ghim; sau đó giữ nguyên chỗ user đang xem. Đổi zoom → zoomend → vẽ lại
+    // với cụm mới (zoom nằm trong deps).
     if (!fittedRef.current && pts.length) {
       fittedRef.current = true;
-      if (pts.length === 1) mapRef.current.setView(pts[0], 15);
-      else mapRef.current.fitBounds(pts, { padding: [40, 40], maxZoom: 15 });
+      if (pts.length === 1) map.setView(pts[0], 15);
+      else map.fitBounds(pts, { padding: [40, 40], maxZoom: 15 });
     }
-  }, [ready, mini, places]);
+  }, [ready, mini, places, zoom]);
 
-  // Thẻ đang rê ↔ ghim sáng
+  // Thẻ đang rê ↔ ghim sáng (chốn nằm trong cụm → bong bóng của cụm sáng)
   useEffect(() => {
     if (!ready) return;
-    markersRef.current.forEach((m, id) => {
-      const el = m.getElement();
-      if (!el) return;
-      el.classList.toggle('is-hot', id === hoveredId);
-      if (id === hoveredId) m.setZIndexOffset(1000); else m.setZIndexOffset(0);
+    const hot = hoveredId ? markersRef.current.get(hoveredId) : null;
+    new Set(markersRef.current.values()).forEach((m) => {
+      m.getElement()?.classList.toggle('is-hot', m === hot);
+      m.setZIndexOffset(m === hot ? 1000 : 0);
     });
-  }, [ready, hoveredId, places]);
+  }, [ready, hoveredId, places, zoom]);
 
   // Vị trí của tôi
   useEffect(() => {
@@ -189,12 +283,29 @@ export default function ChonMap({
     }
   }, [ready, mini, pin]);
 
-  const zoom = d => mapRef.current?.[d > 0 ? 'zoomIn' : 'zoomOut']();
+  const zoomBy = d => mapRef.current?.[d > 0 ? 'zoomIn' : 'zoomOut']();
 
   return (
     <div className={`chon-map${mini ? ' chon-map--mini' : ''}`}>
       <div ref={boxRef} className="chon-map__canvas" role="region" aria-label={mini ? 'Bản đồ chọn vị trí chốn' : 'Bản đồ chốn'} />
+      {mini && (
+        <>
+          <span className="chon-map__chip" aria-hidden="true">{hasCoords(pin) ? 'Kéo ghim cho đúng' : 'Chạm để cắm ghim'}</span>
+          {caption && (
+            <p className="chon-map__caption"><AppIcon name="mapPin" size={14} /><span>{caption}</span></p>
+          )}
+        </>
+      )}
       {failed && <p className="chon-map__fail">Không tải được bản đồ. Kiểm tra mạng rồi mở lại trang.</p>}
+      {!mini && missingCount > 0 && (
+        <p className="chon-map__missing" role="status">
+          <AppIcon name="mapPin" size={14} />
+          {missingCount === places.length && !places.some(hasCoords)
+            ? `${missingCount} chốn chưa có vị trí nên chưa hiện trên bản đồ.`
+            : `${missingCount} chốn chưa có vị trí.`}
+          {' '}Sửa chốn → dán link Google Maps đầy đủ hoặc cắm ghim.
+        </p>
+      )}
 
       {!mini && onLayer && (
         <div className="chon-map__layers chon-seg" role="group" aria-label="Lớp bản đồ">
@@ -211,8 +322,8 @@ export default function ChonMap({
       )}
       {!mini && (
         <div className="chon-map__zoom">
-          <button type="button" className="chon-map__btn" aria-label="Phóng to" onClick={() => zoom(1)}><AppIcon name="plus" size={17} /></button>
-          <button type="button" className="chon-map__btn" aria-label="Thu nhỏ" onClick={() => zoom(-1)}><AppIcon name="minus" size={17} /></button>
+          <button type="button" className="chon-map__btn" aria-label="Phóng to" onClick={() => zoomBy(1)}><AppIcon name="plus" size={17} /></button>
+          <button type="button" className="chon-map__btn" aria-label="Thu nhỏ" onClick={() => zoomBy(-1)}><AppIcon name="minus" size={17} /></button>
         </div>
       )}
       {!mini && (

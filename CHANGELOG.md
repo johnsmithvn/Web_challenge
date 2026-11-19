@@ -1,5 +1,39 @@
 # CHANGELOG
 
+## v6.40.0 — 2026-11-19
+
+### Added
+- **Chốn — ảnh khi thắp đèn (`ChonLightSheet.jsx`):** "Thêm ảnh" dùng lại `UrlInputPopover` (dán link hoặc tải lên Drive
+  qua `/api/upload`), tối đa 10 ảnh / lần ghé (`MAX_PHOTOS`, khớp CHECK DB). Ảnh hiện ở "Những lần ghé" của chi tiết chốn;
+  file Drive đi qua `/api/stream` (`photoSrc`, có test).
+- **Chốn — sửa một lần ghé:** nút bút ở mỗi lần ghé mở lại màn Thắp đèn ở chế độ sửa (`updateVisit`). Giao dịch Tài
+  chính đã ghi không đổi — màn sửa ghi rõ "sửa số tiền bên Tài chính".
+- **Chốn — bong bóng cụm trên bản đồ (`ChonMap.jsx`, `clusterByGrid` + test):** zoom xa thì chốn gần nhau gom thành vòng
+  số (cả cụm đã đến thì tô đặc), rê thẻ của chốn trong cụm thì bong bóng sáng, bấm thì phóng vừa cụm. Từ zoom 16 hiện
+  từng ghim.
+
+### Changed
+- **Chốn ghi Tài chính theo danh mục của bạn:** thắp đèn / chốt chuyến đọc `finance_category_overrides` (chỉ đọc, một bảng)
+  để dùng đúng tên + mức cần thiết bạn đã chỉnh; danh mục con mặc định bạn đã bỏ thì ghi theo nhóm. Phép ghép override
+  tách thành hàm thuần `mergeCategoryOverrides` (`financeLogic.js`, có test) — `useFinance` dùng chung, không đổi hành vi.
+
+- **Chốn — so lại với thiết kế 2A–2E:** bong bóng cụm tô đặc màu đèn + **thẻ cụm** ("Quận 4 · 3 chốn trong 900 m",
+  danh sách bấm mở chốn, **Mở lộ trình N điểm** = Google Maps chỉ đường qua các chốn, `routeUrl` có test, Phóng to);
+  form Lưu chốn có **khối xem trước** đầu form (hình theo loại đổi ngay, nhãn nguồn, loại · khu vực, tên, lời trích),
+  thứ tự Ở đâu → Loại như mockup, bản đồ nhỏ có chip "Kéo ghim cho đúng" + thanh địa chỉ; nút đáy chi tiết chốn nổi
+  trên nền mờ dần.
+- **Chốn — bản đồ không còn đóng cứng TP.HCM:** chưa có ghim thì căn theo vị trí của bạn (chỉ khi trình duyệt đã cho
+  phép sẵn, không bật hộp hỏi quyền) → chốn mới nhất có toạ độ → toàn cảnh Việt Nam. Có dòng nhắc "N chốn chưa có vị
+  trí". Form Lưu chốn có "Tôi đang ở đây" (cắm ghim ở vị trí hiện tại).
+
+### Fixed
+- **Chốn — điện thoại: menu Khu vực / Dịp bị cắt:** thanh lọc cuộn ngang (`overflow-x`) cắt menu `position: absolute`
+  của SearchSelect. Tách hai hàng: loại chốn cuộn ngang, ô chọn + Gần tôi không cuộn (máy tính vẫn một hàng).
+- **Chốn — menu thả xuống Khu vực / Dịp bị bản đồ đè:** lớp Leaflet (z-index 400+) nay bị nhốt trong khung bản đồ
+  (`isolation`), thanh lọc nằm lớp trên. Ô tìm của menu Dịp không còn ghi "Gõ để tìm kiếm".
+- **Chốn — lịch chọn ngày trong form làm khung dài ra:** lịch ở Thắp đèn và form Chuyến đi nổi cố định cạnh nút
+  (`popoverAt`), không còn nằm trong vùng cuộn của sheet.
+
 ## v6.39.0 — 2026-11-19
 
 ### Added

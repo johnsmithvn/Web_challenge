@@ -8,9 +8,9 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import {
   PLACE_KIND_IDS, OCCASION_IDS, REVISIT_IDS, PLATFORM_IDS,
-  placeState, filterPlaces, areaOptions, distanceM, formatDistance, sortPlaces, nearbyClusters, nearbyWant,
+  placeState, filterPlaces, areaOptions, distanceM, formatDistance, sortPlaces, nearbyClusters, nearbyWant, clusterByGrid, routeUrl,
   parseMapsUrl, detectPlatform, directionsUrl, findDuplicatePlace, looksLikeAddress, splitAddress, cleanList, dishMentions, ratingLabel,
-  shortDay, planBadge, timeAgo, formatPriceShort, cleanPlace, cleanSource, cleanVisit,
+  shortDay, planBadge, timeAgo, formatPriceShort, cleanPlace, cleanSource, cleanVisit, photoSrc, MAX_PHOTOS,
 } from '../../utils/placeLogic.js';
 
 const p = (id, name, extra = {}) => ({
@@ -118,6 +118,33 @@ assert.deepEqual(placeState(p(1, 'A')), { state: 'want', lastVisit: null, visitC
   // a→c ≈ 400 m, a→b ≈ 440 m, a→d ≈ 720 m
   assert.deepEqual(near.map(x => x.place.id), ['c', 'b', 'd'], 'bỏ chính nó, chốn đã đến, thùng rác; gần trước, tối đa 3');
   assert.deepEqual(nearbyWant(p('z', 'z'), list), []);
+}
+
+// routeUrl (Mở lộ trình N điểm)
+{
+  const at = (id, lat, lng) => p(id, id, { lat, lng });
+  const url = routeUrl([at('a', 10.0, 106.0), at('far', 10.05, 106.0), at('near', 10.01, 106.0), p('x', 'không toạ độ')]);
+  assert.equal(url, `https://www.google.com/maps/dir/?api=1&destination=10.05,106&waypoints=${encodeURIComponent('10,106|10.01,106')}`,
+    'gần nhất trước: a → near → far (đích), bỏ chốn không toạ độ');
+  assert.equal(routeUrl([at('a', 10.5, 106.25)]), 'https://www.google.com/maps/dir/?api=1&destination=10.5,106.25');
+  assert.equal(routeUrl([p('x', 'x')]), '');
+  const many = Array.from({ length: 14 }, (_, i) => at(`m${i}`, 10 + i * 0.001, 106));
+  assert.equal(decodeURIComponent(routeUrl(many).split('waypoints=')[1]).split('|').length, 9, 'tối đa 10 chốn (9 điểm dừng + đích)');
+}
+
+// clusterByGrid (bong bóng trên bản đồ)
+{
+  const at = (id, lat, lng) => p(id, id, { lat, lng });
+  const list = [at('a', 10.7570, 106.7000), at('b', 10.7575, 106.7005), at('c', 10.80, 106.65), p('none', 'không toạ độ')];
+  const far = clusterByGrid(list, 11);
+  assert.equal(far.clusters.length, 1, 'zoom xa: a + b chung ô');
+  assert.deepEqual(far.clusters[0].places.map(x => x.id).sort(), ['a', 'b']);
+  assert.ok(Math.abs(far.clusters[0].center.lat - 10.75725) < 1e-9);
+  assert.deepEqual(far.singles.map(x => x.id), ['c'], 'không toạ độ bị bỏ');
+  const near = clusterByGrid(list, 16);
+  assert.equal(near.clusters.length, 0, 'zoom gần: không gom');
+  assert.equal(near.singles.length, 3);
+  assert.deepEqual(clusterByGrid([], 10), { singles: [], clusters: [] });
 }
 
 // parseMapsUrl
@@ -266,6 +293,16 @@ assert.equal(cleanSource({ url: 'https://foody.vn/x', platform: 'friend' }).valu
   assert.deepEqual(value.liked_dishes, ['Ốc len'], 'món ngon phải nằm trong món đã gọi');
   assert.equal(value.spent, 360000);
   assert.equal(cleanVisit({ revisit: 'x' }, today).value.revisit, null);
+  const many = Array.from({ length: 14 }, (_, i) => `https://img.example/${i}.jpg`);
+  assert.deepEqual(cleanVisit({ photos: ['javascript:x', 'img.example/a.jpg', 'https://img.example/a.jpg', ''] }, today).value.photos,
+    ['https://img.example/a.jpg'], 'chỉ link http(s), bỏ trùng');
+  assert.equal(cleanVisit({ photos: many }, today).value.photos.length, MAX_PHOTOS, 'tối đa 10 ảnh (CHECK của DB)');
+}
+
+// photoSrc
+{
+  assert.equal(photoSrc('https://drive.google.com/file/d/AbC123_x/view'), '/api/stream?id=AbC123_x', 'Drive qua proxy');
+  assert.equal(photoSrc('https://img.example/a.jpg'), 'https://img.example/a.jpg');
 }
 
 console.log('Place logic check: OK');

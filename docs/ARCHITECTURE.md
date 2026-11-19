@@ -162,8 +162,9 @@ useCollections (fetchLinkOptions, addItem cho "Viết thành bài")
 - Đã đến = có `place_visits` (không có cột trạng thái). Liên kết sang module khác chỉ nằm ở bảng Chốn
   (`places.plan_task_id`, `place_sources.collection_id`, `place_visits.finance_tx_id`).
 - Thắp đèn có chi phí ghi hai bảng trong RPC `light_place` (SECURITY INVOKER) — không optimistic. Danh mục + necessity
-  tính ở client từ `place-kinds.json` + `finance-categories.json` (`deriveNecessity`), chưa đọc override danh mục
-  riêng của user bên Finance.
+  tính ở client: `place-kinds.json` chọn nhóm / danh mục con, ghép tuỳ chỉnh của user bằng
+  `financeLogic.mergeCategoryOverrides` (cùng hàm `useFinance` dùng) trên dữ liệu `usePlaces.fetchCategoryOverrides` —
+  một lần đọc chỉ bảng `finance_category_overrides`, không mount `useFinance` (kéo cả giao dịch / hoá đơn / thẻ).
 - Chuẩn bị của chuyến: một nguồn sự thật mỗi lúc — trước khi đẩy là `trips.prep_items`, đẩy rồi là việc cha + việc
   con bên Nhiệm vụ (`trips.prep_task_id`), `prep_items` rỗng.
 - Bản đồ: tile OpenStreetMap tải trực tiếp từ `tile.openstreetmap.org` (OSM thấy vùng đang xem); vị trí người dùng chỉ

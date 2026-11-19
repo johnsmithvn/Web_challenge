@@ -237,6 +237,24 @@ export function usePlaces() {
     return { data: true };
   }, [enabled, userId, patchPlace]);
 
+  // ── Danh mục Tài chính của user (chỉ đọc) ──
+  /**
+   * Tuỳ chỉnh danh mục chi của user để ghi chi phí khi thắp đèn / chốt chuyến đúng tên + mức cần thiết của họ.
+   * Đọc riêng một bảng nhỏ thay vì mount useFinance (kéo cả giao dịch, hoá đơn, thẻ…). Ghép bằng
+   * financeLogic.mergeCategoryOverrides — cùng hàm useFinance dùng. Lỗi → [] (dùng bộ mặc định).
+   */
+  const fetchCategoryOverrides = useCallback(async () => {
+    if (!enabled) return [];
+    const { data, error } = await supabase.from('finance_category_overrides')
+      .select('category_id, kind, label, hidden, necessity, subs')
+      .eq('user_id', userId).eq('kind', 'expense');
+    if (error) {
+      logger.warn('[usePlaces] category overrides:', error.message);
+      return [];
+    }
+    return data || [];
+  }, [enabled, userId]);
+
   // ── Hẹn ngày (việc tạo bởi useUserTasks.addTask ở component hẹn) ──
   /** @param {{ id, title, due_date, completed }|null} task */
   const setPlanTask = useCallback(async (placeId, task) => {
@@ -274,5 +292,6 @@ export function usePlaces() {
     updateVisit,    // (placeId, visitId, patch)
     deleteVisit,    // (placeId, visitId)
     setPlanTask,    // (placeId, task|null)
+    fetchCategoryOverrides, // () => Promise<override rows[]>
   };
 }

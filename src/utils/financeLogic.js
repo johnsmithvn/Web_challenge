@@ -34,6 +34,25 @@ export function deriveNecessity(categoryId, subcategoryId, cats) {
   return (cats && cats.necessityByCat && cats.necessityByCat[categoryId]) || 'want';
 }
 
+/**
+ * Ghép tuỳ chỉnh danh mục của user (`finance_category_overrides`) vào bộ mặc định (finance-categories.json):
+ * nhóm có override lấy tên / màu / icon / ẩn / necessity / danh mục con của user (subs null = giữ mặc định),
+ * `necessityByCat` theo override. Dùng chung cho useFinance và Chốn (ghi chi phí khi thắp đèn / chốt chuyến).
+ * @param base — object finance-categories.json · @param overrides — dòng finance_category_overrides
+ */
+export function mergeCategoryOverrides(base, overrides = []) {
+  const merge = (groups = []) => groups.map(group => {
+    const override = overrides.find(o => o.category_id === group.key);
+    return override ? { ...group, ...override, key: group.key,
+      subs: Array.isArray(override.subs) ? override.subs : group.subs } : group;
+  });
+  const necessityByCat = { ...base.necessityByCat };
+  for (const override of overrides) {
+    if (override.necessity) necessityByCat[override.category_id] = override.necessity;
+  }
+  return { ...base, necessityByCat, expenseGroups: merge(base.expenseGroups), incomeGroups: merge(base.incomeGroups) };
+}
+
 // ── Date helpers thuần (chuỗi 'yyyy-MM-dd', so sánh chuỗi ISO là đủ) ─────────
 function pad(n) { return String(n).padStart(2, '0'); }
 export function ymd(date) {

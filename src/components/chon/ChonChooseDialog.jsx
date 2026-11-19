@@ -10,8 +10,8 @@ import { parseCurrencyInput, formatVND } from '../../utils/currencyUtils';
  *
  * @param {(finance|null) => Promise<boolean>} onConfirm — finance = { amount, category_id, subcategory_id, necessity }
  */
-export default function ChonChooseDialog({ trip, option, letter, onConfirm, onClose }) {
-  const fin = financeFor('travel');
+export default function ChonChooseDialog({ trip, option, letter, finCats, onConfirm, onClose }) {
+  const fin = financeFor('travel', finCats);
   const suggested = option.price_per_person ? option.price_per_person * (trip.people || 1) : 0;
   const [amount, setAmount] = useState(suggested ? String(suggested) : '');
   const [toFinance, setToFinance] = useState(suggested > 0 && !trip.finance_tx_id);

@@ -6,7 +6,7 @@
  * do usePlaces nạp. "Muốn đến" / "Đã đến" không lưu: đã đến = có ít nhất một lần đến.
  */
 import { normalizeVi } from './kbDeriveUtils.js';
-import { normalizeHttpUrl } from './mediaUtils.js';
+import { normalizeHttpUrl, getDriveStreamUrl } from './mediaUtils.js';
 
 const DAY_MS = 86400000;
 
@@ -18,6 +18,12 @@ export const PLATFORM_IDS = ['tiktok', 'facebook', 'instagram', 'youtube', 'thre
 
 export const MAX_MUST_TRY = 20;
 export const MAX_DISHES = 30;
+export const MAX_PHOTOS = 10;   // khớp CHECK cardinality(photos) <= 10
+
+/** src để hiện ảnh: file Drive (upload của app) đi qua /api/stream như media của Kiến thức; link khác giữ nguyên. */
+export function photoSrc(url) {
+  return getDriveStreamUrl(url) || url;
+}
 
 /* ── Trạng thái ─────────────────────────────────────────────── */
 
@@ -180,6 +186,40 @@ export function nearbyClusters(places, { radiusM = 1000, minSize = 3 } = {}) {
   return clusters;
 }
 
+/**
+ * Gom ghim trên bản đồ theo lưới điểm ảnh ở mức zoom hiện tại (Web Mercator, ô `cellPx`): chốn rơi cùng ô thành một
+ * bong bóng số. O(n) — dùng cho bản đồ (nearbyClusters ở trên là gợi ý "một buổi", chậm hơn với nhiều chốn).
+ * Từ `maxZoom` trở lên không gom.
+ * @returns {{ singles: object[], clusters: { places: object[], center: {lat,lng} }[] }}
+ */
+export function clusterByGrid(places, zoom, { cellPx = 64, maxZoom = 16 } = {}) {
+  const pts = (places || []).filter(hasCoords);
+  if (zoom >= maxZoom) return { singles: pts, clusters: [] };
+  const scale = 256 * 2 ** zoom;
+  const cells = new Map();
+  for (const p of pts) {
+    const x = ((p.lng + 180) / 360) * scale;
+    const s = Math.sin((Math.max(-85, Math.min(85, p.lat)) * Math.PI) / 180);
+    const y = (0.5 - Math.log((1 + s) / (1 - s)) / (4 * Math.PI)) * scale;
+    const key = `${Math.floor(x / cellPx)}:${Math.floor(y / cellPx)}`;
+    if (!cells.has(key)) cells.set(key, []);
+    cells.get(key).push(p);
+  }
+  const singles = [];
+  const clusters = [];
+  for (const group of cells.values()) {
+    if (group.length === 1) { singles.push(group[0]); continue; }
+    clusters.push({
+      places: group,
+      center: {
+        lat: group.reduce((t, p) => t + p.lat, 0) / group.length,
+        lng: group.reduce((t, p) => t + p.lng, 0) / group.length,
+      },
+    });
+  }
+  return { singles, clusters };
+}
+
 /** Chốn muốn đến khác trong bán kính, gần trước (khối "Gần đây cũng muốn đến"). */
 export function nearbyWant(place, places, { radiusM = 1000, limit = 3 } = {}) {
   if (!hasCoords(place)) return [];
@@ -290,6 +330,28 @@ export function splitAddress(text) {
   area = area.replace(/^q\.?\s*(\d+)$/i, 'Quận $1').trim();
   if (/^(p\.|phường|phuong)/i.test(area)) area = area.replace(ADMIN_PREFIX, '').trim();
   return { address, area: area.slice(0, 60) };
+}
+
+/**
+ * Link Google Maps chỉ đường qua nhiều chốn (thẻ cụm "Mở lộ trình N điểm", mockup 2A). Bỏ chốn không toạ độ;
+ * xếp tham lam gần nhất trước (bắt đầu từ chốn đầu); không đặt origin để Maps tự lấy vị trí hiện tại.
+ * Maps nhận tối đa 9 điểm dừng giữa → tối đa 10 chốn. Ít hơn 1 chốn → ''.
+ */
+export function routeUrl(places) {
+  const pts = (places || []).filter(hasCoords);
+  if (!pts.length) return '';
+  const ordered = [pts[0]];
+  const rest = pts.slice(1);
+  while (rest.length && ordered.length < 10) {
+    const last = ordered[ordered.length - 1];
+    let bi = 0;
+    rest.forEach((p, i) => { if (distanceM(last, p) < distanceM(last, rest[bi])) bi = i; });
+    ordered.push(rest.splice(bi, 1)[0]);
+  }
+  const ll = p => `${p.lat},${p.lng}`;
+  const dest = ordered[ordered.length - 1];
+  const stops = ordered.slice(0, -1).map(ll).join('|');
+  return `https://www.google.com/maps/dir/?api=1&destination=${ll(dest)}${stops ? `&waypoints=${encodeURIComponent(stops)}` : ''}`;
 }
 
 /* ── Gộp trùng ──────────────────────────────────────────────── */
@@ -491,6 +553,6 @@ export function cleanVisit(f = {}, today) {
   if (note.length > 4000) return { error: 'Cảm nhận quá dài (tối đa 4000 ký tự).' };
   const spent = f.spent == null || f.spent === '' ? null : Math.round(Number(f.spent));
   if (spent != null && !(Number.isFinite(spent) && spent >= 0)) return { error: 'Chi phí không hợp lệ.' };
-  const photos = (f.photos || []).filter(Boolean).slice(0, 10);
+  const photos = [...new Set((f.photos || []).map(normalizeHttpUrl).filter(Boolean))].slice(0, MAX_PHOTOS);
   return { value: { visited_on, rating, revisit, dishes, liked_dishes, party_size: party, note, photos, spent } };
 }

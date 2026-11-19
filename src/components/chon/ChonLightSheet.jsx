@@ -2,42 +2,53 @@ import { useMemo, useRef, useState } from 'react';
 import AppIcon from '../AppIcon';
 import ChonSheet from './ChonSheet';
 import DatePickerPopover from '../DatePickerPopover';
-import { REVISITS, financeFor } from './chonData';
-import { cleanVisit, cleanList, dishMentions, placeState, ratingLabel, shortDay, MAX_DISHES } from '../../utils/placeLogic';
+import UrlInputPopover from '../UrlInputPopover';
+import { REVISITS, financeFor, popoverAt } from './chonData';
+import {
+  cleanVisit, cleanList, dishMentions, placeState, ratingLabel, shortDay, photoSrc, MAX_DISHES, MAX_PHOTOS,
+} from '../../utils/placeLogic';
+import { normalizeHttpUrl } from '../../utils/mediaUtils';
 import { parseCurrencyInput, formatVND } from '../../utils/currencyUtils';
 import { toDateStr } from '../../utils/dateUtils';
 
 /**
- * Thắp đèn & cảm nhận (mockup 2D). Ngày đến (mặc định hôm nay, đổi được), 5 sao + nhãn, Sẽ quay lại /
- * Có thể / Một lần thôi, Món đã gọi (chip từ món nên thử, chạm = ngon ♥), cảm nhận, số người, chi phí +
- * công tắc ghi vào Tài chính. "Để sau" đóng không lưu. Lưu = RPC light_place (một transaction).
+ * Thắp đèn & cảm nhận (mockup 2D) — hoặc Sửa một lần ghé khi có `visit`.
+ * Ngày đến (mặc định hôm nay, đổi được), 5 sao + nhãn, Sẽ quay lại / Có thể / Một lần thôi, Món đã gọi (chip từ
+ * món nên thử, chạm = ngon ♥), cảm nhận, số người, ảnh (dán link hoặc tải lên Drive qua UrlInputPopover dùng chung),
+ * chi phí + công tắc ghi vào Tài chính. "Để sau" đóng không lưu.
+ * Thắp mới: RPC light_place (một transaction). Sửa: chỉ sửa lần ghé — giao dịch Tài chính đã ghi (nếu có) giữ nguyên,
+ * sửa số tiền ở Tài chính.
  *
- * @param {(visit, finance|null) => Promise<boolean>} onSave
+ * @param {object|null} visit — có = Sửa lần ghé
+ * @param {(visit, finance|null) => Promise<boolean>} onSave — finance luôn null khi sửa
  */
-export default function ChonLightSheet({ place, onSave, onClose }) {
+export default function ChonLightSheet({ place, visit = null, finCats, onSave, onClose }) {
+  const editing = !!visit;
   const today = toDateStr();
   const st = placeState(place);
-  const fin = useMemo(() => financeFor(place.kind), [place.kind]);
+  const fin = useMemo(() => financeFor(place.kind, finCats), [place.kind, finCats]);
   const suggested = useMemo(() => dishMentions(place).map(d => d.name).slice(0, 12), [place]);
 
-  const [visitedOn, setVisitedOn] = useState(today);
-  const [pickDate, setPickDate] = useState(false);
-  const [rating, setRating] = useState(null);
-  const [revisit, setRevisit] = useState(null);
-  const [dishes, setDishes] = useState(suggested);   // món hiện trên màn (gợi ý + tự thêm)
-  const [ordered, setOrdered] = useState([]);        // đã gọi
-  const [liked, setLiked] = useState([]);            // ngon (luôn nằm trong đã gọi)
+  const [visitedOn, setVisitedOn] = useState(visit?.visited_on || today);
+  const [datePop, setDatePop] = useState(null);         // style của lịch khi đang mở
+  const [rating, setRating] = useState(visit?.rating ?? null);
+  const [revisit, setRevisit] = useState(visit?.revisit ?? null);
+  const [dishes, setDishes] = useState(() => cleanList([...(visit?.dishes || []), ...suggested], MAX_DISHES));
+  const [ordered, setOrdered] = useState(visit?.dishes || []);      // đã gọi
+  const [liked, setLiked] = useState(visit?.liked_dishes || []);    // ngon (luôn nằm trong đã gọi)
   const [dish, setDish] = useState('');
-  const [note, setNote] = useState('');
-  const [party, setParty] = useState('');
-  const [spent, setSpent] = useState('');
+  const [note, setNote] = useState(visit?.note || '');
+  const [party, setParty] = useState(visit?.party_size ? String(visit.party_size) : '');
+  const [spent, setSpent] = useState(visit?.spent ? String(visit.spent) : '');
   const [toFinance, setToFinance] = useState(true);
+  const [photos, setPhotos] = useState(visit?.photos || []);
+  const [photoOpen, setPhotoOpen] = useState(false);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
-  const dateBtnRef = useRef(null);
+  const photoBtnRef = useRef(null);
 
   const spentNum = spent ? parseCurrencyInput(spent) : 0;
-  const writeFinance = toFinance && spentNum > 0;
+  const writeFinance = !editing && toFinance && spentNum > 0;
 
   // Chạm món: chưa gọi → đã gọi + ngon; ngon → chỉ đã gọi; đã gọi → bỏ.
   const cycleDish = (d) => {
@@ -57,11 +68,18 @@ export default function ChonLightSheet({ place, onSave, onClose }) {
     setDish('');
   };
 
+  const addPhoto = (raw) => {
+    const url = normalizeHttpUrl(raw);
+    if (!url) { setError('Link ảnh không hợp lệ.'); return; }
+    setError('');
+    setPhotos(p => (p.includes(url) ? p : [...p, url].slice(0, MAX_PHOTOS)));
+  };
+
   const submit = async () => {
     if (busy) return;
     const res = cleanVisit({
       visited_on: visitedOn, rating, revisit, dishes: ordered, liked_dishes: liked,
-      party_size: party, note, spent: spentNum || null,
+      party_size: party, note, spent: spentNum || null, photos,
     }, today);
     if (res.error) { setError(res.error); return; }
     setError('');
@@ -72,25 +90,25 @@ export default function ChonLightSheet({ place, onSave, onClose }) {
   };
 
   const dayLabel = visitedOn === today ? 'hôm nay' : shortDay(visitedOn);
-  const nth = st.visitCount === 0 ? 'lần đầu' : `lần thứ ${st.visitCount + 1}`;
+  const nth = editing ? 'sửa lần ghé' : st.visitCount === 0 ? 'lần đầu' : `lần thứ ${st.visitCount + 1}`;
 
   return (
     <ChonSheet
       hideHeader
-      label={`Thắp đèn ${place.name}`}
+      label={editing ? `Sửa lần ghé ${place.name}` : `Thắp đèn ${place.name}`}
       title={place.name}
       onClose={onClose}
       size="sm"
       className="chon-light"
       footer={(
         <button type="button" className="chon-btn chon-btn--lamp chon-btn--grow chon-btn--lg" onClick={submit} disabled={busy}>
-          <AppIcon name="check" size={18} weight="bold" />Lưu cảm nhận
+          <AppIcon name="check" size={18} weight="bold" />{editing ? 'Lưu thay đổi' : 'Lưu cảm nhận'}
         </button>
       )}
     >
       <div className="chon-light__top">
         <button type="button" className="chon-icon-btn" onClick={onClose} aria-label="Đóng"><AppIcon name="x" size={18} /></button>
-        <button type="button" className="chon-btn chon-btn--text" onClick={onClose}>Để sau</button>
+        <button type="button" className="chon-btn chon-btn--text" onClick={onClose}>{editing ? 'Huỷ' : 'Để sau'}</button>
       </div>
 
       <div className="chon-light__hero">
@@ -108,23 +126,22 @@ export default function ChonLightSheet({ place, onSave, onClose }) {
         <h2 className="chon-light__name">{place.name}</h2>
         <p className="chon-light__when">
           Đã đến {dayLabel} · {nth} ·{' '}
-          <span className="chon-pop-anchor">
-            <button type="button" ref={dateBtnRef} className="chon-link" onClick={() => setPickDate(v => !v)} aria-expanded={pickDate}>
-              Đổi ngày
-            </button>
-            {pickDate && (
-              <DatePickerPopover
-                value={visitedOn}
-                onChange={d => d && setVisitedOn(d > today ? today : d)}
-                onClose={() => setPickDate(false)}
-                hideTime
-                max={today}
-                label="Ngày đến"
-                style={{ top: '100%', left: '50%', transform: 'translateX(-50%)', marginTop: 6 }}
-              />
-            )}
-          </span>
+          <button type="button" className="chon-link" aria-expanded={!!datePop}
+            onClick={e => setDatePop(datePop ? null : popoverAt(e.currentTarget))}>
+            Đổi ngày
+          </button>
         </p>
+        {datePop && (
+          <DatePickerPopover
+            value={visitedOn}
+            onChange={d => d && setVisitedOn(d > today ? today : d)}
+            onClose={() => setDatePop(null)}
+            hideTime
+            max={today}
+            label="Ngày đến"
+            style={datePop}
+          />
+        )}
       </div>
 
       <div className="chon-light__body">
@@ -179,7 +196,25 @@ export default function ChonLightSheet({ place, onSave, onClose }) {
             <textarea id="chon-light-note" className="chon-input chon-textarea chon-input--bare" rows={3} maxLength={4000}
               value={note} onChange={e => setNote(e.target.value)} data-autofocus
               placeholder="Ngon gì, dở gì, mẹo cho lần sau…" />
+            {photos.length > 0 && (
+              <ul className="chon-photos" aria-label="Ảnh của lần ghé">
+                {photos.map(url => (
+                  <li key={url} className="chon-photo">
+                    <img src={photoSrc(url)} alt="" loading="lazy" />
+                    <button type="button" className="chon-photo__x" aria-label="Bỏ ảnh này" onClick={() => setPhotos(p => p.filter(x => x !== url))}>
+                      <AppIcon name="x" size={12} weight="bold" />
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
             <div className="chon-note-box__tools">
+              {photos.length < MAX_PHOTOS && (
+                <button type="button" ref={photoBtnRef} className="chon-mini-field chon-mini-field--btn" onClick={() => setPhotoOpen(v => !v)}
+                  aria-expanded={photoOpen}>
+                  <AppIcon name="camera" size={14} />Thêm ảnh{photos.length ? ` (${photos.length}/${MAX_PHOTOS})` : ''}
+                </button>
+              )}
               <label className="chon-mini-field">
                 <AppIcon name="users" size={14} />
                 Đi
@@ -189,6 +224,17 @@ export default function ChonLightSheet({ place, onSave, onClose }) {
               </label>
             </div>
           </div>
+          <UrlInputPopover
+            open={photoOpen}
+            onClose={() => setPhotoOpen(false)}
+            onSubmit={addPhoto}
+            label="Ảnh"
+            placeholder="Dán link ảnh hoặc tải lên"
+            icon="image"
+            allowUpload
+            accept="image/*"
+            anchorRef={photoBtnRef}
+          />
         </section>
 
         <div className="chon-panel chon-spend">
@@ -198,13 +244,17 @@ export default function ChonLightSheet({ place, onSave, onClose }) {
               inputMode="decimal" placeholder="Chi phí: 360k" aria-label="Chi phí" />
             <span className="chon-spend__hint">
               {spentNum > 0 ? formatVND(spentNum) : 'Tổng cả nhóm, gõ 360k hoặc 360.000'}
-              {writeFinance ? ` · sẽ ghi vào Tài chính · ${fin.label}` : spentNum > 0 ? ' · không ghi Tài chính' : ''}
+              {editing
+                ? (visit.finance_tx_id ? ' · đã ghi Tài chính lúc thắp đèn — sửa số tiền bên Tài chính' : ' · chỉ lưu ở lần ghé')
+                : writeFinance ? ` · sẽ ghi vào Tài chính · ${fin.label}` : spentNum > 0 ? ' · không ghi Tài chính' : ''}
             </span>
           </div>
-          <button type="button" role="switch" aria-checked={toFinance} aria-label="Ghi vào Tài chính"
-            className={`chon-switch${toFinance ? ' is-on' : ''}`} onClick={() => setToFinance(v => !v)}>
-            <span aria-hidden="true" />
-          </button>
+          {!editing && (
+            <button type="button" role="switch" aria-checked={toFinance} aria-label="Ghi vào Tài chính"
+              className={`chon-switch${toFinance ? ' is-on' : ''}`} onClick={() => setToFinance(v => !v)}>
+              <span aria-hidden="true" />
+            </button>
+          )}
         </div>
 
         {error && <p className="chon-error" role="alert">{error}</p>}

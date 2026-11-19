@@ -3,7 +3,7 @@ import { supabase, isSupabaseEnabled } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { logger } from '../utils/logger';
 import { toDateStr } from '../utils/dateUtils';
-import { deriveNecessity, blendedRate, loanSchedule, cardCycle } from '../utils/financeLogic';
+import { deriveNecessity, blendedRate, loanSchedule, cardCycle, mergeCategoryOverrides } from '../utils/financeLogic';
 import BASE_CATS from '../data/finance-categories.json';
 
 /**
@@ -107,20 +107,7 @@ export function useFinance({ autoFetch = true } = {}) {
     }
   }, [enabled, userId, dataFrom]);
 
-  const cats = useMemo(() => {
-    const merge = (base) => base.map(group => {
-        const override = categoryOverrides.find(o => o.category_id === group.key);
-        return override ? { ...group, ...override, key: group.key,
-          subs: Array.isArray(override.subs) ? override.subs : group.subs } : group;
-      });
-    const necessityByCat = { ...BASE_CATS.necessityByCat };
-    for (const override of categoryOverrides) {
-      if (override.necessity) necessityByCat[override.category_id] = override.necessity;
-    }
-    return { ...BASE_CATS, necessityByCat,
-      expenseGroups: merge(BASE_CATS.expenseGroups),
-      incomeGroups: merge(BASE_CATS.incomeGroups) };
-  }, [categoryOverrides]);
+  const cats = useMemo(() => mergeCategoryOverrides(BASE_CATS, categoryOverrides), [categoryOverrides]);
 
   useEffect(() => {
     if (enabled && autoFetch && !fetchedRef.current) { fetchedRef.current = true; fetchAll(); }

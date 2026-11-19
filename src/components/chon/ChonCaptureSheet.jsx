@@ -2,7 +2,8 @@ import { useMemo, useState } from 'react';
 import AppIcon from '../AppIcon';
 import ChonSheet from './ChonSheet';
 import ChonMap from './ChonMap';
-import { KINDS, OCCASIONS, PLATFORMS } from './chonData';
+import ChonKindArt from './ChonKindArt';
+import { KINDS, OCCASIONS, PLATFORMS, kindOf } from './chonData';
 import {
   cleanPlace, cleanSource, parseMapsUrl, detectPlatform, findDuplicatePlace, cleanList, looksLikeAddress, splitAddress, MAX_MUST_TRY,
 } from '../../utils/placeLogic';
@@ -59,6 +60,31 @@ export default function ChonCaptureSheet({ place = null, prefill = {}, places, o
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const [mergeDismissed, setMergeDismissed] = useState(false);
+  const [locating, setLocating] = useState(false);
+
+  // Tâm bản đồ nhỏ khi chưa có ghim: chốn mới nhất có toạ độ (thường cùng thành phố) — không đóng cứng TP.HCM
+  const recentCenter = useMemo(() => {
+    const p = (places || []).find(x => Number.isFinite(x.lat) && Number.isFinite(x.lng));
+    return p ? { lat: p.lat, lng: p.lng } : null;
+  }, [places]);
+
+  // "Tôi đang ở đây": cắm ghim ở vị trí hiện tại (đang đứng tại quán). Trình duyệt hỏi quyền lần đầu.
+  const useMyLocation = () => {
+    if (!navigator.geolocation) { setMapsMsg('Trình duyệt này không lấy được vị trí.'); return; }
+    setLocating(true);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setLocating(false);
+        setF(prev => ({ ...prev, lat: pos.coords.latitude, lng: pos.coords.longitude }));
+        setMapsMsg('Đã cắm ghim ở vị trí hiện tại — kéo ghim nếu lệch.');
+      },
+      (err) => {
+        setLocating(false);
+        setMapsMsg(err.code === 1 ? 'Bạn đã chặn quyền vị trí — chạm bản đồ để cắm ghim tay.' : 'Chưa lấy được vị trí, thử lại.');
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 },
+    );
+  };
 
   const set = (k, val) => setF(prev => ({ ...prev, [k]: val }));
   const toggleIn = (k, id) => setF(prev => ({
@@ -70,6 +96,8 @@ export default function ChonCaptureSheet({ place = null, prefill = {}, places, o
     [editing, mergeDismissed, places, f.name, f.area],
   );
   const srcPlatform = src.platform || (src.url ? detectPlatform(src.url) : (src.author ? 'friend' : ''));
+  const kindNow = kindOf(f.kind);
+  const srcLabel = srcPlatform && srcPlatform !== 'other' ? PLATFORMS.find(p => p.id === srcPlatform)?.label : '';
 
   const applyMaps = (raw) => {
     setMapsInput(raw);
@@ -153,18 +181,33 @@ export default function ChonCaptureSheet({ place = null, prefill = {}, places, o
       )}
     >
       <form className="chon-form" onKeyDown={onKeyDown} onSubmit={e => { e.preventDefault(); submit(); }}>
-        <label className="chon-field">
-          <span className="chon-field__label">Tên chốn</span>
-          <input
-            className="chon-input chon-input--title"
-            value={f.name}
-            onChange={e => set('name', e.target.value)}
-            placeholder="Ốc đêm hẻm 200"
-            maxLength={120}
-            data-autofocus
-            required
-          />
-        </label>
+        {/* Khối xem trước (mockup 2B): hình theo loại (đổi ngay khi chọn loại), nhãn nguồn, loại · khu vực, tên, lời trích */}
+        <div className={`chon-cap-preview chon-kind--${kindNow.id}`}>
+          <div className="chon-cap-preview__art">
+            <ChonKindArt kind={kindNow.id} size={92} />
+            {srcLabel && <span className="chon-cap-preview__src">{srcLabel}</span>}
+          </div>
+          <div className="chon-cap-preview__main">
+            <p className={`chon-card__kind chon-kind--${kindNow.id}`}>
+              <AppIcon name={kindNow.icon} size={14} />{kindNow.label}
+              {f.area.trim() && <span className="chon-card__area" title={f.area}>· {f.area}</span>}
+            </p>
+            <input
+              className="chon-input chon-input--preview"
+              value={f.name}
+              onChange={e => set('name', e.target.value)}
+              placeholder="Tên chốn"
+              aria-label="Tên chốn"
+              maxLength={120}
+              data-autofocus
+              required
+            />
+            {src.quote.trim() || place?.note
+              ? <p className="chon-cap-preview__quote">“{src.quote.trim() || place.note}”</p>
+              : <p className="chon-hint">Ghi tên là lưu được — còn lại tuỳ.</p>}
+            {src.author.trim() && <p className="chon-cap-preview__by">— {src.author.trim()}</p>}
+          </div>
+        </div>
 
         {duplicate && (
           <div className="chon-merge" role="status">
@@ -176,24 +219,6 @@ export default function ChonCaptureSheet({ place = null, prefill = {}, places, o
             </div>
           </div>
         )}
-
-        <fieldset className="chon-field">
-          <legend className="chon-field__label">Loại</legend>
-          <div className="chon-kind-grid" role="radiogroup" aria-label="Loại chốn">
-            {KINDS.filter(k => k.id !== 'other' || f.kind === 'other').map(k => (
-              <button
-                key={k.id}
-                type="button"
-                role="radio"
-                aria-checked={f.kind === k.id}
-                className={`chon-kind-opt chon-kind--${k.id}${f.kind === k.id ? ' is-on' : ''}`}
-                onClick={() => set('kind', k.id)}
-              >
-                <AppIcon name={k.icon} size={20} />{k.label}
-              </button>
-            ))}
-          </div>
-        </fieldset>
 
         <div className="chon-field">
           <span className="chon-field__label">Ở đâu</span>
@@ -226,15 +251,40 @@ export default function ChonCaptureSheet({ place = null, prefill = {}, places, o
           <ChonMap
             mini
             places={[]}
+            fallbackCenter={recentCenter}
+            caption={f.address.trim() || (looksLikeAddress(f.area) ? f.area : '')}
             pin={f.lat != null ? { lat: f.lat, lng: f.lng } : null}
             onPinChange={({ lat, lng }) => setF(prev => ({ ...prev, lat, lng }))}
           />
-          <p className="chon-hint">
-            {f.lat != null
-              ? <>Kéo ghim cho đúng chỗ · <button type="button" className="chon-link" onClick={() => setF(prev => ({ ...prev, lat: null, lng: null }))}>Bỏ vị trí</button></>
-              : 'Chạm vào bản đồ để cắm ghim (tuỳ chọn).'}
+          <p className="chon-hint chon-hint--row">
+            <span>
+              {f.lat != null
+                ? <>Kéo ghim cho đúng chỗ · <button type="button" className="chon-link" onClick={() => setF(prev => ({ ...prev, lat: null, lng: null }))}>Bỏ vị trí</button></>
+                : 'Chạm vào bản đồ để cắm ghim (tuỳ chọn).'}
+            </span>
+            <button type="button" className="chon-link" onClick={useMyLocation} disabled={locating}>
+              <AppIcon name="crosshair" size={13} />{locating ? 'Đang lấy vị trí…' : 'Tôi đang ở đây'}
+            </button>
           </p>
         </div>
+
+        <fieldset className="chon-field">
+          <legend className="chon-field__label">Loại</legend>
+          <div className="chon-kind-grid" role="radiogroup" aria-label="Loại chốn">
+            {KINDS.filter(k => k.id !== 'other' || f.kind === 'other').map(k => (
+              <button
+                key={k.id}
+                type="button"
+                role="radio"
+                aria-checked={f.kind === k.id}
+                className={`chon-kind-opt chon-kind--${k.id}${f.kind === k.id ? ' is-on' : ''}`}
+                onClick={() => set('kind', k.id)}
+              >
+                <AppIcon name={k.icon} size={20} />{k.label}
+              </button>
+            ))}
+          </div>
+        </fieldset>
 
         {!editing && (
           <div className="chon-field">

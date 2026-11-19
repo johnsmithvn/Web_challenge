@@ -6,7 +6,7 @@ import ChonKindArt from './ChonKindArt';
 import { kindOf, PLATFORM, OCCASION, REVISITS } from './chonData';
 import {
   placeState, sortedVisits, dishMentions, nearbyWant, directionsUrl, distanceM, formatDistance, hasCoords,
-  formatPriceShort, planBadge, ratingLabel, shortDay, cleanSource,
+  formatPriceShort, planBadge, ratingLabel, shortDay, cleanSource, photoSrc,
 } from '../../utils/placeLogic';
 import { formatVND } from '../../utils/currencyUtils';
 
@@ -21,7 +21,7 @@ const ddmm = iso => (iso ? `${iso.slice(8, 10)}/${iso.slice(5, 7)}` : '');
 export default function ChonPlaceDetail({
   place, places, origin, today, trip = null, onOpenTrip, onPlanTrip,
   onClose, onEdit, onMenu, onLight, onPlan, onShare, onShowCluster, onOpenPlace,
-  onAddSource, onDeleteSource, onDeleteVisit, onWriteArticle, fetchArticles,
+  onAddSource, onDeleteSource, onEditVisit, onDeleteVisit, onWriteArticle, fetchArticles,
 }) {
   const kind = kindOf(place.kind);
   const st = placeState(place);
@@ -145,12 +145,29 @@ export default function ChonPlaceDetail({
                         <span className="chon-stars-mini" aria-label={`${v.rating} sao`}><AppIcon name="star" size={13} weight="fill" />{v.rating} · {ratingLabel(v.rating)}</span>
                       )}
                       {v.revisit && <span className="chon-visit__tag">{REVISIT[v.revisit]}</span>}
-                      <button type="button" className="chon-icon-btn chon-icon-btn--sm" aria-label={`Xoá lần ghé ${shortDay(v.visited_on)}`}
-                        onClick={() => onDeleteVisit(place, v)}>
-                        <AppIcon name="trash" size={14} />
-                      </button>
+                      <span className="chon-visit__tools">
+                        <button type="button" className="chon-icon-btn chon-icon-btn--sm" aria-label={`Sửa lần ghé ${shortDay(v.visited_on)}`}
+                          onClick={() => onEditVisit(place, v)}>
+                          <AppIcon name="pencil" size={14} />
+                        </button>
+                        <button type="button" className="chon-icon-btn chon-icon-btn--sm" aria-label={`Xoá lần ghé ${shortDay(v.visited_on)}`}
+                          onClick={() => onDeleteVisit(place, v)}>
+                          <AppIcon name="trash" size={14} />
+                        </button>
+                      </span>
                     </div>
                     {v.note && <p className="chon-visit__note">“{v.note}”</p>}
+                    {v.photos?.length > 0 && (
+                      <ul className="chon-photos chon-photos--view" aria-label="Ảnh của lần ghé">
+                        {v.photos.map(url => (
+                          <li key={url} className="chon-photo">
+                            <a href={url} target="_blank" rel="noopener noreferrer" aria-label="Mở ảnh cỡ lớn">
+                              <img src={photoSrc(url)} alt="" loading="lazy" />
+                            </a>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
                     <p className="chon-visit__meta">
                       {v.liked_dishes?.length > 0 && <span><AppIcon name="heart" size={12} weight="fill" />{v.liked_dishes.join(', ')}</span>}
                       {v.party_size && <span><AppIcon name="users" size={12} />{v.party_size} người</span>}

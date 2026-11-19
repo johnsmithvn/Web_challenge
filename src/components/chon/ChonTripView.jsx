@@ -93,7 +93,7 @@ function Cell({ row, o, cheapest }) {
  * chuẩn bị (đẩy sang Nhiệm vụ) · ước tính · sau chuyến (chấm điểm).
  */
 export default function ChonTripView({
-  trip, trips, places, today, api, onBack, onEdit, onTrash, onShare, onOpenPlace, onLightPlace, onToast,
+  trip, trips, places, today, api, finCats, onBack, onEdit, onTrash, onShare, onOpenPlace, onLightPlace, onToast,
 }) {
   const [optSheet, setOptSheet] = useState(null);    // { option?, quote? }
   const [choosing, setChoosing] = useState(null);    // option
@@ -401,6 +401,7 @@ export default function ChonTripView({
               trip={trip}
               option={choosing}
               letter={letterOf(choosing.id)}
+              finCats={finCats}
               onConfirm={async (finance) => {
                 const ok = report(await api.chooseOption(trip.id, choosing.id, finance));
                 if (ok) onToast(finance ? `Đã chốt ${choosing.name} · ghi ${formatVND(finance.amount)} vào Tài chính` : `Đã chốt ${choosing.name}`);

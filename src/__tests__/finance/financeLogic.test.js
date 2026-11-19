@@ -14,6 +14,7 @@ import assert from 'node:assert/strict';
 import {
   NECESSITY_ORDER,
   deriveNecessity,
+  mergeCategoryOverrides,
   ymd,
   parseYmd,
   addDaysStr,
@@ -124,6 +125,31 @@ assert.equal(deriveNecessity('food', 'food.parking', CATS), 'must', 'sub đè ca
 assert.equal(deriveNecessity('food', 'food.rice', CATS), 'want');
 assert.equal(deriveNecessity('food', 'food.other', CATS), 'want', 'sub không có necessity fallback theo cat');
 assert.equal(deriveNecessity('housing', null, CATS), 'must', 'fallback theo cat');
+
+// mergeCategoryOverrides — dùng chung cho useFinance và Chốn
+{
+  const base = {
+    necessityByCat: { food: 'want', housing: 'must' },
+    expenseGroups: [
+      { key: 'food', label: 'Ăn uống', subs: [{ key: 'food.eatout', label: 'Ăn ngoài', necessity: 'want' }] },
+      { key: 'housing', label: 'Nhà', subs: [] },
+    ],
+    incomeGroups: [{ key: 'salary', label: 'Lương', subs: [] }],
+  };
+  const merged = mergeCategoryOverrides(base, [
+    { category_id: 'food', label: 'Ăn', necessity: 'must', subs: [{ key: 'food.eatout', label: 'Quán', necessity: 'must' }] },
+    { category_id: 'housing', hidden: true, subs: null },
+  ]);
+  assert.equal(merged.expenseGroups[0].label, 'Ăn', 'tên của user');
+  assert.equal(merged.expenseGroups[0].subs[0].label, 'Quán', 'danh mục con của user');
+  assert.equal(merged.expenseGroups[1].hidden, true);
+  assert.deepEqual(merged.expenseGroups[1].subs, [], 'subs null = giữ mặc định');
+  assert.equal(merged.necessityByCat.food, 'must');
+  assert.equal(merged.necessityByCat.housing, 'must');
+  assert.equal(deriveNecessity('food', 'food.eatout', merged), 'must', 'necessity của sub theo override');
+  assert.equal(base.necessityByCat.food, 'want', 'không sửa object gốc');
+  assert.deepEqual(mergeCategoryOverrides(base).expenseGroups, base.expenseGroups, 'không override = như mặc định');
+}
 assert.equal(deriveNecessity('unknown', null, CATS), 'want', 'mặc định want');
 assert.equal(deriveNecessity('food', null, null), 'want', 'cats null mặc định want');
 assert.equal(deriveNecessity('food', 'food.parking', null), 'want', 'cats null không tra được sub');

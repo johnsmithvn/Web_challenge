@@ -469,11 +469,18 @@ Plan: [`PLAN_CHON.md`](PLAN_CHON.md). Auth-only. Sidebar → Chốn (điện tho
   ghi chú. Trùng tên + khu vực → gợi ý gộp lời giới thiệu vào chốn có sẵn. Ctrl+Enter lưu, Esc đóng. Nút Hẹn ngày lưu
   xong mở luôn hộp hẹn. Không tự lấy tiêu đề / ảnh từ link TikTok, FB (chưa làm).
 - **Chi tiết:** Chỉ đường (Google Maps), Hẹn ngày, Rủ bạn (Chia sẻ của máy, không có thì chép vào clipboard); Những
-  lần ghé (xoá được, giao dịch Tài chính giữ nguyên); Ai giới thiệu (thêm / xoá, chọn bài Kiến thức làm nguồn, "Viết
+  lần ghé (ảnh bấm để mở cỡ lớn; sửa được — giao dịch Tài chính đã ghi giữ nguyên, sửa số tiền bên Tài chính; xoá
+  được, giao dịch giữ nguyên); Ai giới thiệu (thêm / xoá, chọn bài Kiến thức làm nguồn, "Viết
   thành bài Kiến thức"); Món nên thử có đếm số lần nhắc; Gần đây cũng muốn đến (≤ 3 chốn trong 1 km) + Gom một tối.
 - **Thắp đèn:** ngày đến (mặc định hôm nay, đổi được, không sau hôm nay), 1–5 sao + nhãn, Sẽ quay lại / Có thể / Một
-  lần thôi, món đã gọi (chạm = ngon ♥, chạm nữa = gọi thường, chạm nữa = bỏ), cảm nhận, số người, chi phí (gõ `360k`)
-  + công tắc ghi Tài chính (nhóm theo loại chốn, cùng transaction với lần ghé). "Để sau" đóng không lưu.
+  lần thôi, món đã gọi (chạm = ngon ♥, chạm nữa = gọi thường, chạm nữa = bỏ), cảm nhận, số người, ảnh (dán link hoặc
+  tải lên Drive, tối đa 10), chi phí (gõ `360k`) + công tắc ghi Tài chính (nhóm theo loại chốn, theo tên / mức cần thiết
+  bạn đã chỉnh bên Finance, cùng transaction với lần ghé). "Để sau" đóng không lưu.
+- **Bản đồ:** zoom xa thì chốn gần nhau thành bong bóng số tô màu đèn (cả cụm đã đến có thêm vòng viền); bấm bong bóng
+  mở thẻ cụm: khu vực · số chốn trong bán kính, danh sách (bấm mở chốn), **Mở lộ trình N điểm** (Google Maps chỉ đường
+  qua các chốn, gần nhất trước, tối đa 10), Phóng to vùng này. Từ zoom 16 hiện từng ghim. Chưa có ghim thì căn theo vị
+  trí của bạn (nếu trình duyệt đã cho phép) → chốn mới nhất có toạ độ → toàn cảnh Việt Nam; có dòng nhắc "N chốn chưa
+  có vị trí". Form Lưu chốn: khối xem trước (hình theo loại, tên, lời trích), "Tôi đang ở đây" cắm ghim ở vị trí hiện tại.
 - **Hẹn ngày:** tạo việc "Đi <tên chốn>" bên Nhiệm vụ (hạn = ngày chọn, giờ tuỳ chọn); xoá việc → chốn hết hẹn.
 - **Android:** cài PWA rồi Chia sẻ một link → Life Hub → form Lưu chốn mở sẵn link + lời trích.
 - **Chuyến đi (tab Chuyến đi, `/chon/trip/:tripId`):** thẻ chuyến (ngày, đếm ngược, trạng thái Đang chọn / Đã chốt /

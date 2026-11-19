@@ -4,6 +4,7 @@ import ChonSheet from './ChonSheet';
 import SearchSelect from '../SearchSelect';
 import DatePickerPopover from '../DatePickerPopover';
 import { cleanTrip, formatTripRange } from '../../utils/tripLogic';
+import { popoverAt } from './chonData';
 import { parseCurrencyInput, formatVND } from '../../utils/currencyUtils';
 
 /**
@@ -27,7 +28,7 @@ export default function ChonTripSheet({ trip = null, prefill = {}, places, onSav
     note: trip?.note ?? '',
   }));
   const [costs, setCosts] = useState(() => (trip?.extra_costs || []).map(c => ({ label: c.label, amount: String(c.amount) })));
-  const [pickDates, setPickDates] = useState(false);
+  const [datePop, setDatePop] = useState(null);   // style lịch (position: fixed) khi đang mở
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
 
@@ -85,20 +86,19 @@ export default function ChonTripSheet({ trip = null, prefill = {}, places, onSav
         <div className="chon-row2">
           <div className="chon-field">
             <span className="chon-field__label">Ngày đi → về</span>
-            <span className="chon-pop-anchor chon-pop-anchor--block">
-              <button type="button" className="chon-input chon-input--btn" onClick={() => setPickDates(v => !v)} aria-expanded={pickDates}>
-                <AppIcon name="calendar" size={16} />{rangeLabel}
-              </button>
-              {pickDates && (
-                <DatePickerPopover
-                  mode="range"
-                  value={{ from: f.start_date || '', to: f.end_date || '' }}
-                  onChange={({ from, to }) => setF(prev => ({ ...prev, start_date: from || '', end_date: to || from || '' }))}
-                  onClose={() => setPickDates(false)}
-                  style={{ top: '100%', left: 0, marginTop: 6 }}
-                />
-              )}
-            </span>
+            <button type="button" className="chon-input chon-input--btn" aria-expanded={!!datePop}
+              onClick={e => setDatePop(datePop ? null : popoverAt(e.currentTarget, 360))}>
+              <AppIcon name="calendar" size={16} />{rangeLabel}
+            </button>
+            {datePop && (
+              <DatePickerPopover
+                mode="range"
+                value={{ from: f.start_date || '', to: f.end_date || '' }}
+                onChange={({ from, to }) => setF(prev => ({ ...prev, start_date: from || '', end_date: to || from || '' }))}
+                onClose={() => setDatePop(null)}
+                style={datePop}
+              />
+            )}
             {f.start_date && (
               <button type="button" className="chon-link chon-hint" onClick={() => setF(prev => ({ ...prev, start_date: '', end_date: '' }))}>
                 Bỏ ngày
