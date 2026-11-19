@@ -9,7 +9,7 @@ import { placeState, planBadge, timeAgo, distanceM, formatDistance, hasCoords } 
  * ngày lưu · khoảng cách. Đã đến: đèn sáng + sao. Có hẹn: viên hẹn.
  * Bấm thẻ = mở chi tiết; nút đèn = thắp đèn; ⋯ / chuột phải = menu thao tác.
  */
-function ChonPlaceCard({ place, origin, today, active, onOpen, onLight, onMenu, onHover }) {
+function ChonPlaceCard({ place, origin, today, active, trip = null, onOpenTrip, onOpen, onLight, onMenu, onHover }) {
   const kind = kindOf(place.kind);
   const st = placeState(place);
   const visited = st.state === 'visited';
@@ -50,7 +50,7 @@ function ChonPlaceCard({ place, origin, today, active, onOpen, onLight, onMenu, 
         <p className={`chon-card__kind chon-kind--${kind.id}`}>
           <AppIcon name={kind.icon} size={14} />
           {kind.label}
-          {place.area && <span className="chon-card__area">· {place.area}</span>}
+          {place.area && <span className="chon-card__area" title={place.area}>· {place.area}</span>}
         </p>
         {/* Nút phủ cả thẻ để mở chi tiết — tên là nhãn truy cập */}
         <h3 className="chon-card__name">
@@ -76,6 +76,12 @@ function ChonPlaceCard({ place, origin, today, active, onOpen, onLight, onMenu, 
         ) : place.note ? (
           <p className="chon-card__quote chon-card__quote--plain">{place.note}</p>
         ) : null}
+        {trip && (
+          <button type="button" className="chon-link chon-card__trip" onClick={() => onOpenTrip(trip)}>
+            <AppIcon name="flag" size={13} />
+            Chuyến đi · {(trip.trip_options || []).length ? `${trip.trip_options.length} lựa chọn tour` : trip.title}
+          </button>
+        )}
         <p className="chon-card__meta">
           <span className="chon-card__when">
             {visited ? `đến ${timeAgo(`${st.lastVisit.visited_on}T12:00:00`)}` : `lưu ${timeAgo(place.created_at)}`}

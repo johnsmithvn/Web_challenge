@@ -58,7 +58,7 @@ không bị stale khi thêm/xóa component.
 | `/inbox` | `InboxPage` | Lazy | Auth-only |
 | `/collect` | `CollectPage` | Lazy | Auth-only |
 | `/finance`, `/finance/:screen` | `FinancePage` | Lazy | Auth-only |
-| `/chon`, `/chon/:placeId` | `ChonPage` | Lazy | Auth-only; `/chon?share=1&title=&text=&url=` = đích Chia sẻ Android (`manifest.json` `share_target`) |
+| `/chon`, `/chon/:placeId`, `/chon/trip/:tripId` | `ChonPage` | Lazy | Auth-only; `/chon?share=1&title=&text=&url=` = đích Chia sẻ Android (`manifest.json` `share_target`) |
 | `/accounts` | `AccountsPage` | Lazy | Auth-only + Vault unlock |
 | `/settings` | `SettingsPage` | Lazy | Auth-only |
 | `/fx-lab` | `FxLabPage` | Lazy | Sidebar → Khác → FX Lab (mobile: menu Thêm): xem trước hiệu ứng nền trang Nhiệm vụ, không đụng dữ liệu; đổi Kiểu/Ngày-Đêm thật, rời trang trả lại (RULES #15) |
@@ -145,11 +145,17 @@ ChonPage (tab Muốn đến / Đã đến / Thùng rác, lọc, vị trí, /chon
   ├─ SkyBackground calm
   ├─ ChonPlaceCard · ChonMap (Leaflet, tải lười) · ChonPlaceDetail
   ├─ ChonCaptureSheet (Lưu / Sửa, bản đồ nhỏ) · ChonLightSheet (Thắp đèn)
-  └─ ChonPlanDialog (lazy, mount useUserTasks.addTask chỉ khi mở)
+  ├─ ChonPlanDialog (lazy, mount useUserTasks.addTask chỉ khi mở)
+  ├─ ChonTripCard · ChonTripSheet (tab Chuyến đi)
+  ├─ ChonTripView (lazy, /chon/trip/:tripId): bảng so sánh, ChonOptionSheet, ChonChooseDialog, ChonAddPlacesSheet,
+  │    ChonTripPrep (mount useUserTasks: addTask, addSubtasks, getSubtasks)
+  └─ ChonLayer: lớp nổi render qua portal ra <body> (.chon-page có isolation → z-index bị nhốt dưới tab đáy)
         ↓
-placeLogic (pure: placeState, filterPlaces, nearbyClusters, parseMapsUrl, detectPlatform, findDuplicatePlace, clean*…)
+placeLogic / tripLogic (pure: placeState, filterPlaces, nearbyClusters, parseMapsUrl… / tripEstimate,
+  groupTripPlaces, pastTripHint, parseQuote, clean*…)
         ↓
 usePlaces → places / place_sources / place_visits, RPC light_place (+ finance_transactions)
+useTrips  → trips / trip_options / trip_places, RPC choose_trip_option (+ finance_transactions)
 useCollections (fetchLinkOptions, addItem cho "Viết thành bài")
 ```
 
@@ -158,6 +164,8 @@ useCollections (fetchLinkOptions, addItem cho "Viết thành bài")
 - Thắp đèn có chi phí ghi hai bảng trong RPC `light_place` (SECURITY INVOKER) — không optimistic. Danh mục + necessity
   tính ở client từ `place-kinds.json` + `finance-categories.json` (`deriveNecessity`), chưa đọc override danh mục
   riêng của user bên Finance.
+- Chuẩn bị của chuyến: một nguồn sự thật mỗi lúc — trước khi đẩy là `trips.prep_items`, đẩy rồi là việc cha + việc
+  con bên Nhiệm vụ (`trips.prep_task_id`), `prep_items` rỗng.
 - Bản đồ: tile OpenStreetMap tải trực tiếp từ `tile.openstreetmap.org` (OSM thấy vùng đang xem); vị trí người dùng chỉ
   nằm trong state, không lưu.
 

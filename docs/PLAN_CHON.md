@@ -1,6 +1,6 @@
 # PLAN — Chốn · nơi muốn đến & nơi đã qua
 
-**Trạng thái:** G1 đã code (v6.38.0, chờ user kiểm theo §9) · G2 (Chuyến đi) chưa làm · **Lập:** 2026-11-19 ·
+**Trạng thái:** G1 xong (v6.38.0 + vá v6.38.1) · G2 Chuyến đi đã code (v6.39.0, chờ user kiểm) · **Lập:** 2026-11-19 ·
 **Người duyệt:** user
 
 **Lệch so với plan khi code G1** (đã chốt trong lúc làm):
@@ -163,17 +163,31 @@ Sửa / xoá lần đến dùng update/delete thường (RLS). Xoá lần đến
 hộp xác nhận nói rõ và có ô "xoá luôn giao dịch 360.000đ" (gọi `useFinance`-free delete qua RPC nhỏ hoặc để G2; mặc
 định G1: chỉ báo, không xoá).
 
-### 3.2 G2 — `…_trips_v6_39_0.sql` (làm ở G2, ghi ở đây để G1 không chặn đường)
+### 3.1b Bản vá — `20261119005000_places_check_refs_fix_v6_38_1.sql`
 
-- **`trips`**: `title`, `region`, `start_date`, `end_date` (`end ≥ start`), `people` (1..50), `status`
-  (`planning|booked|done|cancelled`), `prep_task_id` (FK hai cột → `user_tasks`, task cha, checklist = subtask có
-  sẵn), `extra_costs jsonb` (mảng `{label, amount}`), `rating`, `review`, `archived_at`.
-- **`trip_options`**: `trip_id` (FK hai cột cascade), `name`, `provider`, `price_per_person`, `price_note`,
-  `schedule_note`, `includes text[]`, `excludes text[]`, `source_url`, `source_note`, `pros`, `cons`, `my_note`,
-  `is_chosen boolean`, `sort_order`. Partial unique index `(trip_id) WHERE is_chosen` — mỗi chuyến chốt đúng 1.
-  Nhãn A/B/C suy từ `sort_order`, không lưu.
-- **`trip_places`**: `(trip_id, place_id)` PK, `day_index`, `sort_order`, FK hai phía cascade.
-- RPC `choose_trip_option(trip_id, option_id)` đổi `is_chosen` nguyên khối.
+`places_check_refs()` của v6.38.0 gộp `TG_TABLE_NAME = … AND NEW.cột …` trong một `IF … ELSIF`; PL/pgSQL đọc cả cột
+không có ở bảng đang chạy → lỗi 42703, PostgREST trả 400 (lưu chốn có lời giới thiệu và thắp đèn đều hỏng). Bản vá
+dùng IF lồng nhau theo bảng. Migration v6.38.0 đã chạy nên không sửa file cũ (snapshot bất biến).
+
+### 3.2 G2 — `20261119010000_trips_v6_39_0.sql` (chốt khi làm G2)
+
+- **`trips`**: `title`, `tagline` ("mùa tam giác mạch"), `region`, `start_date`, `end_date` (`end ≥ start`), `people`
+  (1..50), `status` (`planning|booked|done|cancelled`), `place_id` (chốn đích, FK hai cột `SET NULL`), `prep_items`
+  jsonb, `prep_task_id` (FK hai cột → `user_tasks`), `extra_costs` jsonb (`{label, amount}`), `finance_tx_id`,
+  `rating`, `review`, `note`, `archived_at`.
+- **Chuẩn bị — một nguồn sự thật mỗi lúc**: trước khi đẩy, danh sách ở `prep_items` (`{id, text, done}`), sửa ngay trên
+  trang chuyến. "Đẩy sang Nhiệm vụ" tạo việc cha "Chuẩn bị <chuyến>" (hạn = trước ngày đi một ngày) + việc con cho mục
+  chưa xong, lưu `prep_task_id`, xoá `prep_items`. Sau đó trang chuyến chỉ hiện việc cha + tiến độ, tích ở Nhiệm vụ.
+- **`trip_options`**: `name`, `provider`, `price_per_person`, `price_note`, `schedule`, `schedule_note`, `includes[]`,
+  `excludes[]`, `source_url`, `source_note`, `pros`, `cons`, `my_note`, `pick` (NULL | `leaning` "Đang nghiêng về" |
+  `chosen`), `sort_order`, `rating` (sau chuyến). Partial unique index: mỗi chuyến tối đa một `leaning`, một `chosen`.
+  Đổi "nghiêng về" = hai update (bỏ cái cũ rồi đặt cái mới) — lỡ hỏng giữa chừng chỉ mất nhãn, không mất dữ liệu.
+- **`trip_places`**: PK `(trip_id, place_id)`, `day_index` (NULL = chưa xếp), `sort_order`, FK hai phía cascade.
+- **RPC `choose_trip_option`**: chốt (bỏ chốt / nghiêng về cũ), `planning → booked`, tuỳ chọn ghi giao dịch chi
+  (số tiền mặc định = giá × số người, sửa được; danh mục Du lịch).
+- **"Dán báo giá"**: `parseQuote` (thuần, có test) tách giá + gồm / chưa gồm từ chữ dán vào form lựa chọn — chỉ điền
+  sẵn, user sửa tay. Không gọi server.
+- **Lần trước**: `pastTripHint` — chuyến đã đi có chấm điểm, ưu tiên cùng vùng.
 
 ---
 

@@ -16,7 +16,7 @@ Tài liệu này chỉ mô tả tính năng đang chạy. Feature đã xóa và 
 | Knowledge | `/collect` | — | ✅ |
 | Finance | `/finance/:screen?` | — | ✅ |
 | Body | `/body` | — | ✅ |
-| Chốn | `/chon`, `/chon/:placeId` | — | ✅ |
+| Chốn | `/chon`, `/chon/:placeId`, `/chon/trip/:tripId` | — | ✅ |
 | Vault | `/accounts` | — | Login + Vault unlock |
 | Cài đặt | `/settings` | — | ✅ |
 
@@ -476,8 +476,24 @@ Plan: [`PLAN_CHON.md`](PLAN_CHON.md). Auth-only. Sidebar → Chốn (điện tho
   + công tắc ghi Tài chính (nhóm theo loại chốn, cùng transaction với lần ghé). "Để sau" đóng không lưu.
 - **Hẹn ngày:** tạo việc "Đi <tên chốn>" bên Nhiệm vụ (hạn = ngày chọn, giờ tuỳ chọn); xoá việc → chốn hết hẹn.
 - **Android:** cài PWA rồi Chia sẻ một link → Life Hub → form Lưu chốn mở sẵn link + lời trích.
+- **Chuyến đi (tab Chuyến đi, `/chon/trip/:tripId`):** thẻ chuyến (ngày, đếm ngược, trạng thái Đang chọn / Đã chốt /
+  Đã đi / Đã huỷ, lựa chọn đang dùng + ước tính). Trang chuyến:
+  - **So sánh lựa chọn**: mỗi lựa chọn một cột A/B/C cùng thứ tự dòng; "rẻ nhất" khi ≥ 2 lựa chọn có giá; menu ⋯ Sửa ·
+    Đang nghiêng về · Xoá; **Chốt** → chọn số tiền (mặc định giá × số người) + công tắc ghi Tài chính · Du lịch. Đổi ý
+    chốt lại được (giao dịch cũ giữ bên Tài chính). Điện thoại: bảng cuộn ngang, cột tiêu chí dính trái.
+  - **Dán báo giá**: dán chữ từ Zalo / FB → tách giá (số tiền đầu tiên có đơn vị), dòng gạch đầu dòng sau "Bao gồm" /
+    "Không bao gồm"; chỉ điền sẵn, sửa tay được.
+  - **Chốn trong chuyến**: theo ngày (đủ các ngày khi có ngày đi / về), "Chưa xếp ngày", thêm từ chốn đã lưu (chốn cùng
+    vùng lên đầu), đổi ngày, bỏ khỏi chuyến, thắp đèn tại chỗ.
+  - **Chuẩn bị**: tích / thêm / bỏ trong chuyến → "Đẩy sang Nhiệm vụ" tạo việc "Chuẩn bị <chuyến>" (hạn trước ngày đi
+    một ngày) + việc con cho mục chưa xong; sau đó chỉ hiện tiến độ, tích bên Nhiệm vụ ("Mở ở Nhiệm vụ").
+  - **Ước tính · N người**: lựa chọn đã chốt (không thì đang nghiêng về) × số người + chi phí khác.
+  - **Sau chuyến** (đã đi hoặc qua ngày về): chấm cả chuyến, chấm lựa chọn đã chốt, nhận xét → hiện lại làm gợi ý
+    "Lần trước…" khi lên chuyến sau (ưu tiên cùng vùng).
+  - Menu chuyến: Sửa · Đánh dấu đã đi · Quay lại đang chọn · Huỷ chuyến · Bỏ vào thùng rác. Rủ bạn đi cùng = Chia sẻ.
 
-**Data:** `places`, `place_sources`, `place_visits`, RPC `light_place` (xem `DATABASE.md`).
+**Data:** `places`, `place_sources`, `place_visits`, `trips`, `trip_options`, `trip_places`, RPC `light_place`,
+`choose_trip_option` (xem `DATABASE.md`).
 
 ## 10. Media, widget và PWA
 

@@ -7,13 +7,13 @@ không thay thế SQL thật.
 
 ## Trạng thái schema cuối
 
-Sau khi chạy đủ baseline và các migration domain, database có **40 bảng public đang hoạt động**:
+Sau khi chạy đủ baseline và các migration domain, database có **43 bảng public đang hoạt động**:
 
 - 12 bảng core
 - 12 bảng Finance (11 bảng chính + junction tag)
 - 2 bảng Vault
 - 11 bảng Body (Thể hình & Sức khỏe)
-- 3 bảng Chốn (v6.38.0)
+- 6 bảng Chốn (3 ở v6.38.0, 3 Chuyến đi ở v6.39.0)
 
 `data/schema_v4.24.0.sql` tự nó chỉ là baseline đã hợp nhất tới v5.0. Nó không phải snapshot độc lập
 của toàn bộ v6.2.
@@ -143,7 +143,7 @@ Chi tiết: [`DESIGN_ACCOUNT_VAULT.md`](DESIGN_ACCOUNT_VAULT.md).
 | `body_weekly_checkins` | Đánh giá thể trạng và vòng eo theo tuần | `UNIQUE (user_id, week_number, year)` |
 | `body_exercise_videos` | Link video thị phạm user tự gắn cho từng bài | `PRIMARY KEY (user_id, exercise_key)` — 1 link/bài; `video_url` chỉ `http(s)://`, ≤ 2048 ký tự; `exercise_key` là key JSON hoặc id bài tự tạo (không FK) |
 
-### Chốn (nơi muốn đến & đã qua) — 3 bảng (v6.38.0)
+### Chốn (nơi muốn đến & đã qua) — 6 bảng (v6.38.0 + v6.39.0)
 
 Thiết kế: [`PLAN_CHON.md`](PLAN_CHON.md). Own-row RLS 4 policy / bảng, grant chỉ `authenticated`.
 
@@ -152,6 +152,10 @@ Thiết kế: [`PLAN_CHON.md`](PLAN_CHON.md). Own-row RLS 4 policy / bảng, gra
 | `places` | Một chốn: tên, loại (`food\|cafe\|outing\|travel\|stay\|other`), khu vực, địa chỉ, toạ độ, link Maps, giá/người, giờ mở, món nên thử, hợp với dịp nào, ghi chú | `lat`/`lng` cùng có hoặc cùng NULL; `occasions <@ {friends,date,family,solo}`; `UNIQUE (id, user_id)` làm đích FK hai cột; `plan_task_id` FK `(plan_task_id, user_id) → user_tasks (id, user_id) ON DELETE SET NULL (plan_task_id)`; `archived_at` = Thùng rác. **Không có cột trạng thái**: đã đến = có `place_visits` |
 | `place_sources` | Ai giới thiệu (gộp nhiều lần lưu): nền tảng, link, tác giả, lời trích, hoặc bài Kiến thức | FK `(place_id, user_id) → places` cascade; `collection_id → collections ON DELETE SET NULL` + trigger `places_check_refs` kiểm cùng chủ |
 | `place_visits` | Mỗi lần thắp đèn: ngày, sao 1–5, quay lại (`yes\|maybe\|no`), món đã gọi / món ngon, số người, cảm nhận, ảnh, chi phí | FK `(place_id, user_id) → places` cascade; `liked_dishes <@ dishes`; `visited_on ≤ hôm nay + 1`; `finance_tx_id → finance_transactions ON DELETE SET NULL` + trigger kiểm cùng chủ |
+
+| `trips` (v6.39.0) | Chuyến đi: tên, tagline, vùng, ngày đi / về, số người, trạng thái (`planning\|booked\|done\|cancelled`), chốn đích, danh sách chuẩn bị, chi phí khác, chấm điểm sau chuyến | `end_date ≥ start_date`; `place_id` FK hai cột → `places` `SET NULL (place_id)`; `prep_task_id` FK hai cột → `user_tasks` `SET NULL (prep_task_id)`; `prep_items` / `extra_costs` jsonb mảng (≤ 60 / ≤ 30); `finance_tx_id` + trigger kiểm cùng chủ. Chuẩn bị: trước khi đẩy nằm ở `prep_items`, đẩy rồi = việc cha + việc con bên Nhiệm vụ, `prep_items` rỗng |
+| `trip_options` (v6.39.0) | Lựa chọn tour / cách đi để so cạnh nhau: giá / người, lịch, gồm / chưa gồm, nguồn, ưu / nhược, ghi chú, điểm sau chuyến | FK hai cột → `trips` cascade; `pick` NULL \| `leaning` \| `chosen`, partial unique index mỗi chuyến một cái mỗi loại; nhãn A/B/C suy từ `sort_order` |
+| `trip_places` (v6.39.0) | Chốn trong chuyến theo ngày | PK `(trip_id, place_id)`; FK hai cột hai phía cascade; `day_index` 1..60, NULL = chưa xếp |
 
 Không thêm cột nào vào `user_tasks`, `collections`, `finance_transactions`: liên kết nằm hết ở bảng Chốn.
 
@@ -206,7 +210,11 @@ gọi qua `useCollectionTopics`.
   p_photos, p_spent, p_to_finance, p_category_id, p_subcategory_id, p_necessity)` — thắp đèn: ghi `place_visits` và,
   nếu `p_to_finance`, một giao dịch chi `finance_transactions` (`merchant` = tên chốn) trong **một transaction**; lỗi
   bước nào cũng rollback cả hai. Danh mục + `necessity` do app tính bằng `deriveNecessity` của Finance.
-- Trigger function `places_check_refs()` — bài Kiến thức / giao dịch được trỏ tới phải cùng `user_id`.
+- `choose_trip_option(p_trip_id, p_option_id, p_amount, p_to_finance, p_category_id, p_subcategory_id, p_necessity)`
+  (v6.39.0) — chốt một lựa chọn (bỏ chốt / nghiêng về cũ), chuyến `planning` → `booked`, tuỳ chọn ghi giao dịch chi,
+  một transaction.
+- Trigger function `places_check_refs()` — bài Kiến thức / giao dịch được trỏ tới phải cùng `user_id` (IF lồng nhau
+  theo bảng từ v6.38.1; v6.39.0 thêm nhánh `trips`).
 
 `light_place` là `SECURITY INVOKER`, chỉ cấp `EXECUTE` cho `authenticated`; gọi qua `usePlaces`.
 
@@ -278,6 +286,9 @@ Snapshot đã tồn tại là bất biến. Schema change mới phải dùng mig
 24. `supabase/migrations/20261105000000_finance_lending_due_history_v6_35_0.sql`
 25. `supabase/migrations/20261108000000_knowledge_snippets_v6_36_0.sql`
 26. `supabase/migrations/20261119000000_places_v6_38_0.sql` (cần Postgres 15+, sau Tasks v6.19.0 + Finance)
+27. `supabase/migrations/20261119005000_places_check_refs_fix_v6_38_1.sql` — vá trigger `places_check_refs` (v6.38.0 lỗi
+    42703 khi lưu nguồn / thắp đèn). Bắt buộc nếu đã chạy bước 26.
+28. `supabase/migrations/20261119010000_trips_v6_39_0.sql` — Chuyến đi (Chốn giai đoạn 2)
 
 Dọn dẹp bảng cũ (tùy chọn):
 - `data/drop_incubator_tables.sql` (gỡ bỏ các bảng `intention_*` của phân hệ Ươm mầm đã ngưng phát triển).

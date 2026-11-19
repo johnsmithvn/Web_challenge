@@ -3,6 +3,7 @@ import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 import { usePlaces } from '../hooks/usePlaces';
+import { useTrips } from '../hooks/useTrips';
 import { useCollections } from '../hooks/useCollections';
 import { useIsMobile } from '../hooks/useIsMobile';
 import { useConfirm } from '../components/ConfirmModal';
@@ -16,15 +17,20 @@ import ChonCaptureSheet from '../components/chon/ChonCaptureSheet';
 import ChonLightSheet from '../components/chon/ChonLightSheet';
 import ChonPlaceDetail from '../components/chon/ChonPlaceDetail';
 import ChonMap from '../components/chon/ChonMap';
+import ChonLayer from '../components/chon/ChonLayer';
+import ChonTripCard from '../components/chon/ChonTripCard';
+import ChonTripSheet from '../components/chon/ChonTripSheet';
 import { KINDS, OCCASIONS, kindOf } from '../components/chon/chonData';
+import { formatTripRange } from '../utils/tripLogic';
 import {
   filterPlaces, sortPlaces, placeState, areaOptions, nearbyClusters, formatDistance, directionsUrl, timeAgo,
 } from '../utils/placeLogic';
 import { toDateStr } from '../utils/dateUtils';
 import '../styles/chon.css';
 
-// Hộp Hẹn ngày kéo useUserTasks → chỉ tải khi mở. Thư viện Leaflet do ChonMap tự tải lười.
+// Hộp Hẹn ngày và trang Chuyến đi kéo useUserTasks → chỉ tải khi mở. Thư viện Leaflet do ChonMap tự tải lười.
 const ChonPlanDialog = lazy(() => import('../components/chon/ChonPlanDialog'));
+const ChonTripView = lazy(() => import('../components/chon/ChonTripView'));
 
 /** Form Lưu chốn điền sẵn từ Chia sẻ Android (?share=1&title=&text=&url=), hoặc null. */
 const shareFromQuery = (search) => {
@@ -41,7 +47,8 @@ const isTyping = el => el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA
 
 /**
  * Chốn — nơi muốn đến & nơi đã qua (docs/PLAN_CHON.md, mockup 2A–2D). Auth-only.
- * Route /chon (danh sách + bản đồ) và /chon/:placeId (chi tiết, Back của điện thoại chạy đúng).
+ * Route /chon (danh sách + bản đồ), /chon/:placeId (chi tiết, Back của điện thoại chạy đúng) và
+ * /chon/trip/:tripId (Chuyến đi, mockup 2E). Lớp nổi render qua ChonLayer (portal) để không bị tab đáy che.
  * Chia sẻ Android (manifest share_target) mở /chon?share=1&title=&text=&url= → form Lưu chốn điền sẵn.
  */
 export default function ChonPage() {
@@ -51,17 +58,19 @@ export default function ChonPage() {
   const isMobile = useIsMobile();
   const navigate = useNavigate();
   const location = useLocation();
-  const { placeId } = useParams();
+  const { placeId, tripId } = useParams();
   const today = toDateStr();
 
   const {
     places, trash, isLoading, loadError, fetchPlaces, addPlace, updatePlace, archivePlace, restorePlace, deletePlace,
     addSource, deleteSource, lightPlace, deleteVisit, setPlanTask,
   } = usePlaces();
+  const tripApi = useTrips();
+  const { trips, tripTrash, tripsLoading, fetchTrips, addTrip, updateTrip, archiveTrip, restoreTrip, deleteTrip } = tripApi;
   const { addItem: addArticle, fetchLinkOptions } = useCollections();
 
   // ── Lọc / xem ──
-  const [tab, setTab] = useState('want');            // want | visited | trash; điện thoại thêm 'map'
+  const [tab, setTab] = useState('want');            // want | visited | trips | trash; điện thoại thêm 'map'
   const [kind, setKind] = useState('');
   const [area, setArea] = useState('');
   const [occasion, setOccasion] = useState('');
@@ -79,8 +88,9 @@ export default function ChonPage() {
   const [lighting, setLighting] = useState(null);    // place
   const [planning, setPlanning] = useState(null);    // place
   const [menu, setMenu] = useState(null);            // { place, at }
+  const [tripSheet, setTripSheet] = useState(null);  // { trip?, prefill? }
 
-  useEffect(() => { if (user) fetchPlaces(); }, [user, fetchPlaces]);
+  useEffect(() => { if (user) { fetchPlaces(); fetchTrips(); } }, [user, fetchPlaces, fetchTrips]);
 
   // Chia sẻ từ Android: form đã mở sẵn lúc vào trang (shareFromQuery); xoá query để tải lại không mở lại.
   useEffect(() => {
@@ -88,7 +98,7 @@ export default function ChonPage() {
   }, [location.search, location.pathname, navigate]);
 
   const list = useMemo(() => {
-    if (tab === 'trash') return [];
+    if (tab === 'trash' || tab === 'trips') return [];
     const visible = filterPlaces(places, { tab: tab === 'map' ? 'all' : tab, kind, area, occasion, query });
     return sortPlaces(visible, near && origin ? 'near' : 'recent', origin);
   }, [places, tab, kind, area, occasion, query, near, origin]);
@@ -110,6 +120,19 @@ export default function ChonPage() {
     [isMobile, list, places, mapLayer, kind, area, occasion, query],
   );
   const detail = placeId ? (places.find(p => p.id === placeId) || null) : null;
+  const openTrip = tripId ? (trips.find(t => t.id === tripId) || null) : null;
+  // Chốn đích → chuyến (thẻ "Hà Giang loop" có link sang chuyến của nó)
+  const tripByPlace = useMemo(() => {
+    const m = new Map();
+    trips.forEach(t => { if (t.place_id && !m.has(t.place_id)) m.set(t.place_id, t); });
+    return m;
+  }, [trips]);
+  const sortedTrips = useMemo(() => {
+    const rank = { planning: 0, booked: 0, done: 1, cancelled: 2 };
+    return [...trips].sort((a, b) => rank[a.status] - rank[b.status]
+      || (rank[a.status] === 1 ? String(b.start_date || '').localeCompare(String(a.start_date || ''))
+        : String(a.start_date || '9999').localeCompare(String(b.start_date || '9999'))));
+  }, [trips]);
   const hasFilter = !!(kind || area || occasion || query);
 
   // ── Vị trí ──
@@ -141,8 +164,11 @@ export default function ChonPage() {
   };
 
   // ── Thao tác ──
-  const openPlace = useCallback(p => navigate(`/chon/${p.id}`), [navigate]);
-  const closeDetail = useCallback(() => navigate('/chon'), [navigate]);
+  // Mở chi tiết nhớ trang đang đứng (vd trang chuyến) để Đóng quay về đúng chỗ; chi tiết → chi tiết giữ nguyên gốc.
+  const openPlace = useCallback(p => navigate(`/chon/${p.id}`, {
+    state: { from: location.state?.from || (location.pathname.startsWith('/chon/trip/') ? location.pathname : '/chon') },
+  }), [navigate, location.pathname, location.state]);
+  const closeDetail = useCallback(() => navigate(location.state?.from || '/chon'), [navigate, location.state]);
 
   const showCluster = useCallback((pts) => {
     setMapFocus({ points: pts, at: Date.now() });
@@ -268,7 +294,56 @@ export default function ChonPage() {
     { key: 'trash', icon: 'trash', label: 'Bỏ vào thùng rác', danger: true, divider: true, onSelect: () => handleTrash(menu.place) },
   ] : [];
 
-  const anyModal = !!(capture || lighting || planning || menu || detail);
+  // ── Chuyến đi ──
+  const goTrip = useCallback(t => navigate(`/chon/trip/${t.id}`), [navigate]);
+  const backToTrips = useCallback(() => { setTab('trips'); navigate('/chon'); }, [navigate]);
+
+  const handleSaveTrip = useCallback(async (fields) => {
+    if (tripSheet?.trip) {
+      const r = await updateTrip(tripSheet.trip.id, fields);
+      if (r.error) { showToast(r.error, { icon: 'warning' }); return false; }
+      return true;
+    }
+    const r = await addTrip(fields);
+    if (r.error) { showToast(r.error, { icon: 'warning' }); return false; }
+    showToast(`Đã tạo chuyến “${r.data.title}”`, { icon: 'checkCircle' });
+    goTrip(r.data);
+    return true;
+  }, [tripSheet, updateTrip, addTrip, showToast, goTrip]);
+
+  const handleTrashTrip = useCallback(async (t) => {
+    const r = await archiveTrip(t);
+    if (r.error) { showToast(r.error, { icon: 'warning' }); return; }
+    showToast(`Đã bỏ chuyến “${t.title}” vào thùng rác`);
+    if (tripId === t.id) backToTrips();
+  }, [archiveTrip, showToast, tripId, backToTrips]);
+
+  const handleDeleteTripForever = useCallback(async (t) => {
+    const ok = await confirm({
+      title: `Xoá vĩnh viễn chuyến “${t.title}”?`,
+      message: 'Các lựa chọn tour và lịch chốn của chuyến mất hẳn. Chốn, việc bên Nhiệm vụ và giao dịch bên Tài chính vẫn giữ.',
+      confirmLabel: 'Xoá vĩnh viễn',
+      danger: true,
+    });
+    if (!ok) return;
+    const r = await deleteTrip(t.id);
+    if (r.error) showToast(r.error, { icon: 'warning' });
+  }, [confirm, deleteTrip, showToast]);
+
+  const shareTrip = useCallback(async (t) => {
+    const text = [`${t.title}${t.tagline ? ` — ${t.tagline}` : ''}`, formatTripRange(t), `${t.people} người`].join(' · ');
+    try {
+      if (navigator.share) { await navigator.share({ title: t.title, text }); return; }
+      await navigator.clipboard.writeText(text);
+      showToast('Đã chép thông tin chuyến để gửi bạn');
+    } catch (err) {
+      if (err?.name !== 'AbortError') showToast('Chưa chia sẻ được. Thử lại.', { icon: 'warning' });
+    }
+  }, [showToast]);
+
+  const planTripFor = useCallback(p => setTripSheet({ prefill: { title: p.name, region: p.area, place_id: p.id } }), []);
+
+  const anyModal = !!(capture || lighting || planning || menu || detail || tripSheet || tripId);
 
   // Phím tắt: / tìm, N lưu chốn
   useEffect(() => {
@@ -295,13 +370,127 @@ export default function ChonPage() {
     );
   }
 
-  const showMapPane = !isMobile || tab === 'map';
+  const showMapPane = (!isMobile || tab === 'map') && tab !== 'trips';
   const listTab = tab === 'map' ? null : tab;
+
+  // Lớp nổi dùng chung cho danh sách và trang chuyến — render qua portal (ChonLayer)
+  const overlays = (
+    <ChonLayer>
+      {ConfirmModal}
+      {menu && <ActionMenu at={menu.at} items={menuItems} onClose={() => setMenu(null)} label={`Thao tác với ${menu.place.name}`} />}
+
+      {placeId && !detail && !isLoading && (
+        <div className="chon-detail-backdrop" onMouseDown={closeDetail}>
+          <div className="chon-empty chon-empty--float">
+            <p>Không thấy chốn này — có thể đã vào thùng rác.</p>
+            <button type="button" className="chon-btn chon-btn--soft" onClick={closeDetail}>Về danh sách</button>
+          </div>
+        </div>
+      )}
+
+      {detail && (
+        <ChonPlaceDetail
+          place={detail}
+          places={places}
+          origin={origin}
+          today={today}
+          trip={tripByPlace.get(detail.id) || null}
+          onOpenTrip={goTrip}
+          onPlanTrip={planTripFor}
+          onClose={closeDetail}
+          onEdit={p => setCapture({ place: p })}
+          onMenu={(p, at) => setMenu({ place: p, at })}
+          onLight={setLighting}
+          onPlan={setPlanning}
+          onShare={handleShare}
+          onShowCluster={showCluster}
+          onOpenPlace={openPlace}
+          onAddSource={handleAddSource}
+          onDeleteSource={handleDeleteSource}
+          onDeleteVisit={handleDeleteVisit}
+          onWriteArticle={handleWriteArticle}
+          fetchArticles={fetchLinkOptions}
+        />
+      )}
+
+      {capture && (
+        <ChonCaptureSheet
+          place={capture.place || null}
+          prefill={capture.prefill}
+          places={places}
+          onSave={handleSave}
+          onMerge={handleMerge}
+          onClose={() => setCapture(null)}
+        />
+      )}
+
+      {lighting && <ChonLightSheet place={lighting} onSave={handleLight} onClose={() => setLighting(null)} />}
+
+      {tripSheet && (
+        <ChonTripSheet
+          trip={tripSheet.trip || null}
+          prefill={tripSheet.prefill}
+          places={places}
+          onSave={handleSaveTrip}
+          onClose={() => setTripSheet(null)}
+        />
+      )}
+
+      {planning && (
+        <Suspense fallback={null}>
+          <ChonPlanDialog
+            place={planning}
+            onPlanned={handlePlanned}
+            onError={msg => showToast(msg, { icon: 'warning' })}
+            onClose={() => setPlanning(null)}
+          />
+        </Suspense>
+      )}
+    </ChonLayer>
+  );
+
+  if (tripId) {
+    return (
+      <div className="chon-page">
+        <SkyBackground isMobile={isMobile} calm />
+        <div className="chon-shell chon-shell--trip">
+          {openTrip ? (
+            <Suspense fallback={<SkeletonList rows={3} lines={2} right={false} label="Đang tải chuyến đi" />}>
+              <ChonTripView
+                key={openTrip.id}
+                trip={openTrip}
+                trips={trips}
+                places={places}
+                today={today}
+                api={tripApi}
+                onBack={backToTrips}
+                onEdit={() => setTripSheet({ trip: openTrip })}
+                onTrash={() => handleTrashTrip(openTrip)}
+                onShare={() => shareTrip(openTrip)}
+                onOpenPlace={openPlace}
+                onLightPlace={setLighting}
+                onToast={msg => showToast(msg)}
+              />
+            </Suspense>
+          ) : tripsLoading ? (
+            <SkeletonList rows={3} lines={2} right={false} label="Đang tải chuyến đi" />
+          ) : (
+            <div className="chon-empty">
+              <p>Không thấy chuyến này — có thể đã vào thùng rác.</p>
+              <button type="button" className="chon-btn chon-btn--soft" onClick={backToTrips}>Về danh sách chuyến</button>
+            </div>
+          )}
+        </div>
+        {overlays}
+      </div>
+    );
+  }
+
+  const onTrips = tab === 'trips';
 
   return (
     <div className="chon-page">
       <SkyBackground isMobile={isMobile} calm />
-      {ConfirmModal}
 
       <div className="chon-shell">
         <header className="chon-header">
@@ -318,9 +507,15 @@ export default function ChonPage() {
               placeholder="Tìm quán, món, khu vực, người giới thiệu…" aria-label="Tìm chốn" />
             {!isMobile && <kbd>/</kbd>}
           </label>
-          <button type="button" className="chon-btn chon-btn--lamp chon-header__add" onClick={() => setCapture({})} aria-label="Lưu chốn">
-            <AppIcon name="plus" size={17} weight="bold" /><span className="chon-header__add-label">Lưu chốn</span>
-          </button>
+          {onTrips ? (
+            <button type="button" className="chon-btn chon-btn--lamp chon-header__add" onClick={() => setTripSheet({})} aria-label="Lên chuyến đi">
+              <AppIcon name="plus" size={17} weight="bold" /><span className="chon-header__add-label">Lên chuyến đi</span>
+            </button>
+          ) : (
+            <button type="button" className="chon-btn chon-btn--lamp chon-header__add" onClick={() => setCapture({})} aria-label="Lưu chốn">
+              <AppIcon name="plus" size={17} weight="bold" /><span className="chon-header__add-label">Lưu chốn</span>
+            </button>
+          )}
         </header>
 
         <div className="chon-tabs" role="tablist" aria-label="Chốn">
@@ -330,17 +525,22 @@ export default function ChonPage() {
           <button type="button" role="tab" aria-selected={tab === 'visited'} className={`chon-tab${tab === 'visited' ? ' is-on' : ''}`} onClick={() => setTab('visited')}>
             <AppIcon name="lantern" size={17} weight="fill" className="chon-tab__lit" />Đã đến<span className="chon-tab__count">{counts.visited}</span>
           </button>
+          <button type="button" role="tab" aria-selected={onTrips} className={`chon-tab${onTrips ? ' is-on' : ''}`} onClick={() => setTab('trips')}>
+            <AppIcon name="flag" size={17} />Chuyến đi<span className="chon-tab__count">{trips.length}</span>
+          </button>
           {isMobile && (
             <button type="button" role="tab" aria-selected={tab === 'map'} className={`chon-tab${tab === 'map' ? ' is-on' : ''}`} onClick={() => setTab('map')}>
               <AppIcon name="mapTrifold" size={17} />Bản đồ
             </button>
           )}
-          <button type="button" role="tab" aria-selected={tab === 'trash'} className={`chon-tab chon-tab--end${tab === 'trash' ? ' is-on' : ''}`} onClick={() => setTab('trash')}>
-            <AppIcon name="trash" size={16} />{!isMobile && 'Thùng rác'}{trash.length > 0 && <span className="chon-tab__count">{trash.length}</span>}
+          <button type="button" role="tab" aria-selected={tab === 'trash'} aria-label="Thùng rác"
+            className={`chon-tab chon-tab--end${tab === 'trash' ? ' is-on' : ''}`} onClick={() => setTab('trash')}>
+            <AppIcon name="trash" size={16} />{!isMobile && 'Thùng rác'}
+            {trash.length + tripTrash.length > 0 && <span className="chon-tab__count">{trash.length + tripTrash.length}</span>}
           </button>
         </div>
 
-        {tab !== 'trash' && (
+        {tab !== 'trash' && !onTrips && (
           <div className="chon-filters" role="group" aria-label="Lọc chốn">
             <button type="button" className={`chon-chip${!kind ? ' is-on' : ''}`} aria-pressed={!kind} onClick={() => setKind('')}>Tất cả</button>
             {KINDS.filter(k => k.id !== 'other' || kindCounts.other).map(k => (
@@ -382,11 +582,35 @@ export default function ChonPage() {
           </div>
         )}
 
-        <div className={`chon-main${tab === 'trash' ? ' chon-main--single' : ''}${tab === 'map' ? ' chon-main--map' : ''}`}>
+        <div className={`chon-main${tab === 'trash' || onTrips ? ' chon-main--single' : ''}${tab === 'map' ? ' chon-main--map' : ''}`}>
           {listTab && (
             <div className="chon-list">
               {listTab === 'trash' ? (
-                <TrashList trash={trash} onRestore={async p => { const r = await restorePlace(p); if (!r.error) showToast(`Đã khôi phục “${p.name}”`); }} onDelete={handleDeleteForever} />
+                <TrashList
+                  trash={trash}
+                  tripTrash={tripTrash}
+                  onRestore={async p => { const r = await restorePlace(p); if (!r.error) showToast(`Đã khôi phục “${p.name}”`); }}
+                  onDelete={handleDeleteForever}
+                  onRestoreTrip={async t => { const r = await restoreTrip(t); if (!r.error) showToast(`Đã khôi phục chuyến “${t.title}”`); }}
+                  onDeleteTrip={handleDeleteTripForever}
+                />
+              ) : onTrips ? (
+                tripsLoading && trips.length === 0 ? (
+                  <SkeletonList rows={3} lines={2} right={false} label="Đang tải chuyến đi" />
+                ) : trips.length === 0 ? (
+                  <div className="chon-empty">
+                    <AppIcon name="flag" size={40} />
+                    <p>Chưa có chuyến đi nào.</p>
+                    <p className="chon-faint">Lên chuyến để so các lựa chọn tour cạnh nhau, xếp chốn theo ngày và chuẩn bị đồ.</p>
+                    <button type="button" className="chon-btn chon-btn--lamp" onClick={() => setTripSheet({})}>
+                      <AppIcon name="plus" size={16} weight="bold" />Lên chuyến đi
+                    </button>
+                  </div>
+                ) : (
+                  <div className="chon-grid chon-grid--trips">
+                    {sortedTrips.map(t => <ChonTripCard key={t.id} trip={t} today={today} onOpen={goTrip} />)}
+                  </div>
+                )
               ) : (
                 <>
                   {listTab === 'want' && cluster && !hasFilter && (
@@ -420,6 +644,8 @@ export default function ChonPage() {
                           origin={origin}
                           today={today}
                           active={hoveredId === p.id}
+                          trip={tripByPlace.get(p.id) || null}
+                          onOpenTrip={goTrip}
                           onOpen={openPlace}
                           onLight={setLighting}
                           onMenu={(place, at) => setMenu({ place, at })}
@@ -435,77 +661,22 @@ export default function ChonPage() {
 
           {showMapPane && tab !== 'trash' && (
             <aside className="chon-map-pane" aria-label="Bản đồ chốn">
-                <ChonMap
-                  places={mapPlaces}
-                  origin={origin}
-                  hoveredId={hoveredId}
-                  focus={mapFocus}
-                  onSelect={openPlace}
-                  layer={isMobile ? undefined : mapLayer}
-                  onLayer={isMobile ? undefined : setMapLayer}
-                  onLocate={() => locate(o => setMapFocus({ points: [o], zoom: 15, at: Date.now() }))}
-                />
+              <ChonMap
+                places={mapPlaces}
+                origin={origin}
+                hoveredId={hoveredId}
+                focus={mapFocus}
+                onSelect={openPlace}
+                layer={isMobile ? undefined : mapLayer}
+                onLayer={isMobile ? undefined : setMapLayer}
+                onLocate={() => locate(o => setMapFocus({ points: [o], zoom: 15, at: Date.now() }))}
+              />
             </aside>
           )}
         </div>
       </div>
 
-      {menu && <ActionMenu at={menu.at} items={menuItems} onClose={() => setMenu(null)} label={`Thao tác với ${menu.place.name}`} />}
-
-      {placeId && !detail && !isLoading && (
-        <div className="chon-detail-backdrop" onMouseDown={closeDetail}>
-          <div className="chon-empty chon-empty--float">
-            <p>Không thấy chốn này — có thể đã vào thùng rác.</p>
-            <button type="button" className="chon-btn chon-btn--soft" onClick={closeDetail}>Về danh sách</button>
-          </div>
-        </div>
-      )}
-
-      {detail && (
-        <ChonPlaceDetail
-          place={detail}
-          places={places}
-          origin={origin}
-          today={today}
-          onClose={closeDetail}
-          onEdit={p => setCapture({ place: p })}
-          onMenu={(p, at) => setMenu({ place: p, at })}
-          onLight={setLighting}
-          onPlan={setPlanning}
-          onShare={handleShare}
-          onShowCluster={showCluster}
-          onOpenPlace={openPlace}
-          onAddSource={handleAddSource}
-          onDeleteSource={handleDeleteSource}
-          onDeleteVisit={handleDeleteVisit}
-          onWriteArticle={handleWriteArticle}
-          fetchArticles={fetchLinkOptions}
-        />
-      )}
-
-      {capture && (
-        <ChonCaptureSheet
-          place={capture.place || null}
-          prefill={capture.prefill}
-          places={places}
-          onSave={handleSave}
-          onMerge={handleMerge}
-          onClose={() => setCapture(null)}
-        />
-      )}
-
-      {lighting && <ChonLightSheet place={lighting} onSave={handleLight} onClose={() => setLighting(null)} />}
-
-      {planning && (
-        <Suspense fallback={null}>
-          <ChonPlanDialog
-            place={planning}
-            onPlanned={handlePlanned}
-            onError={msg => showToast(msg, { icon: 'warning' })}
-            onClose={() => setPlanning(null)}
-          />
-        </Suspense>
-      )}
+      {overlays}
     </div>
   );
 }
@@ -538,30 +709,53 @@ function EmptyState({ tab, filtered, onAdd, onClear }) {
   );
 }
 
-function TrashList({ trash, onRestore, onDelete }) {
-  if (!trash.length) {
+function TrashList({ trash, tripTrash, onRestore, onDelete, onRestoreTrip, onDeleteTrip }) {
+  if (!trash.length && !tripTrash.length) {
     return <div className="chon-empty"><p>Thùng rác trống.</p></div>;
   }
   return (
-    <ul className="chon-trash">
-      {trash.map(p => {
-        const k = kindOf(p.kind);
-        return (
-          <li key={p.id} className="chon-trash__row">
-            <span className={`chon-near__icon chon-kind--${k.id}`} aria-hidden="true"><AppIcon name={k.icon} size={16} /></span>
-            <span className="chon-near__text">
-              <span className="chon-near__name">{p.name}</span>
-              <span className="chon-near__sub">{[p.area, `bỏ ${timeAgo(p.archived_at)}`].filter(Boolean).join(' · ')}</span>
-            </span>
-            <button type="button" className="chon-btn chon-btn--ghost chon-btn--sm" onClick={() => onRestore(p)}>
-              <AppIcon name="refresh" size={14} />Khôi phục
-            </button>
-            <button type="button" className="chon-icon-btn chon-icon-btn--danger" aria-label={`Xoá vĩnh viễn ${p.name}`} onClick={() => onDelete(p)}>
-              <AppIcon name="trash" size={16} />
-            </button>
-          </li>
-        );
-      })}
-    </ul>
+    <>
+      {trash.length > 0 && (
+        <ul className="chon-trash" aria-label="Chốn trong thùng rác">
+          {trash.map(p => {
+            const k = kindOf(p.kind);
+            return (
+              <li key={p.id} className="chon-trash__row">
+                <span className={`chon-near__icon chon-kind--${k.id}`} aria-hidden="true"><AppIcon name={k.icon} size={16} /></span>
+                <span className="chon-near__text">
+                  <span className="chon-near__name">{p.name}</span>
+                  <span className="chon-near__sub">{[p.area, `bỏ ${timeAgo(p.archived_at)}`].filter(Boolean).join(' · ')}</span>
+                </span>
+                <button type="button" className="chon-btn chon-btn--ghost chon-btn--sm" onClick={() => onRestore(p)}>
+                  <AppIcon name="refresh" size={14} />Khôi phục
+                </button>
+                <button type="button" className="chon-icon-btn chon-icon-btn--danger" aria-label={`Xoá vĩnh viễn ${p.name}`} onClick={() => onDelete(p)}>
+                  <AppIcon name="trash" size={16} />
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+      {tripTrash.length > 0 && (
+        <ul className="chon-trash" aria-label="Chuyến đi trong thùng rác">
+          {tripTrash.map(t => (
+            <li key={t.id} className="chon-trash__row">
+              <span className="chon-near__icon chon-kind--travel" aria-hidden="true"><AppIcon name="flag" size={16} /></span>
+              <span className="chon-near__text">
+                <span className="chon-near__name">{t.title}</span>
+                <span className="chon-near__sub">{['Chuyến đi', t.region, `bỏ ${timeAgo(t.archived_at)}`].filter(Boolean).join(' · ')}</span>
+              </span>
+              <button type="button" className="chon-btn chon-btn--ghost chon-btn--sm" onClick={() => onRestoreTrip(t)}>
+                <AppIcon name="refresh" size={14} />Khôi phục
+              </button>
+              <button type="button" className="chon-icon-btn chon-icon-btn--danger" aria-label={`Xoá vĩnh viễn chuyến ${t.title}`} onClick={() => onDeleteTrip(t)}>
+                <AppIcon name="trash" size={16} />
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </>
   );
 }

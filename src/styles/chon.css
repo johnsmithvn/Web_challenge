@@ -6,7 +6,8 @@
    ================================================================ */
 
 /* ── Token ─────────────────────────────────────────────────── */
-.chon-page {
+.chon-page,
+.chon-layer {
   --chon-font: 'Be Vietnam Pro', system-ui, sans-serif;
   --chon-display: 'Spectral', Georgia, serif;
   --chon-mono: 'JetBrains Mono', ui-monospace, monospace;
@@ -50,7 +51,8 @@
   --am-tx: var(--chon-tx); --am-dim: var(--chon-dim); --am-hover: var(--chon-p3); --am-danger: var(--chon-red);
 }
 
-[data-theme="light"] .chon-page {
+[data-theme="light"] .chon-page,
+[data-theme="light"] .chon-layer {
   --chon-p1: rgba(255, 255, 255, 0.8);
   --chon-p2: rgba(120, 80, 20, 0.05);
   --chon-p3: rgba(120, 80, 20, 0.09);
@@ -104,14 +106,25 @@
   font-size: 14px;
   line-height: 1.5;
 }
-.chon-page :where(button, a, input, textarea, [role="tab"]):focus-visible {
+/* Lớp nổi (sheet, ngăn chi tiết, menu, hộp xác nhận) render qua portal ra <body> (ChonLayer): .chon-page có
+   `isolation: isolate` nên z-index bên trong không vượt được thanh / tab đáy của app trên điện thoại. */
+.chon-layer {
+  color: var(--chon-tx);
+  font-family: var(--chon-font);
+  font-size: 14px;
+  line-height: 1.5;
+}
+/* Nút / link: viền focus rõ. Ô nhập KHÔNG dùng outline — tự có vòng sáng mềm (.chon-input:focus,
+   .chon-input-icon:focus-within), nếu không sẽ thành hai viền lồng nhau. */
+:is(.chon-page, .chon-layer) :where(button, a, [role="tab"]):focus-visible {
   outline: 2px solid var(--chon-lamp);
   outline-offset: 2px;
 }
-.chon-page :where(button) { font: inherit; color: inherit; cursor: pointer; }
-.chon-page :where(button:disabled) { cursor: default; opacity: 0.6; }
-.chon-page ::placeholder { color: var(--chon-faint); opacity: 1; }
-.chon-page .action-menu { z-index: 1200; }
+:is(.chon-page, .chon-layer) :where(input, textarea):focus-visible { outline: none; }
+:is(.chon-page, .chon-layer) :where(button) { font: inherit; color: inherit; cursor: pointer; }
+:is(.chon-page, .chon-layer) :where(button:disabled) { cursor: default; opacity: 0.6; }
+:is(.chon-page, .chon-layer) ::placeholder { color: var(--chon-faint); opacity: 1; }
+:is(.chon-page, .chon-layer) .action-menu { z-index: 1200; }
 
 .chon-shell {
   position: relative;
@@ -171,7 +184,7 @@
 .chon-filters__sep { width: 1px; height: 22px; margin: 0 4px; background: var(--chon-line-2); }
 .chon-select { width: 156px; }
 /* SearchSelect dùng chung: map token nó đọc sang --chon-* (như Knowledge); menu nền đặc, không blur */
-.chon-page .search-select {
+:is(.chon-page, .chon-layer) .search-select {
   --color-bg: var(--chon-pop);
   --surface: var(--chon-pop);
   --color-divider: var(--chon-line);
@@ -183,7 +196,7 @@
   --r: 12px;
 }
 .chon-filters .search-select__control { border-radius: 999px; }
-.chon-page .search-select__menu { box-shadow: var(--chon-shadow); backdrop-filter: none; -webkit-backdrop-filter: none; }
+:is(.chon-page, .chon-layer) .search-select__menu { box-shadow: var(--chon-shadow); backdrop-filter: none; -webkit-backdrop-filter: none; }
 
 /* Chip / viên */
 .chon-chip {
@@ -231,9 +244,9 @@
 }
 .chon-btn--lamp { background: var(--chon-lamp); color: var(--chon-on-lamp); box-shadow: 0 0 26px var(--chon-glow); }
 .chon-btn--lamp:hover { box-shadow: 0 0 34px var(--chon-glow); }
-.chon-page a.chon-btn--lamp { color: var(--chon-on-lamp); }
+:is(.chon-page, .chon-layer) a.chon-btn--lamp { color: var(--chon-on-lamp); }
 .chon-btn--soft { background: var(--chon-lamp-soft); border-color: var(--chon-lamp-line); color: var(--chon-lamp-tx); }
-.chon-page a.chon-btn--soft { color: var(--chon-lamp-tx); }
+:is(.chon-page, .chon-layer) a.chon-btn--soft { color: var(--chon-lamp-tx); }
 .chon-btn--ghost { background: var(--chon-p2); border-color: var(--chon-line-2); color: var(--chon-tx); font-weight: 500; }
 .chon-btn--ghost:hover { background: var(--chon-p3); }
 .chon-btn--outline { background: transparent; border-color: var(--chon-lamp-line); color: var(--chon-lamp-tx); }
@@ -325,8 +338,13 @@
 .chon-lamp-btn:hover { box-shadow: 0 0 18px var(--chon-glow); transform: scale(1.06); }
 .chon-lamp-btn.is-lit { background: var(--chon-lamp); color: var(--chon-on-lamp); box-shadow: 0 0 18px var(--chon-glow); }
 .chon-card__body { flex: 1; padding: 13px 15px 15px; display: flex; flex-direction: column; gap: 6px; min-width: 0; }
-.chon-card__kind { margin: 0; display: flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--kc); }
-.chon-card__area { color: var(--chon-faint); }
+/* Một dòng: icon + loại không bao giờ gãy, khu vực dài thì cắt "…" (khu vực cũ có thể là cả địa chỉ) */
+.chon-card__kind {
+  margin: 0; display: flex; align-items: center; gap: 6px; min-width: 0;
+  font-size: 12.5px; line-height: 1.4; color: var(--kc); white-space: nowrap;
+}
+.chon-card__kind > svg { flex: none; }
+.chon-card__area { min-width: 0; overflow: hidden; text-overflow: ellipsis; color: var(--chon-faint); }
 .chon-card__name { margin: 0; font-family: var(--chon-display); font-weight: 500; font-size: 21px; line-height: 1.2; }
 .chon-card__open { border: 0; padding: 0; background: none; text-align: left; font: inherit; color: inherit; }
 /* Phủ cả thẻ — nút đèn và ⋯ nằm trên (z-index) */
@@ -431,11 +449,11 @@
   display: block; width: 16px; height: 16px; box-sizing: border-box; border-radius: 50%;
   background: var(--chon-blue); border: 2.5px solid #EAF4FF; box-shadow: 0 0 0 10px color-mix(in srgb, var(--chon-blue) 18%, transparent);
 }
-.chon-page .chon-map-tip {
+:is(.chon-page, .chon-layer) .chon-map-tip {
   background: var(--chon-pop); color: var(--chon-tx); border: 1px solid var(--chon-line-2);
   border-radius: 10px; box-shadow: var(--chon-shadow); font: 500 13px var(--chon-font); padding: 4px 9px;
 }
-.chon-page .chon-map-tip::before { border-top-color: var(--chon-pop); }
+:is(.chon-page, .chon-layer) .chon-map-tip::before { border-top-color: var(--chon-pop); }
 .chon-map--mini { height: 150px; min-height: 0; border-radius: 16px; }
 
 /* ── Sheet (Lưu chốn, Thắp đèn) ─────────────────────────────── */
@@ -468,21 +486,35 @@
 .chon-field { display: flex; flex-direction: column; gap: 8px; min-width: 0; margin: 0; padding: 0; border: 0; }
 .chon-field__label { font-size: 13px; font-weight: 600; color: var(--chon-dim); padding: 0; margin: 0; }
 .chon-field__opt { font-weight: 400; font-size: 12px; color: var(--chon-faint); }
+.chon-field__sub { font-size: 12.5px; font-weight: 500; color: var(--chon-tx-2); }
+.chon-row2 > .chon-field { gap: 6px; }
 .chon-input {
   width: 100%; height: 44px; box-sizing: border-box; padding: 0 14px; border-radius: 12px;
   border: 1px solid var(--chon-line); background: var(--chon-p2); color: var(--chon-tx); font: inherit; font-size: 14px; outline: none;
+  transition: border-color 0.15s, box-shadow 0.15s, background-color 0.15s;
 }
-.chon-input:focus { border-color: var(--chon-lamp-line); box-shadow: 0 0 0 3px color-mix(in srgb, var(--chon-lamp) 12%, transparent); }
+.chon-input:hover:not(:focus) { border-color: var(--chon-line-2); }
+/* Vòng sáng đèn lồng dùng chung cho mọi ô nhập (ô thường lẫn khung có icon) */
+.chon-input:focus,
+.chon-input-icon:focus-within {
+  border-color: var(--chon-lamp-line);
+  background: color-mix(in srgb, var(--chon-lamp) 4%, var(--chon-p2));
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--chon-lamp) 14%, transparent), 0 0 18px color-mix(in srgb, var(--chon-lamp) 10%, transparent);
+}
 .chon-input--title { height: 50px; font-family: var(--chon-display); font-size: 21px; font-weight: 500; }
-.chon-input--bare { border: 0; background: transparent; padding: 0; height: auto; box-shadow: none !important; }
+/* Ô nằm trong khung (.chon-input-icon, ô cảm nhận, ô chi phí): khung ngoài lo viền + vòng sáng */
+.chon-input--bare,
+.chon-input--bare:focus { border: 0; background: transparent; padding: 0; height: auto; box-shadow: none; }
 .chon-input--chip { width: 150px; height: 36px; border-radius: 999px; border-style: dashed; font-size: 13px; padding: 0 12px; }
 .chon-input--tiny { width: 36px; height: 30px; padding: 0 4px; text-align: center; border-radius: 8px; }
 .chon-textarea { height: auto; min-height: 64px; padding: 10px 14px; resize: vertical; line-height: 1.5; }
 .chon-input-icon {
   display: flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 8px 0 14px; box-sizing: border-box;
   border-radius: 12px; border: 1px solid var(--chon-line); background: var(--chon-p2); color: var(--chon-faint);
+  transition: border-color 0.15s, box-shadow 0.15s, background-color 0.15s;
 }
-.chon-input-icon:focus-within { border-color: var(--chon-lamp-line); }
+.chon-input-icon:hover:not(:focus-within) { border-color: var(--chon-line-2); }
+.chon-input-icon:focus-within > svg { color: var(--chon-lamp); }
 .chon-input-icon .chon-input--bare { flex: 1; min-width: 0; min-height: 40px; }
 .chon-row2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
 .chon-hint { margin: 0; font-size: 12.5px; color: var(--chon-faint); }
@@ -550,7 +582,11 @@
   height: 36px; padding: 0 6px 0 11px; border-radius: 999px; border: 1px solid var(--chon-line); background: var(--chon-p2);
   display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--chon-tx-2);
 }
-.chon-spend { flex-direction: row; align-items: center; gap: 12px; padding: 10px 12px 10px 14px; }
+.chon-spend { flex-direction: row; align-items: center; gap: 12px; padding: 10px 12px 10px 14px; transition: border-color 0.15s, box-shadow 0.15s; }
+.chon-spend:focus-within {
+  border-color: var(--chon-lamp-line);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--chon-lamp) 14%, transparent);
+}
 .chon-spend__icon {
   width: 36px; height: 36px; flex: none; border-radius: 11px; display: flex; align-items: center; justify-content: center;
   background: color-mix(in srgb, var(--chon-kind-outing) 12%, transparent); color: var(--chon-kind-outing);
@@ -634,15 +670,168 @@
 .chon-plan__picker { position: relative; }
 .chon-plan__picker .dp-popover { position: static !important; box-shadow: none; width: 100%; }
 
+/* ── Tiện ích nhỏ ──────────────────────────────────────────── */
+.chon-sr { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+.chon-m0 { margin: 0; }
+.chon-self-start { align-self: flex-start; }
+.chon-pad-y { padding: 16px 2px; }
+.chon-icon-btn--box { width: 44px; height: 44px; border-radius: 12px; border: 1px solid var(--chon-line-2); background: var(--chon-p2); color: var(--chon-tx); }
+.chon-sec-head--wrap { flex-wrap: wrap; align-items: flex-start; }
+.chon-empty--tight { padding: 24px 12px; }
+
+/* Viên trạng thái chuyến (chấm màu + chữ) */
+.chon-pill--status i { width: 7px; height: 7px; border-radius: 50%; background: currentColor; flex: none; }
+.chon-pill--status.is-planning { color: var(--chon-lamp-tx); border-color: var(--chon-lamp-line); background: var(--chon-lamp-soft); }
+.chon-pill--status.is-booked { color: var(--chon-kind-outing); border-color: color-mix(in srgb, var(--chon-kind-outing) 40%, transparent); background: color-mix(in srgb, var(--chon-kind-outing) 10%, transparent); }
+.chon-pill--status.is-done { color: var(--chon-blue-tx); border-color: color-mix(in srgb, var(--chon-blue) 40%, transparent); background: var(--chon-blue-soft); }
+.chon-pill--status.is-cancelled { color: var(--chon-faint); }
+.chon-card__src.chon-pill--status { border: 0; background: var(--chon-bar); }
+.chon-pill--link { cursor: pointer; color: var(--chon-lamp-tx); }
+.chon-pill--link:hover { border-color: var(--chon-lamp-line); }
+
+/* Link chốn ↔ chuyến */
+.chon-card__trip { position: relative; z-index: 2; align-self: flex-start; font-size: 12.5px; }
+.chon-trip-link {
+  width: 100%; min-height: 56px; padding: 6px 12px 6px 8px; border-radius: 14px; text-align: left;
+  display: flex; align-items: center; gap: 12px; color: var(--chon-tx);
+  background: color-mix(in srgb, var(--chon-kind-travel) 8%, transparent); border: 1px solid color-mix(in srgb, var(--chon-kind-travel) 30%, transparent);
+}
+.chon-trip-link:hover { border-color: color-mix(in srgb, var(--chon-kind-travel) 55%, transparent); }
+.chon-trip-link > svg:last-child { color: var(--chon-faint); }
+.chon-grid--trips { grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); }
+.chon-trip-card__tag { font-style: italic; color: var(--chon-lamp-tx); font-size: 0.82em; }
+
+/* Form chuyến / lựa chọn */
+.chon-input--btn { display: flex; align-items: center; gap: 8px; text-align: left; color: var(--chon-tx); cursor: pointer; }
+.chon-input--btn svg { color: var(--chon-lamp); flex: none; }
+.chon-pop-anchor--block { display: block; }
+.chon-stepper { display: inline-flex; align-items: center; gap: 4px; height: 44px; padding: 0 4px; border-radius: 12px; border: 1px solid var(--chon-line); background: var(--chon-p2); align-self: flex-start; }
+.chon-stepper .chon-input--tiny { height: 34px; width: 44px; border: 0; background: transparent; font-weight: 600; font-size: 15px; }
+.chon-cost-row { display: grid; grid-template-columns: minmax(0, 1fr) 130px 40px; gap: 8px; align-items: center; }
+.chon-cost-row__hint { grid-column: 2 / 4; margin-top: -4px; }
+.chon-day-select { flex: 0 0 auto; }
+.chon-day-select select { height: 44px; padding: 0 10px; min-width: 150px; }
+.chon-pick-list { list-style: none; margin: 12px 0 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.chon-pick {
+  display: flex; align-items: center; gap: 12px; min-height: 52px; padding: 4px 10px; border-radius: 12px; cursor: pointer;
+  border: 1px solid transparent;
+}
+.chon-pick:hover { background: var(--chon-p3); }
+.chon-pick.is-on { background: var(--chon-lamp-soft); border-color: var(--chon-lamp-line); }
+.chon-pick input { width: 18px; height: 18px; accent-color: var(--chon-lamp); flex: none; }
+
+/* ── Trang chuyến đi (mockup 2E) ───────────────────────────── */
+.chon-shell--trip { overflow-y: auto; padding-bottom: var(--bottom-fab-pad, 40px); scrollbar-gutter: stable; }
+.chon-trip { display: flex; flex-direction: column; gap: 18px; padding-bottom: 24px; }
+.chon-trip__head { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 14px 24px; }
+.chon-trip__titles { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.chon-trip__back { font-size: 13px; }
+.chon-trip__title { margin: 0; font-family: var(--chon-display); font-weight: 500; font-size: 38px; line-height: 1.08; letter-spacing: -0.01em; }
+.chon-trip__title em { font-style: italic; color: var(--chon-lamp-tx); font-size: 0.72em; }
+.chon-trip__actions { display: flex; gap: 8px; }
+.chon-trip__grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(300px, 360px); gap: 20px; align-items: start; }
+.chon-trip__main, .chon-trip__side { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.chon-trip-box {
+  display: flex; flex-direction: column; gap: 12px; padding: 16px 18px 18px;
+  border-radius: 20px; background: var(--chon-p1); border: 1px solid var(--chon-line);
+}
+
+/* Bảng so sánh: cùng thứ tự dòng, cột đang nghiêng về / đã chốt sáng viền */
+.chon-cmp-scroll { overflow-x: auto; margin: 0 -18px; padding: 0 18px 4px; scrollbar-width: thin; }
+.chon-cmp-scroll:focus-visible { outline: 2px solid var(--chon-lamp); outline-offset: -2px; border-radius: 12px; }
+.chon-cmp { width: 100%; min-width: calc(130px + var(--cols, 3) * 210px); border-collapse: separate; border-spacing: 0; table-layout: fixed; font-size: 13.5px; }
+.chon-cmp th, .chon-cmp td { padding: 10px 12px; vertical-align: top; text-align: left; border-bottom: 1px solid var(--chon-line); }
+.chon-cmp__rowh { width: 130px; color: var(--chon-dim); font-weight: 600; font-size: 12.5px; }
+.chon-cmp thead th { border-bottom-color: var(--chon-line-2); vertical-align: bottom; }
+.chon-cmp__col { position: relative; padding-top: 30px !important; font-weight: 400; }
+.chon-cmp__name { display: flex; align-items: center; gap: 8px; font-size: 15.5px; font-weight: 600; color: var(--chon-tx); }
+.chon-cmp__name > span:nth-child(2) { flex: 1; min-width: 0; }
+.chon-cmp__letter {
+  width: 26px; height: 26px; flex: none; border-radius: 8px; display: inline-flex; align-items: center; justify-content: center;
+  font: 700 13px var(--chon-font); background: var(--chon-p3); color: var(--chon-tx);
+}
+.chon-cmp__more { margin-right: -6px; }
+.chon-cmp__sub { display: block; margin-top: 2px; font-size: 12.5px; color: var(--chon-faint); }
+.chon-cmp__flag {
+  position: absolute; left: 12px; top: 6px; height: 20px; padding: 0 8px; border-radius: 999px;
+  display: inline-flex; align-items: center; gap: 4px; font-size: 11.5px; font-weight: 600;
+  background: var(--chon-lamp-soft); color: var(--chon-lamp-tx);
+}
+.chon-cmp__flag.is-chosen { background: color-mix(in srgb, var(--chon-kind-outing) 14%, transparent); color: var(--chon-kind-outing); }
+.chon-cmp .is-leaning { background: color-mix(in srgb, var(--chon-lamp) 5%, transparent); }
+.chon-cmp .is-chosen { background: color-mix(in srgb, var(--chon-kind-outing) 6%, transparent); }
+.chon-cmp thead .is-leaning .chon-cmp__letter { background: var(--chon-lamp); color: var(--chon-on-lamp); }
+.chon-cmp thead .is-chosen .chon-cmp__letter { background: var(--chon-kind-outing); color: var(--chon-on-lamp); }
+.chon-cmp__big { display: block; font-size: 16px; font-weight: 700; color: var(--chon-tx); }
+.chon-cmp__cell--price.is-leaning .chon-cmp__big { color: var(--chon-lamp-tx); }
+.chon-cmp__none { color: var(--chon-faint); }
+.chon-cmp__quote { font-family: var(--chon-display); font-style: italic; font-size: 14.5px; }
+.chon-cmp__list { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 3px; }
+.chon-cmp__list li { position: relative; padding-left: 16px; }
+.chon-cmp__list li::before { content: ''; position: absolute; left: 2px; top: 0.55em; width: 7px; height: 7px; border-radius: 50%; }
+.chon-cmp__list--includes li::before { background: var(--chon-kind-outing); }
+.chon-cmp__list--excludes li::before { background: transparent; border: 1.5px solid var(--chon-red); box-sizing: border-box; }
+.chon-cmp__foot th, .chon-cmp__foot td { border-bottom: 0; padding-top: 14px; }
+.chon-cmp__chosen { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; color: var(--chon-kind-outing); }
+.chon-stars--sm { margin-left: -8px; }
+.chon-stars--sm .chon-star { width: 34px; height: 34px; }
+.chon-after { display: flex; align-items: center; gap: 12px; }
+
+/* Chốn theo ngày */
+.chon-days { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.chon-day { position: relative; padding: 8px 0 8px 18px; }
+.chon-day::before { content: ''; position: absolute; left: 4px; top: 16px; bottom: -4px; width: 2px; background: var(--chon-line-2); border-radius: 2px; }
+.chon-day:last-child::before { bottom: 8px; }
+.chon-day::after { content: ''; position: absolute; left: 0; top: 11px; width: 10px; height: 10px; border-radius: 50%; background: var(--chon-pop); border: 2px solid var(--chon-lamp); box-sizing: border-box; }
+.chon-day.is-empty::after { border-color: var(--chon-line-2); }
+.chon-day__label { margin: 0 0 4px; font-size: 12.5px; font-weight: 600; color: var(--chon-lamp-tx); }
+.chon-day.is-empty .chon-day__label { color: var(--chon-faint); }
+.chon-day__list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+.chon-day__place { display: flex; align-items: center; gap: 6px; min-height: 40px; }
+.chon-day__name { flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px; border: 0; background: none; padding: 4px 0; text-align: left; color: var(--chon-tx); font-size: 14px; }
+.chon-day__name:hover { color: var(--chon-lamp-tx); }
+.chon-day__kind { color: var(--kc); display: inline-flex; }
+.chon-day__move {
+  height: 30px; padding: 0 4px; border-radius: 8px; border: 1px solid var(--chon-line); background: var(--chon-p2);
+  color: var(--chon-dim); font: inherit; font-size: 12px;
+}
+.chon-lamp-mini {
+  width: 32px; height: 32px; flex: none; padding: 0; border-radius: 50%;
+  display: inline-flex; align-items: center; justify-content: center;
+  border: 1px solid var(--chon-lamp-line); background: transparent; color: var(--chon-lamp);
+}
+.chon-lamp-mini.is-lit { background: var(--chon-lamp); color: var(--chon-on-lamp); box-shadow: 0 0 12px var(--chon-glow); }
+
+/* Chuẩn bị */
+.chon-checklist { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+.chon-checklist li { display: flex; align-items: center; gap: 8px; min-height: 38px; }
+.chon-checklist label { flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px; cursor: pointer; }
+.chon-checklist input { width: 18px; height: 18px; accent-color: var(--chon-lamp); flex: none; }
+.chon-checklist li.is-done span, .chon-checklist--readonly li.is-done { color: var(--chon-faint); text-decoration: line-through; }
+.chon-checklist--readonly li { gap: 10px; font-size: 13.5px; }
+.chon-checklist--readonly svg { color: var(--chon-lamp); flex: none; }
+.chon-prep-pushed { display: flex; flex-direction: column; gap: 8px; }
+.chon-prep-pushed__title { margin: 0; display: flex; align-items: center; gap: 8px; font-weight: 600; }
+.chon-prep-pushed__title svg { color: var(--chon-kind-outing); }
+
+/* Ước tính */
+.chon-est { margin: 0; display: flex; flex-direction: column; gap: 6px; }
+.chon-est__row { display: flex; justify-content: space-between; gap: 12px; font-size: 13.5px; }
+.chon-est__row dt { color: var(--chon-dim); }
+.chon-est__row dd { margin: 0; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.chon-est__total { margin-top: 4px; padding-top: 10px; border-top: 1px dashed var(--chon-line-2); font-size: 15px; font-weight: 700; }
+.chon-est__total dt { color: var(--chon-tx); }
+.chon-est__total dd { color: var(--chon-lamp-tx); }
+
 /* ── Chuyển động (tắt được bằng Giảm chuyển động) ─────────── */
 @keyframes chon-fade { from { opacity: 0; } to { opacity: 1; } }
 @keyframes chon-rise { from { opacity: 0; transform: translateY(14px) scale(0.985); } to { opacity: 1; transform: none; } }
 @keyframes chon-slide { from { transform: translateX(28px); opacity: 0; } to { transform: none; opacity: 1; } }
 @keyframes chon-lit { from { opacity: 0.25; filter: drop-shadow(0 0 0 transparent) grayscale(0.8); } to { opacity: 1; } }
 @keyframes chon-glow { from { opacity: 0.7; transform: scale(0.96); } to { opacity: 1; transform: scale(1.04); } }
-:root[data-reduce-motion] .chon-page *,
-:root[data-reduce-motion] .chon-page *::before,
-:root[data-reduce-motion] .chon-page *::after { animation: none !important; transition: none !important; }
+:root[data-reduce-motion] :is(.chon-page, .chon-layer) *,
+:root[data-reduce-motion] :is(.chon-page, .chon-layer) *::before,
+:root[data-reduce-motion] :is(.chon-page, .chon-layer) *::after { animation: none !important; transition: none !important; }
 
 /* ── Máy tính thấp ─────────────────────────────────────────── */
 @media (min-width: 769px) and (max-height: 760px) {
@@ -702,5 +891,19 @@
   .chon-detail__cta { padding-bottom: calc(18px + env(safe-area-inset-bottom)); }
   .chon-plan { align-items: flex-end; padding: 0; }
   .chon-plan__box { border-radius: 22px 22px 0 0; padding-bottom: calc(8px + env(safe-area-inset-bottom)); }
+
+  /* Chuyến đi: xếp dọc; bảng so sánh cuộn ngang trong khung, cột tiêu chí dính trái */
+  .chon-shell--trip { overflow: visible; padding-bottom: calc(var(--bottom-fab-pad, 40px) + 72px); }
+  .chon-trip__title { font-size: 28px; }
+  .chon-trip__actions .chon-btn { height: 44px; padding: 0 14px; }
+  .chon-trip__grid { grid-template-columns: minmax(0, 1fr); }
+  .chon-trip-box { padding: 14px 14px 16px; border-radius: 18px; }
+  .chon-cmp-scroll { margin: 0 -14px; padding: 0 14px 4px; }
+  .chon-cmp { min-width: calc(104px + var(--cols, 3) * 190px); }
+  .chon-cmp__rowh { position: sticky; left: 0; z-index: 1; width: 104px; background: var(--chon-pop); }
+  .chon-cost-row { grid-template-columns: minmax(0, 1fr) 110px 40px; }
+  .chon-sheet__foot { flex-wrap: wrap; }
+  .chon-day-select { flex: 1 1 100%; }
+  .chon-day-select select { width: 100%; }
 }
 @keyframes chon-up { from { transform: translateY(40px); opacity: 0; } to { transform: none; opacity: 1; } }

@@ -18,8 +18,11 @@ const FAIL = 'Chưa lưu được — kiểm tra mạng rồi thử lại.';
 
 const errorText = (err) => {
   const msg = err?.message || '';
-  // Câu RAISE của migration là tiếng Việt → hiện thẳng; lỗi kỹ thuật thì câu chung.
-  return /[ăâđêôơưàáạảãèéẹẻẽìíịỉĩòóọỏõùúụủũỳýỵỷỹ]/i.test(msg) ? msg : FAIL;
+  // Câu RAISE của migration là tiếng Việt → hiện thẳng.
+  if (/[ăâđêôơưàáạảãèéẹẻẽìíịỉĩòóọỏõùúụủũỳýỵỷỹ]/i.test(msg)) return msg;
+  // Có mã lỗi Postgres / PostgREST = máy chủ đã trả lời → không phải lỗi mạng; ghi mã để dễ báo lại.
+  if (err?.code) return `Chưa lưu được — máy chủ báo lỗi (mã ${err.code}). Thử lại, còn lỗi thì báo mã này.`;
+  return FAIL;
 };
 
 export function usePlaces() {

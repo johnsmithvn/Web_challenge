@@ -19,7 +19,8 @@ const ddmm = iso => (iso ? `${iso.slice(8, 10)}/${iso.slice(5, 7)}` : '');
  * Gần đây cũng muốn đến (+ Gom một tối), Lịch sử ghé, nút đáy Thắp đèn.
  */
 export default function ChonPlaceDetail({
-  place, places, origin, today, onClose, onEdit, onMenu, onLight, onPlan, onShare, onShowCluster, onOpenPlace,
+  place, places, origin, today, trip = null, onOpenTrip, onPlanTrip,
+  onClose, onEdit, onMenu, onLight, onPlan, onShare, onShowCluster, onOpenPlace,
   onAddSource, onDeleteSource, onDeleteVisit, onWriteArticle, fetchArticles,
 }) {
   const kind = kindOf(place.kind);
@@ -113,6 +114,22 @@ export default function ChonPlaceDetail({
               <AppIcon name="share" size={16} />Rủ bạn
             </button>
           </div>
+
+          {/* Chốn đích của một chuyến (vd "Hà Giang loop") ↔ trang Chuyến đi */}
+          {trip ? (
+            <button type="button" className="chon-trip-link" onClick={() => onOpenTrip(trip)}>
+              <span className="chon-near__icon chon-kind--travel" aria-hidden="true"><AppIcon name="flag" size={16} /></span>
+              <span className="chon-near__text">
+                <span className="chon-near__name">Chuyến đi · {trip.title}</span>
+                <span className="chon-near__sub">{(trip.trip_options || []).length} lựa chọn tour · {(trip.trip_places || []).length} chốn</span>
+              </span>
+              <AppIcon name="caretRight" size={16} />
+            </button>
+          ) : (place.kind === 'travel' || place.kind === 'stay') && (
+            <button type="button" className="chon-btn chon-btn--dashed chon-btn--sm chon-self-start" onClick={() => onPlanTrip(place)}>
+              <AppIcon name="flag" size={14} />Lên chuyến đi tới đây
+            </button>
+          )}
 
           {place.note && <p className="chon-detail__note">{place.note}</p>}
 

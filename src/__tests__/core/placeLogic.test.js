@@ -9,7 +9,7 @@ import { readFileSync } from 'node:fs';
 import {
   PLACE_KIND_IDS, OCCASION_IDS, REVISIT_IDS, PLATFORM_IDS,
   placeState, filterPlaces, areaOptions, distanceM, formatDistance, sortPlaces, nearbyClusters, nearbyWant,
-  parseMapsUrl, detectPlatform, directionsUrl, findDuplicatePlace, cleanList, dishMentions, ratingLabel,
+  parseMapsUrl, detectPlatform, directionsUrl, findDuplicatePlace, looksLikeAddress, splitAddress, cleanList, dishMentions, ratingLabel,
   shortDay, planBadge, timeAgo, formatPriceShort, cleanPlace, cleanSource, cleanVisit,
 } from '../../utils/placeLogic.js';
 
@@ -129,6 +129,8 @@ assert.deepEqual(parseMapsUrl('https://maps.google.com/?q=10.5,106.25'), { lat: 
 assert.deepEqual(parseMapsUrl('https://www.google.com/maps/search/?api=1&query=-33.86,151.2'), { lat: -33.86, lng: 151.2 });
 assert.deepEqual(parseMapsUrl('https://maps.app.goo.gl/AbCd123'), { short: true });
 assert.deepEqual(parseMapsUrl('goo.gl/maps/xyz'), { short: true });
+assert.deepEqual(parseMapsUrl('https://share.google/5L89k9qXRM5f4kpiV'), { short: true }, 'nút Chia sẻ của Google Maps bản mới');
+assert.equal(detectPlatform('https://share.google/5L89k9qXRM5f4kpiV'), 'google_maps');
 assert.equal(parseMapsUrl('https://www.google.com/search?q=10.5,106.2'), null, 'không phải link Maps');
 assert.equal(parseMapsUrl('https://www.google.com/maps/@95,200,15z'), null, 'toạ độ ngoài phạm vi');
 assert.equal(parseMapsUrl('not a url ::'), null);
@@ -147,6 +149,21 @@ assert.equal(detectPlatform('https://www.google.com/maps/@10.7,106.6,15z'), 'goo
 assert.equal(detectPlatform('https://foody.vn/x'), 'web');
 assert.equal(detectPlatform('javascript:alert(1)'), 'other');
 assert.equal(detectPlatform(''), 'other');
+
+// looksLikeAddress / splitAddress
+assert.equal(looksLikeAddress('Quận 4'), false);
+assert.equal(looksLikeAddress('Đà Lạt'), false);
+assert.equal(looksLikeAddress('Hà Giang, Việt Nam'), false, 'hai phần không có số nhà → vẫn là khu vực');
+assert.equal(looksLikeAddress('136 Nguyễn Lương Bằng, Đống Đa, Hà Nội 100000'), true);
+assert.equal(looksLikeAddress('Hẻm 200 Xóm Chiếu, Quận 4'), true);
+assert.equal(looksLikeAddress(''), false);
+assert.deepEqual(splitAddress('136 Nguyễn Lương Bằng, Đống Đa, Hà Nội 100000'),
+  { address: '136 Nguyễn Lương Bằng, Đống Đa, Hà Nội 100000', area: 'Đống Đa' });
+assert.equal(splitAddress('Hẻm 200 Xóm Chiếu, P.14, Quận 4, TP.HCM').area, 'Quận 4', 'ưu tiên phần ghi rõ Quận');
+assert.equal(splitAddress('12 Lê Lợi, Q.1, Hồ Chí Minh, Việt Nam').area, 'Quận 1', 'Q.1 → Quận 1, bỏ "Việt Nam"');
+assert.equal(splitAddress('Hẻm 200 Xóm Chiếu, Quận 4').area, 'Quận 4');
+assert.equal(splitAddress('Chợ Đà Lạt, Đà Lạt').area, 'Chợ Đà Lạt', 'hai phần không có số: lấy phần đầu');
+assert.deepEqual(splitAddress('  '), { address: '', area: '' });
 
 // directionsUrl
 assert.equal(directionsUrl(p(1, 'A', { maps_url: 'https://maps.app.goo.gl/x' })), 'https://maps.app.goo.gl/x');

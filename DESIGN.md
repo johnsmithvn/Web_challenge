@@ -1501,6 +1501,15 @@ Nocturne, Dashboard, Knowledge).
   hàng ngang (hình 96px), bản đồ là tab riêng, sheet thành bottom sheet, chi tiết toàn màn.
 - **Hộp thoại** `ChonSheet` (riêng, giống `body-modal-panel` của Body): máy tính giữa màn 560 / 440px, điện thoại bottom
   sheet có tay nắm; Esc / bấm nền đóng, focus ô đầu, trả focus khi đóng. Chi tiết chốn là ngăn phải 460px.
+  **Mọi lớp nổi render qua `ChonLayer` (portal ra `<body>`, class `.chon-layer` mang cùng token)** — `.chon-page` có
+  `isolation: isolate` nên z-index bên trong luôn nằm dưới thanh / tab đáy chung (nút chân sheet bị che trên điện thoại).
+- **Ô nhập**: một kiểu vòng sáng màu đèn cho mọi ô (`.chon-input:focus`, khung có icon `.chon-input-icon:focus-within`);
+  ô nằm trong khung (`--bare`) không tự vẽ viền / outline — tránh hai viền lồng nhau.
+- **Chuyến đi** (`.chon-trip*`, `.chon-cmp*`): trang cuộn trong khung; lưới `minmax(0,1fr) | 300–360px` (điện thoại một
+  cột). Bảng so sánh: cột tiêu chí 130px (điện thoại 104px, dính trái khi cuộn ngang), mỗi lựa chọn ≥ 210px; nhãn chữ
+  cái A/B/C; cột "Đang nghiêng về" tô nhẹ màu đèn + nhãn, "Đã chốt" tô `--chon-kind-outing`. Gồm = chấm đặc xanh, Chưa
+  gồm = vòng đỏ (khác hình, không chỉ khác màu). Ngày trong chuyến là trục dọc chấm tròn viền đèn. Trạng thái chuyến
+  `.chon-pill--status.is-{planning,booked,done,cancelled}` (chấm + chữ).
 - **Bản đồ** (`ChonMap.jsx`, Leaflet + OpenStreetMap): tile gốc sáng, tối dùng `--chon-tile-filter` (đảo màu kéo về xanh
   đêm), sáng ngả giấy nhẹ; ghim `divIcon` HTML theo token; nút nổi `--chon-bar`; ghi công © OpenStreetMap luôn hiện.
 - **Chuyển động**: sheet nảy nhẹ, ngăn chi tiết trượt, đèn thắp sáng dần + quầng thở ở màn Thắp đèn. Giảm chuyển động

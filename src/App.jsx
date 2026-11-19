@@ -98,6 +98,7 @@ function AppShell() {
                 <Route path="/body/:screen"     element={<BodyPage />} />
                 <Route path="/chon"             element={<ChonPage />} />
                 <Route path="/chon/:placeId"    element={<ChonPage />} />
+                <Route path="/chon/trip/:tripId" element={<ChonPage />} />
                 <Route path="/incubator"    element={<Navigate to="/tasks" replace />} />
                 <Route path="/accounts"     element={<AccountsPage key={user?.id || 'guest'} />} />
                 <Route path="/settings"     element={<SettingsPage />} />

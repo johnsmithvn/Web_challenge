@@ -1,5 +1,28 @@
 # CHANGELOG
 
+## v6.39.0 — 2026-11-19
+
+### Added
+- **Chốn — Chuyến đi (giai đoạn 2, mockup 2E; route `/chon/trip/:tripId`, tab Chuyến đi):** lên chuyến (tên + dòng
+  nhấn, vùng, ngày đi → về, số người, chốn đích, chi phí khác); **bảng so sánh lựa chọn tour** cạnh nhau cùng thứ tự
+  dòng (giá / người · lịch · gồm · chưa gồm · nguồn · ưu · nhược · ghi chú), đánh dấu "rẻ nhất", "Đang nghiêng về",
+  **Chốt** (RPC `choose_trip_option`: chuyến sang Đã chốt + tuỳ chọn ghi giao dịch Tài chính · Du lịch trong một
+  transaction); **Dán báo giá** tự tách giá + gồm / chưa gồm (`parseQuote`, không gọi server); **chốn theo ngày** (thêm
+  từ Muốn đến, đổi ngày, thắp đèn ngay tại chỗ); **Chuẩn bị** (danh sách trong chuyến → "Đẩy sang Nhiệm vụ" thành việc
+  cha + việc con, sau đó tiến độ đọc từ Nhiệm vụ); **ước tính** (lựa chọn × số người + chi phí khác); **sau chuyến**
+  (chấm cả chuyến, chấm lựa chọn đã chốt, nhận xét) và gợi ý "Lần trước ở … bạn chọn …, chấm …/5" khi lên chuyến mới
+  (ưu tiên cùng vùng). Thẻ chốn đích có link "Chuyến đi · N lựa chọn tour"; chốn Du lịch / Lưu trú có "Lên chuyến đi
+  tới đây". Thùng rác gồm cả chuyến đi.
+  - **Database (`supabase/migrations/20261119010000_trips_v6_39_0.sql`):** `trips`, `trip_options`, `trip_places`, RPC
+    `choose_trip_option`, `places_check_refs` thêm nhánh `trips`.
+  - **Code:** `useTrips.js`, `tripLogic.js` (+ test `tripLogic.test.js`), `ChonTripView`, `ChonTripPrep`, `ChonTripSheet`,
+    `ChonOptionSheet`, `ChonChooseDialog`, `ChonAddPlacesSheet`, `ChonTripCard`.
+
+### Fixed
+- **Chốn — nút ở chân sheet bị tab đáy của app che trên điện thoại:** sheet, ngăn chi tiết, menu, hộp xác nhận render
+  qua portal (`ChonLayer.jsx`) ra `<body>`; `.chon-page` có `isolation: isolate` nên z-index bên trong không vượt được
+  thanh / tab đáy chung. Token `--chon-*` áp cho cả `.chon-layer`.
+
 ## v6.38.0 — 2026-11-19
 
 ### Added
@@ -21,6 +44,15 @@
     `components/chon/*`, `chon.css` (token `--chon-*`, tối + sáng), icon đèn lồng trong `AppIcon.jsx`, mục Chốn ở
     sidebar (điện thoại: menu Thêm).
   - **Dependency mới:** `leaflet` 1.9.4 (bản đồ, tile OpenStreetMap, chỉ tải khi bản đồ hiện).
+
+### Fixed
+- **Chốn — lưu chốn có lời giới thiệu / thắp đèn báo "Chưa lưu được" (400) (`20261119005000_places_check_refs_fix_v6_38_1.sql`):**
+  trigger `places_check_refs` đọc cột của bảng khác trong cùng một biểu thức → lỗi 42703. Viết lại bằng IF lồng nhau.
+  Câu báo lỗi của `usePlaces` không còn đổ cho "mạng" khi máy chủ đã trả lời (hiện mã lỗi).
+- **Chốn — link `share.google/…` (nút Chia sẻ của Google Maps bản mới)** được nhận là link Maps rút gọn: lưu link, nhắc
+  cắm ghim tay, thay vì báo "không đọc được".
+- **Chốn — viền ô nhập:** ô trong khung có icon không còn vẽ vòng focus riêng lồng trong khung; mọi ô nhập dùng chung
+  một vòng sáng màu đèn. Viên "Bạn kể" không còn hiện hai lần. `manifest.json` `share_target` ghi rõ `enctype`.
 
 ## v6.37.0 — 2026-11-10
 

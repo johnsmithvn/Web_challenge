@@ -3,8 +3,23 @@ import AppIcon from '../AppIcon';
 import ChonSheet from './ChonSheet';
 import ChonMap from './ChonMap';
 import { KINDS, OCCASIONS, PLATFORMS } from './chonData';
-import { cleanPlace, cleanSource, parseMapsUrl, detectPlatform, findDuplicatePlace, cleanList, MAX_MUST_TRY } from '../../utils/placeLogic';
+import {
+  cleanPlace, cleanSource, parseMapsUrl, detectPlatform, findDuplicatePlace, cleanList, looksLikeAddress, splitAddress, MAX_MUST_TRY,
+} from '../../utils/placeLogic';
 import { parseCurrencyInput } from '../../utils/currencyUtils';
+
+/**
+ * Ô Khu vực chứa cả địa chỉ ("136 Nguyễn Lương Bằng, Đống Đa, Hà Nội") → địa chỉ đầy đủ xuống ô Địa chỉ (nếu ô đó
+ * còn trống), Khu vực chỉ giữ quận / huyện. Khu vực dùng để lọc + hiện trên thẻ nên phải ngắn.
+ */
+const tidyWhere = (form, onMsg) => {
+  if (!looksLikeAddress(form.area)) return form;
+  const { address, area } = splitAddress(form.area);
+  onMsg?.(area
+    ? `Đã tách: khu vực “${area}”${form.address.trim() ? '' : ', địa chỉ đầy đủ chuyển xuống ô Địa chỉ'}.`
+    : '');
+  return { ...form, area, address: form.address.trim() ? form.address : address };
+};
 
 const toForm = (place, prefill = {}) => ({
   name: place?.name ?? prefill.name ?? '',
@@ -38,6 +53,7 @@ export default function ChonCaptureSheet({ place = null, prefill = {}, places, o
   const [src, setSrc] = useState({ url: prefill.url || '', author: '', quote: prefill.quote || '', platform: '' });
   const [mapsInput, setMapsInput] = useState('');
   const [mapsMsg, setMapsMsg] = useState('');
+  const [addrMsg, setAddrMsg] = useState('');
   const [dish, setDish] = useState('');
   const [more, setMore] = useState(editing);
   const [error, setError] = useState('');
@@ -61,7 +77,7 @@ export default function ChonCaptureSheet({ place = null, prefill = {}, places, o
     const r = parseMapsUrl(raw);
     if (!r) { setMapsMsg('Không đọc được link này. Dán link Google Maps đầy đủ.'); return; }
     if (r.short) {
-      setMapsMsg('Link rút gọn chưa có toạ độ: mở link trong trình duyệt rồi chép lại link đầy đủ trên thanh địa chỉ.');
+      setMapsMsg('Đã lưu link. Link rút gọn không có toạ độ — chạm bản đồ để cắm ghim, hoặc mở link rồi chép link đầy đủ trên thanh địa chỉ.');
       set('maps_url', raw.trim());
       return;
     }
@@ -82,7 +98,7 @@ export default function ChonCaptureSheet({ place = null, prefill = {}, places, o
   };
 
   const build = () => {
-    const placeRes = cleanPlace({ ...f, price_per_person: f.price ? parseCurrencyInput(f.price) : '' });
+    const placeRes = cleanPlace({ ...tidyWhere(f), price_per_person: f.price ? parseCurrencyInput(f.price) : '' });
     if (placeRes.error) return { error: placeRes.error };
     const sourceRes = editing ? { value: null } : cleanSource({ ...src, platform: src.platform || undefined });
     if (sourceRes.error) return { error: sourceRes.error };
@@ -182,11 +198,19 @@ export default function ChonCaptureSheet({ place = null, prefill = {}, places, o
         <div className="chon-field">
           <span className="chon-field__label">Ở đâu</span>
           <div className="chon-row2">
-            <input className="chon-input" value={f.area} onChange={e => set('area', e.target.value)}
-              placeholder="Khu vực: Quận 4, Đà Lạt…" maxLength={60} aria-label="Khu vực" />
-            <input className="chon-input" value={f.address} onChange={e => set('address', e.target.value)}
-              placeholder="Địa chỉ (tuỳ chọn)" maxLength={240} aria-label="Địa chỉ" />
+            <label className="chon-field">
+              <span className="chon-field__sub">Khu vực <span className="chon-field__opt">· ngắn, để lọc</span></span>
+              <input className="chon-input" value={f.area} onChange={e => set('area', e.target.value)}
+                onBlur={() => { const next = tidyWhere(f, setAddrMsg); if (next !== f) setF(next); }}
+                placeholder="Quận 4, Đà Lạt…" maxLength={240} />
+            </label>
+            <label className="chon-field">
+              <span className="chon-field__sub">Địa chỉ <span className="chon-field__opt">· tuỳ chọn</span></span>
+              <input className="chon-input" value={f.address} onChange={e => set('address', e.target.value)}
+                placeholder="Số nhà, đường, phường…" maxLength={240} />
+            </label>
           </div>
+          {addrMsg && <p className="chon-hint" role="status">{addrMsg}</p>}
           <label className="chon-input-icon">
             <AppIcon name="link" size={15} />
             <input
@@ -219,7 +243,8 @@ export default function ChonCaptureSheet({ place = null, prefill = {}, places, o
               <AppIcon name="link" size={15} />
               <input className="chon-input chon-input--bare" value={src.url} onChange={e => setSrc(s => ({ ...s, url: e.target.value }))}
                 placeholder="Link TikTok, Facebook, YouTube…" aria-label="Link giới thiệu" inputMode="url" />
-              {srcPlatform && srcPlatform !== 'other' && (
+              {/* Chỉ nhãn nền tảng đoán từ link — "Bạn kể" đã có nút riêng bên dưới */}
+              {src.url.trim() && srcPlatform && srcPlatform !== 'other' && srcPlatform !== 'friend' && (
                 <span className="chon-pill">{PLATFORMS.find(p => p.id === srcPlatform)?.label}</span>
               )}
             </label>

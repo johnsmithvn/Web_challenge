@@ -207,7 +207,8 @@ export function parseMapsUrl(raw) {
   if (!href) return null;
   const u = new URL(href);
   const host = u.hostname.replace(/^www\./, '');
-  if (host === 'maps.app.goo.gl' || (host === 'goo.gl' && u.pathname.startsWith('/maps'))) return { short: true };
+  // Link rút gọn (gồm cả share.google — nút Chia sẻ của Google Maps bản mới): không có toạ độ trong link.
+  if (host === 'maps.app.goo.gl' || host === 'share.google' || (host === 'goo.gl' && u.pathname.startsWith('/maps'))) return { short: true };
   const isGoogle = /(^|\.)google\.[a-z.]+$/.test(host) && (host.startsWith('maps.') || u.pathname.startsWith('/maps'));
   if (!isGoogle) return null;
 
@@ -241,7 +242,7 @@ export function detectPlatform(raw) {
   if (/(^|\.)instagram\.com$/.test(host)) return 'instagram';
   if (/(^|\.)(youtube\.com|youtu\.be)$/.test(host)) return 'youtube';
   if (/(^|\.)threads\.(net|com)$/.test(host)) return 'threads';
-  if (host === 'maps.app.goo.gl' || host === 'goo.gl' || parseMapsUrl(href)) return 'google_maps';
+  if (host === 'maps.app.goo.gl' || host === 'goo.gl' || host === 'share.google' || parseMapsUrl(href)) return 'google_maps';
   return 'web';
 }
 
@@ -251,6 +252,44 @@ export function directionsUrl(place) {
   if (hasCoords(place)) return `https://www.google.com/maps/dir/?api=1&destination=${place.lat},${place.lng}`;
   const q = [place.name, place.address, place.area].filter(Boolean).join(', ');
   return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(q)}`;
+}
+
+/* ── Địa chỉ ────────────────────────────────────────────────── */
+
+const ADMIN_PREFIX = /^(quận|quan|q\.?|huyện|huyen|h\.?|thị xã|thi xa|tx\.?|thành phố|thanh pho|tp\.?|phường|phuong|p\.?|xã|xa)\s*/i;
+
+/**
+ * Chữ gõ vào ô Khu vực trông như cả một địa chỉ (có số nhà / mã bưu chính + dấu phẩy, hoặc quá dài)?
+ * "Quận 4", "Đà Lạt", "Hà Giang" → false; "136 Nguyễn Lương Bằng, Đống Đa, Hà Nội" → true.
+ */
+export function looksLikeAddress(text) {
+  const s = String(text ?? '').trim();
+  if (!s) return false;
+  const parts = s.split(',').map(x => x.trim()).filter(Boolean);
+  return (parts.length >= 2 && /\d/.test(parts[0])) || parts.length >= 3 || s.length > 40;
+}
+
+/**
+ * Tách địa chỉ kiểu Việt Nam (số nhà + đường, phường, quận / huyện, tỉnh / thành) để lấy khu vực ngắn dùng lọc:
+ * quận / huyện (phần đứng trước tỉnh / thành). Bỏ mã bưu chính và "Việt Nam".
+ * "136 Nguyễn Lương Bằng, Đống Đa, Hà Nội 100000" → { address: nguyên chuỗi, area: "Đống Đa" }.
+ * @returns {{ address: string, area: string }}
+ */
+export function splitAddress(text) {
+  const address = String(text ?? '').replace(/\s+/g, ' ').trim();
+  const parts = address.split(',')
+    .map(x => x.replace(/\b\d{5,6}\b/g, '').trim())                 // mã bưu chính
+    .filter(x => x && !/^(việt nam|viet nam|vietnam)$/i.test(x));
+  let area = '';
+  if (parts.length >= 3) area = parts[parts.length - 2];
+  else if (parts.length === 2) area = /\d/.test(parts[0]) ? parts[1] : parts[0];
+  // Ưu tiên phần ghi rõ Quận / Huyện nếu có (vd "…, P.14, Quận 4, TP.HCM")
+  const district = parts.find(x => /^(quận|quan|q\.|huyện|huyen|thị xã|thi xa|tx\.)/i.test(x));
+  if (district) area = district;
+  // "Q.4" → "Quận 4"; bỏ tiền tố hành chính khi là tên riêng ("Huyện Đồng Văn" giữ nguyên cho dễ hiểu)
+  area = area.replace(/^q\.?\s*(\d+)$/i, 'Quận $1').trim();
+  if (/^(p\.|phường|phuong)/i.test(area)) area = area.replace(ADMIN_PREFIX, '').trim();
+  return { address, area: area.slice(0, 60) };
 }
 
 /* ── Gộp trùng ──────────────────────────────────────────────── */
