@@ -291,7 +291,7 @@ export default function ChonPage() {
   const handlePlanned = useCallback(async (task) => {
     const r = await setPlanTask(planning.id, task);
     if (r.error) showToast(r.error, { icon: 'warning' });
-    else showToast(`Đã thêm “${task.title}” vào Nhiệm vụ`, { icon: 'calendar' });
+    else showToast(task.moved ? `Đã dời “${task.title}” bên Nhiệm vụ` : `Đã thêm “${task.title}” vào Nhiệm vụ`, { icon: 'calendar' });
   }, [planning, setPlanTask, showToast]);
 
   const handleShare = useCallback(async (p) => {

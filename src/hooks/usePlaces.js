@@ -7,13 +7,13 @@ import { logger } from '../utils/logger';
  * usePlaces — data owner của module Chốn (bảng places, place_sources, place_visits; RPC light_place).
  * Thiết kế: docs/PLAN_CHON.md §5. Auth-only.
  *
- * Mỗi chốn mang `place_sources[]`, `place_visits[]` và `plan_task` ({ id, title, due_date, completed } | null —
+ * Mỗi chốn mang `place_sources[]`, `place_visits[]` và `plan_task` ({ id, title, due_date, due_time, completed } | null —
  * việc "Đi …" bên Nhiệm vụ). Trạng thái Muốn đến / Đã đến suy ra bằng placeLogic.placeState.
  *
  * Thao tác ghi trả `{ data }` hoặc `{ error: string }` (câu tiếng Việt để hiện toast).
  * Used by: ChonPage và các component trong components/chon.
  */
-const PLACE_SELECT = '*, place_sources(*), place_visits(*), plan_task:user_tasks!fk_places_plan_task(id, title, due_date, completed)';
+const PLACE_SELECT = '*, place_sources(*), place_visits(*), plan_task:user_tasks!fk_places_plan_task(id, title, due_date, due_time, completed)';
 const FAIL = 'Chưa lưu được — kiểm tra mạng rồi thử lại.';
 
 const errorText = (err) => {
@@ -268,7 +268,7 @@ export function usePlaces() {
     patchPlace(placeId, p => ({
       ...p,
       plan_task_id: task?.id ?? null,
-      plan_task: task ? { id: task.id, title: task.title, due_date: task.due_date ?? null, completed: !!task.completed } : null,
+      plan_task: task ? { id: task.id, title: task.title, due_date: task.due_date ?? null, due_time: task.due_time ?? null, completed: !!task.completed } : null,
     }));
     return { data: true };
   }, [enabled, userId, patchPlace]);

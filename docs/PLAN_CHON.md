@@ -57,7 +57,7 @@ du lịch mình **muốn đến**; tới nơi thì **thắp đèn** (đã đến
 
 | Từ Chốn | Sang | Cách nối | Ghi chú |
 |---|---|---|---|
-| **Hẹn ngày** (2B footer, 2C nút) | Nhiệm vụ | Tạo task `Đi <tên chốn>` hạn = ngày chọn (giờ tuỳ chọn) qua `useUserTasks().addTask`; lưu id vào `places.plan_task_id` | Task xoá → FK `SET NULL`, chốn tự hết "đã hẹn". Thẻ chốn hiện viên "Hẹn T6 22/11"; quá hạn mà chưa thắp đèn → viên đổi màu nhắc |
+| **Hẹn ngày** (2B footer, 2C nút) | Nhiệm vụ | Tạo task `Đi <tên chốn>` hạn = ngày chọn (giờ tuỳ chọn) qua `useUserTasks().addTask`; lưu id vào `places.plan_task_id`. Đang có hẹn chưa xong → hẹn lại = dời hạn việc đó (`updateTask`), không tạo việc trùng | Task xoá → FK `SET NULL`, chốn tự hết "đã hẹn". Thẻ chốn hiện viên "Hẹn T6 22/11"; quá hạn mà chưa thắp đèn → viên đổi màu nhắc |
 | **Thắp đèn + chi phí** (2D) | Tài chính | RPC `light_place` ghi lần đến + (nếu bật) giao dịch chi `merchant = tên chốn`, danh mục theo loại chốn, trong **một transaction** | Tắt công tắc = không ghi Tài chính. Xoá giao dịch bên Finance → `SET NULL`, lần đến còn nguyên |
 | **Nguồn = bài Kiến thức** | Kiến thức | `place_sources.collection_id` | Chọn bài bằng `LinkPicker` + `useCollections().fetchLinkOptions` (đã có cho Task) |
 | **Viết thành bài** | Kiến thức | `useCollections().addItem` tạo bài nháp (tiêu đề = tên chốn, nội dung = các cảm nhận), rồi thêm nguồn trỏ về bài | Không đổi gì phía Knowledge |

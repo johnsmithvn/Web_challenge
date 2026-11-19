@@ -27,6 +27,9 @@
   trí". Form Lưu chốn có "Tôi đang ở đây" (cắm ghim ở vị trí hiện tại).
 
 ### Fixed
+- **Chốn — hẹn lại ngày đi không còn đẻ việc trùng (`ChonPlanDialog.jsx`, `usePlaces.js`):** chốn đang có hẹn chưa
+  xong thì hẹn lại = dời hạn (và giờ) của chính việc "Đi …" đó qua `updateTask`, thay vì tạo việc mới để lại việc cũ
+  quá hạn bên Nhiệm vụ. Hộp hiện sẵn giờ đã hẹn (`plan_task` đọc thêm `due_time`). Bấm Lưu hai lần nhanh chỉ tạo một việc.
 - **Chốn — giao diện điện thoại làm lại theo mẫu Knowledge / Body (plan §6) (`ChonPage.jsx`, `chon.css`, `Navbar.jsx`,
   `navbar.css`, `QuickCapture.jsx`):** trước đây chồng 5 lớp (thanh Life Hub · header Chốn · hàng 5 tab tràn ngang · 2
   hàng lọc) rồi mới tới thẻ, trang cuộn cả khối, nút ＋ QuickCapture đè lên thẻ. Giờ: ẩn thanh + tab đáy chung
