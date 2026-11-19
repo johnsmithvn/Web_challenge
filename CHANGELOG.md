@@ -27,6 +27,9 @@
   trí". Form Lưu chốn có "Tôi đang ở đây" (cắm ghim ở vị trí hiện tại).
 
 ### Fixed
+- **Chốn — chi tiết chốn trên máy tính không còn là ngăn hẹp ở góc (`ChonPage.jsx`, `ChonPlaceDetail.jsx`, `chon.css`):**
+  mở chốn thì chi tiết thay chỗ cột danh sách, bản đồ bên phải giữ nguyên và căn vào chốn đó; đủ rộng thì chia hai cột
+  (thông tin + nút | ai giới thiệu, món nên thử, lần ghé). Điện thoại vẫn toàn màn. Mockup 2C chỉ có bản điện thoại.
 - **Chốn — form Lưu chốn gộp Khu vực + Địa chỉ thành một ô "Ở đâu" (`ChonCaptureSheet.jsx`):** gõ địa chỉ đầy đủ
   hoặc chỉ khu vực; khu vực ngắn (bộ lọc Khu vực, nhãn thẻ) tự tách từ địa chỉ, hiện một dòng "Khu vực để lọc: … · Sửa"
   khi khác chữ đã gõ. Tìm kiếm vốn đọc cả địa chỉ. DB giữ nguyên hai cột `area` / `address`.

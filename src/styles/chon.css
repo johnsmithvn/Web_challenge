@@ -740,6 +740,25 @@
   position: relative; z-index: 1; flex: none; display: flex; margin-top: -28px; padding: 28px 20px 18px;
   background: linear-gradient(180deg, transparent 0%, color-mix(in srgb, var(--chon-pop) 94%, transparent) 38%, var(--chon-pop) 100%);
 }
+/* main / more: một cột như cũ, trừ chi tiết inline đủ rộng (bên dưới) */
+.chon-detail__main, .chon-detail__more { display: contents; }
+/* Máy tính: chi tiết thay chỗ cột danh sách, cạnh bản đồ — khung bo như bản đồ, không trượt ra */
+.chon-detail--inline {
+  position: relative; width: auto; min-width: 0; min-height: 0; margin-bottom: 22px;
+  border: 1px solid var(--chon-line-2); border-radius: 22px; box-shadow: none;
+  animation: chon-fade 0.18s ease-out; container-type: inline-size;
+}
+@container (min-width: 720px) {
+  .chon-detail--inline .chon-detail__hero { height: 196px; }
+  .chon-detail--inline .chon-detail__body {
+    display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: start; gap: 0 36px; padding: 22px 28px 48px;
+  }
+  .chon-detail--inline .chon-detail__main,
+  .chon-detail--inline .chon-detail__more { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+  .chon-detail--inline .chon-detail__more > .chon-detail__sec:first-child { margin-top: 0; }
+  .chon-detail--inline .chon-detail__cta { justify-content: center; padding-inline: 28px; }
+  .chon-detail--inline .chon-detail__cta .chon-btn { flex: 0 1 460px; }
+}
 .chon-h2 { margin: 0; font-family: var(--chon-display); font-weight: 500; font-size: 18px; line-height: 1.25; }
 .chon-h2__count { font-family: var(--chon-font); font-size: 13px; color: var(--chon-faint); }
 .chon-sec-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }

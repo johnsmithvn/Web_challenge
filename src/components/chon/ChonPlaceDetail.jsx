@@ -14,14 +14,15 @@ const REVISIT = Object.fromEntries(REVISITS.map(r => [r.id, r.label]));
 const ddmm = iso => (iso ? `${iso.slice(8, 10)}/${iso.slice(5, 7)}` : '');
 
 /**
- * Chi tiết chốn (mockup 2C). Máy tính: ngăn phải; điện thoại: toàn màn (route /chon/:placeId nên Back chạy đúng).
+ * Chi tiết chốn (mockup 2C). Máy tính (`inline`): thay chỗ cột danh sách, bản đồ bên phải giữ nguyên;
+ * điện thoại: toàn màn (route /chon/:placeId nên Back chạy đúng).
  * Ai giới thiệu (gộp nhiều lần lưu, thêm / xoá, chọn bài Kiến thức), Món nên thử (đếm số lần nhắc),
  * Gần đây cũng muốn đến (+ Gom một tối), Lịch sử ghé, nút đáy Thắp đèn.
  */
 export default function ChonPlaceDetail({
   place, places, origin, today, trip = null, onOpenTrip, onPlanTrip,
   onClose, onEdit, onMenu, onLight, onPlan, onShare, onShowCluster, onOpenPlace,
-  onAddSource, onDeleteSource, onEditVisit, onDeleteVisit, onWriteArticle, fetchArticles,
+  onAddSource, onDeleteSource, onEditVisit, onDeleteVisit, onWriteArticle, fetchArticles, inline = false,
 }) {
   const kind = kindOf(place.kind);
   const st = placeState(place);
@@ -57,9 +58,8 @@ export default function ChonPlaceDetail({
     }
   };
 
-  return (
-    <div className="chon-detail-backdrop" onMouseDown={e => { if (e.target === e.currentTarget) onClose(); }}>
-      <aside className="chon-detail" aria-label={`Chi tiết ${place.name}`}>
+  const panel = (
+      <aside className={`chon-detail${inline ? ' chon-detail--inline' : ''}`} aria-label={`Chi tiết ${place.name}`}>
         <div className={`chon-detail__hero chon-kind--${kind.id}`}>
           <ChonKindArt kind={kind.id} size={150} />
           <div className="chon-detail__bar">
@@ -81,6 +81,8 @@ export default function ChonPlaceDetail({
         </div>
 
         <div className="chon-detail__body">
+          {/* main / more: màn hẹp là một cột (display: contents); chi tiết inline đủ rộng thì chia hai cột */}
+          <div className="chon-detail__main">
           <div className="chon-detail__head">
             <p className={`chon-card__kind chon-kind--${kind.id}`}>
               <AppIcon name={kind.icon} size={15} />{kind.label}
@@ -136,6 +138,9 @@ export default function ChonPlaceDetail({
           )}
 
           {place.note && <p className="chon-detail__note">{place.note}</p>}
+          </div>
+
+          <div className="chon-detail__more">
 
           {visits.length > 0 && (
             <section className="chon-detail__sec">
@@ -297,6 +302,7 @@ export default function ChonPlaceDetail({
           {!sources.length && !visits.length && !dishes.length && !place.note && (
             <p className="chon-faint chon-detail__empty">Chưa có gì thêm. Thêm lời giới thiệu, món nên thử hoặc thắp đèn khi đã đến.</p>
           )}
+          </div>
         </div>
 
         <div className="chon-detail__cta">
@@ -306,6 +312,11 @@ export default function ChonPlaceDetail({
           </button>
         </div>
       </aside>
+  );
+  if (inline) return panel;
+  return (
+    <div className="chon-detail-backdrop" onMouseDown={e => { if (e.target === e.currentTarget) onClose(); }}>
+      {panel}
     </div>
   );
 }

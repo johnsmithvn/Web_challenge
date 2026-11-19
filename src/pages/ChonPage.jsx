@@ -192,9 +192,13 @@ export default function ChonPage() {
 
   // ── Thao tác ──
   // Mở chi tiết nhớ trang đang đứng (vd trang chuyến) để Đóng quay về đúng chỗ; chi tiết → chi tiết giữ nguyên gốc.
-  const openPlace = useCallback(p => navigate(`/chon/${p.id}`, {
-    state: { from: location.state?.from || (location.pathname.startsWith('/chon/trip/') ? location.pathname : '/chon') },
-  }), [navigate, location.pathname, location.state]);
+  const openPlace = useCallback((p) => {
+    // Máy tính: chi tiết nằm cạnh bản đồ → căn bản đồ vào chốn vừa mở
+    if (!isMobile && Number.isFinite(p.lat) && Number.isFinite(p.lng)) setMapFocus({ points: [p], zoom: 16, at: Date.now() });
+    navigate(`/chon/${p.id}`, {
+      state: { from: location.state?.from || (location.pathname.startsWith('/chon/trip/') ? location.pathname : '/chon') },
+    });
+  }, [isMobile, navigate, location.pathname, location.state]);
   const closeDetail = useCallback(() => navigate(location.state?.from || '/chon'), [navigate, location.state]);
 
   const showCluster = useCallback((pts) => {
@@ -414,6 +418,35 @@ export default function ChonPage() {
 
   const showMapPane = (!isMobile || tab === 'map') && tab !== 'trips';
   const listTab = tab === 'map' ? null : tab;
+  // Máy tính: chi tiết chốn thay chỗ cột danh sách (bản đồ bên phải giữ nguyên); điện thoại / thùng rác: lớp nổi
+  const inlineDetail = !!detail && !isMobile && showMapPane && tab !== 'trash';
+
+  const detailView = detail && (
+    <ChonPlaceDetail
+      place={detail}
+      places={places}
+      origin={origin}
+      today={today}
+      trip={tripByPlace.get(detail.id) || null}
+      onOpenTrip={goTrip}
+      onPlanTrip={planTripFor}
+      onClose={closeDetail}
+      onEdit={p => setCapture({ place: p })}
+      onMenu={(p, at) => setMenu({ place: p, at })}
+      onLight={setLighting}
+      onPlan={setPlanning}
+      onShare={handleShare}
+      onShowCluster={showCluster}
+      onOpenPlace={openPlace}
+      onAddSource={handleAddSource}
+      onDeleteSource={handleDeleteSource}
+      onEditVisit={(p, v) => setEditingVisit({ place: p, visit: v })}
+      onDeleteVisit={handleDeleteVisit}
+      onWriteArticle={handleWriteArticle}
+      fetchArticles={fetchLinkOptions}
+      inline={inlineDetail}
+    />
+  );
 
   // Lớp nổi dùng chung cho danh sách và trang chuyến — render qua portal (ChonLayer)
   const overlays = (
@@ -430,31 +463,7 @@ export default function ChonPage() {
         </div>
       )}
 
-      {detail && (
-        <ChonPlaceDetail
-          place={detail}
-          places={places}
-          origin={origin}
-          today={today}
-          trip={tripByPlace.get(detail.id) || null}
-          onOpenTrip={goTrip}
-          onPlanTrip={planTripFor}
-          onClose={closeDetail}
-          onEdit={p => setCapture({ place: p })}
-          onMenu={(p, at) => setMenu({ place: p, at })}
-          onLight={setLighting}
-          onPlan={setPlanning}
-          onShare={handleShare}
-          onShowCluster={showCluster}
-          onOpenPlace={openPlace}
-          onAddSource={handleAddSource}
-          onDeleteSource={handleDeleteSource}
-          onEditVisit={(p, v) => setEditingVisit({ place: p, visit: v })}
-          onDeleteVisit={handleDeleteVisit}
-          onWriteArticle={handleWriteArticle}
-          fetchArticles={fetchLinkOptions}
-        />
-      )}
+      {detail && !inlineDetail && detailView}
 
       {capture && (
         <ChonCaptureSheet
@@ -668,7 +677,7 @@ export default function ChonPage() {
         )}
 
         <div className={`chon-main${tab === 'trash' || onTrips ? ' chon-main--single' : ''}${tab === 'map' ? ' chon-main--map' : ''}`}>
-          {listTab && (
+          {inlineDetail ? detailView : listTab && (
             <div className="chon-list">
               {listTab === 'trash' ? (
                 <TrashList
@@ -751,7 +760,7 @@ export default function ChonPage() {
                 origin={origin}
                 fallbackCenter={recentCenter}
                 missingCount={missingCoords}
-                hoveredId={hoveredId}
+                hoveredId={inlineDetail ? detail.id : hoveredId}
                 focus={mapFocus}
                 onSelect={openPlace}
                 layer={isMobile ? undefined : mapLayer}

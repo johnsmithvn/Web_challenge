@@ -1504,7 +1504,7 @@ Nocturne, Dashboard, Knowledge).
   đến · Đã đến · Chuyến đi · Bản đồ, số đếm dạng huy hiệu). Thẻ thành hàng ngang (hình 96px), bản đồ lấp đầy phần giữa,
   sheet thành bottom sheet, chi tiết toàn màn; mọi thanh tính `env(safe-area-inset-*)`.
 - **Hộp thoại** `ChonSheet` (riêng, giống `body-modal-panel` của Body): máy tính giữa màn 560 / 440px, điện thoại bottom
-  sheet có tay nắm; Esc / bấm nền đóng, focus ô đầu, trả focus khi đóng. Chi tiết chốn là ngăn phải 460px.
+  sheet có tay nắm; Esc / bấm nền đóng, focus ô đầu, trả focus khi đóng. Chi tiết chốn trên máy tính thay chỗ cột danh sách (bản đồ bên phải giữ nguyên, căn vào chốn), khung rộng ≥ 720px chia hai cột (thông tin | giới thiệu, món, lần ghé); điện thoại toàn màn.
   **Mọi lớp nổi render qua `ChonLayer` (portal ra `<body>`, class `.chon-layer` mang cùng token)** — `.chon-page` có
   `isolation: isolate` nên z-index bên trong luôn nằm dưới thanh / tab đáy chung (nút chân sheet bị che trên điện thoại).
 - **Ô nhập**: một kiểu vòng sáng màu đèn cho mọi ô (`.chon-input:focus`, khung có icon `.chon-input-icon:focus-within`);
