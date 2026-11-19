@@ -34,6 +34,13 @@
 - **Chốn — lịch chọn ngày trong form làm khung dài ra:** lịch ở Thắp đèn và form Chuyến đi nổi cố định cạnh nút
   (`popoverAt`), không còn nằm trong vùng cuộn của sheet.
 
+### Security
+- **Vá cảnh báo `npm audit --omit=dev` (46 → 0):** `@tiptap/*` 3.22.4 → 3.30.5 (GHSA-j95f-988m-3j2f cao,
+  GHSA-cp6q-959q-f8rh), kéo `prosemirror-view` 1.41.8 → 1.42.9 (GHSA-c8x8-7fp4-3x9w); `react-router-dom` /
+  `react-router` 7.18.1 → 7.18.2 (GHSA-qwww-vcr4-c8h2 — lỗi ở RSC mode, app SPA không dùng nhưng vẫn nâng). Chỉ
+  minor/patch, không đổi code. `@tiptap/extension-bubble-menu` / `floating-menu` (phụ thuộc tuỳ chọn của
+  `@tiptap/react`) ghim 3.30.5 trong lockfile cho khớp peer `@tiptap/core`.
+
 ## v6.39.0 — 2026-11-19
 
 ### Added
