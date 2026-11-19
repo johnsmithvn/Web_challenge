@@ -9,7 +9,7 @@ import { readFileSync } from 'node:fs';
 import {
   PLACE_KIND_IDS, OCCASION_IDS, REVISIT_IDS, PLATFORM_IDS,
   placeState, filterPlaces, areaOptions, distanceM, formatDistance, sortPlaces, nearbyClusters, nearbyWant, clusterByGrid, routeUrl,
-  parseMapsUrl, detectPlatform, directionsUrl, findDuplicatePlace, looksLikeAddress, splitAddress, cleanList, dishMentions, ratingLabel,
+  parseHours, formatHours, parseMapsUrl, detectPlatform, directionsUrl, findDuplicatePlace, looksLikeAddress, splitAddress, cleanList, dishMentions, ratingLabel,
   shortDay, planBadge, timeAgo, formatPriceShort, cleanPlace, cleanSource, cleanVisit, photoSrc, MAX_PHOTOS,
 } from '../../utils/placeLogic.js';
 
@@ -303,6 +303,25 @@ assert.equal(cleanSource({ url: 'https://foody.vn/x', platform: 'friend' }).valu
 {
   assert.equal(photoSrc('https://drive.google.com/file/d/AbC123_x/view'), '/api/stream?id=AbC123_x', 'Drive qua proxy');
   assert.equal(photoSrc('https://img.example/a.jpg'), 'https://img.example/a.jpg');
+}
+
+// ── Giờ mở cửa: hours_note ↔ { open, close, off } ──
+{
+  assert.deepEqual(parseHours('17:00–02:00 · nghỉ thứ Hai'), { open: '17:00', close: '02:00', off: 'nghỉ thứ Hai' });
+  assert.deepEqual(parseHours('7:30-21:00'), { open: '07:30', close: '21:00', off: '' }, 'gạch thường, giờ một chữ số');
+  assert.deepEqual(parseHours('từ 06:00'), { open: '06:00', close: '', off: '' });
+  assert.deepEqual(parseHours('đến 23:00 · cuối tuần đông'), { open: '', close: '23:00', off: 'cuối tuần đông' });
+  assert.deepEqual(parseHours('mở cả ngày'), { open: '', close: '', off: 'mở cả ngày' }, 'chữ tự do giữ nguyên');
+  assert.deepEqual(parseHours('25:00–99:99'), { open: '', close: '', off: '25:00–99:99' }, 'giờ sai → giữ nguyên chữ');
+  assert.deepEqual(parseHours(''), { open: '', close: '', off: '' });
+  assert.equal(formatHours({ open: '17:00', close: '02:00', off: 'nghỉ thứ Hai' }), '17:00–02:00 · nghỉ thứ Hai');
+  assert.equal(formatHours({ open: '06:00' }), 'từ 06:00');
+  assert.equal(formatHours({ close: '23:00', off: '  ' }), 'đến 23:00');
+  assert.equal(formatHours({ off: 'nghỉ thứ Hai' }), 'nghỉ thứ Hai');
+  assert.equal(formatHours({}), '');
+  for (const x of ['17:00–02:00 · nghỉ thứ Hai', 'từ 06:00', 'đến 23:00', 'nghỉ T2']) {
+    assert.equal(formatHours(parseHours(x)), x, 'đi rồi về giữ nguyên: ' + x);
+  }
 }
 
 console.log('Place logic check: OK');

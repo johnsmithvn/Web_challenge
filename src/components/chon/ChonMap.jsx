@@ -36,7 +36,7 @@ async function silentPosition() {
     return null;
   }
 }
-const OSM_URL = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
+const OSM_URL = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';   // OSM bỏ tên miền phụ a/b/c
 const OSM_ATTR = '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a>';
 
 const LANTERN_SVG = lit => `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 2.5h4M12 2.5v2M12 17.5V20M10.5 21.5h3"/><rect x="6.5" y="4.5" width="11" height="13" rx="5.5"${lit ? ' fill="currentColor"' : ''}/><path d="M9.7 5c-.9 2.4-.9 9.6 0 12M14.3 5c.9 2.4.9 9.6 0 12"${lit ? ' stroke="#000" stroke-opacity="0.32"' : ''}/></svg>`;

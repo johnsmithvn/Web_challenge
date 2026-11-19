@@ -27,6 +27,15 @@
   trí". Form Lưu chốn có "Tôi đang ở đây" (cắm ghim ở vị trí hiện tại).
 
 ### Fixed
+- **Chốn — form Lưu chốn gộp Khu vực + Địa chỉ thành một ô "Ở đâu" (`ChonCaptureSheet.jsx`):** gõ địa chỉ đầy đủ
+  hoặc chỉ khu vực; khu vực ngắn (bộ lọc Khu vực, nhãn thẻ) tự tách từ địa chỉ, hiện một dòng "Khu vực để lọc: … · Sửa"
+  khi khác chữ đã gõ. Tìm kiếm vốn đọc cả địa chỉ. DB giữ nguyên hai cột `area` / `address`.
+- **Chốn — giờ mở cửa chọn bằng ô giờ (`ChonCaptureSheet.jsx`, `ChonPlaceDetail.jsx`, `placeLogic.js`):** hai ô Mở – Đóng
+  (`input type="time"`) + ô Ngày nghỉ, thay ô chữ tự gõ. Vẫn lưu vào `hours_note` dạng "17:00–02:00 · nghỉ thứ Hai"
+  (`parseHours` / `formatHours`, có test); chữ cũ không đúng mẫu giữ nguyên ở ô Ngày nghỉ. Trang chi tiết tách giờ và
+  ngày nghỉ thành hai viên như mockup 2C.
+- **Chốn — chân form Lưu chốn trên màn hẹp:** "Hẹn ngày" không còn rớt xuống hàng riêng (chỉ chân sheet Thêm chốn vào
+  chuyến mới cho xuống dòng). Tile bản đồ dùng `tile.openstreetmap.org` (OSM đã bỏ tên miền phụ a/b/c).
 - **Chốn — hẹn lại ngày đi không còn đẻ việc trùng (`ChonPlanDialog.jsx`, `usePlaces.js`):** chốn đang có hẹn chưa
   xong thì hẹn lại = dời hạn (và giờ) của chính việc "Đi …" đó qua `updateTask`, thay vì tạo việc mới để lại việc cũ
   quá hạn bên Nhiệm vụ. Hộp hiện sẵn giờ đã hẹn (`plan_task` đọc thêm `due_time`). Bấm Lưu hai lần nhanh chỉ tạo một việc.

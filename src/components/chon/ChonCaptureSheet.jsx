@@ -5,33 +5,38 @@ import ChonMap from './ChonMap';
 import ChonKindArt from './ChonKindArt';
 import { KINDS, OCCASIONS, PLATFORMS, kindOf } from './chonData';
 import {
-  cleanPlace, cleanSource, parseMapsUrl, detectPlatform, findDuplicatePlace, cleanList, looksLikeAddress, splitAddress, MAX_MUST_TRY,
+  cleanPlace, cleanSource, parseHours, formatHours, parseMapsUrl, detectPlatform, findDuplicatePlace, cleanList, looksLikeAddress, splitAddress, MAX_MUST_TRY,
 } from '../../utils/placeLogic';
 import { parseCurrencyInput } from '../../utils/currencyUtils';
 
 /**
- * Ô Khu vực chứa cả địa chỉ ("136 Nguyễn Lương Bằng, Đống Đa, Hà Nội") → địa chỉ đầy đủ xuống ô Địa chỉ (nếu ô đó
- * còn trống), Khu vực chỉ giữ quận / huyện. Khu vực dùng để lọc + hiện trên thẻ nên phải ngắn.
+ * Một ô "Ở đâu" (địa chỉ đầy đủ hoặc chỉ khu vực). Khu vực ngắn để lọc + hiện trên thẻ tự tách ra:
+ * "136 Nguyễn Lương Bằng, Đống Đa, Hà Nội" → "Đống Đa"; "Đà Lạt" → "Đà Lạt". Tìm kiếm đọc cả địa chỉ.
  */
-const tidyWhere = (form, onMsg) => {
-  if (!looksLikeAddress(form.area)) return form;
-  const { address, area } = splitAddress(form.area);
-  onMsg?.(area
-    ? `Đã tách: khu vực “${area}”${form.address.trim() ? '' : ', địa chỉ đầy đủ chuyển xuống ô Địa chỉ'}.`
-    : '');
-  return { ...form, area, address: form.address.trim() ? form.address : address };
+const autoArea = (where) => {
+  const s = String(where ?? '').trim();
+  return looksLikeAddress(s) ? splitAddress(s).area : s.slice(0, 60);
 };
 
-const toForm = (place, prefill = {}) => ({
-  name: place?.name ?? prefill.name ?? '',
-  kind: place?.kind ?? 'food',
-  area: place?.area ?? '',
-  address: place?.address ?? '',
+const toForm = (place, prefill = {}) => {
+  const where = place?.address || place?.area || '';
+  return {
+    name: place?.name ?? prefill.name ?? '',
+    kind: place?.kind ?? 'food',
+    where,
+    area: place?.area ?? '',
+    // Khu vực đã lưu khác bản tự tách (user đã sửa tay) → giữ nguyên, không tự đè
+    areaTouched: !!place && (place.area || '') !== autoArea(where),
+    ...restOf(place),
+  };
+};
+
+const restOf = (place) => ({
   lat: place?.lat ?? null,
   lng: place?.lng ?? null,
   maps_url: place?.maps_url ?? '',
   price: place?.price_per_person ? String(place.price_per_person) : '',
-  hours_note: place?.hours_note ?? '',
+  hours: parseHours(place?.hours_note),
   must_try: place?.must_try ?? [],
   occasions: place?.occasions ?? [],
   note: place?.note ?? '',
@@ -54,7 +59,8 @@ export default function ChonCaptureSheet({ place = null, prefill = {}, places, o
   const [src, setSrc] = useState({ url: prefill.url || '', author: '', quote: prefill.quote || '', platform: '' });
   const [mapsInput, setMapsInput] = useState('');
   const [mapsMsg, setMapsMsg] = useState('');
-  const [addrMsg, setAddrMsg] = useState('');
+  const [areaOpen, setAreaOpen] = useState(false);
+  const area = f.areaTouched ? f.area : autoArea(f.where);
   const [dish, setDish] = useState('');
   const [more, setMore] = useState(editing);
   const [error, setError] = useState('');
@@ -92,8 +98,8 @@ export default function ChonCaptureSheet({ place = null, prefill = {}, places, o
   }));
 
   const duplicate = useMemo(
-    () => (editing || mergeDismissed ? null : findDuplicatePlace(places, { name: f.name, area: f.area })),
-    [editing, mergeDismissed, places, f.name, f.area],
+    () => (editing || mergeDismissed ? null : findDuplicatePlace(places, { name: f.name, area })),
+    [editing, mergeDismissed, places, f.name, area],
   );
   const srcPlatform = src.platform || (src.url ? detectPlatform(src.url) : (src.author ? 'friend' : ''));
   const kindNow = kindOf(f.kind);
@@ -126,7 +132,14 @@ export default function ChonCaptureSheet({ place = null, prefill = {}, places, o
   };
 
   const build = () => {
-    const placeRes = cleanPlace({ ...tidyWhere(f), price_per_person: f.price ? parseCurrencyInput(f.price) : '' });
+    const where = f.where.trim();
+    const placeRes = cleanPlace({
+      ...f,
+      area,
+      address: where && where !== area ? where : '',   // chỉ gõ khu vực ("Đà Lạt") → không có địa chỉ riêng
+      hours_note: formatHours(f.hours),
+      price_per_person: f.price ? parseCurrencyInput(f.price) : '',
+    });
     if (placeRes.error) return { error: placeRes.error };
     const sourceRes = editing ? { value: null } : cleanSource({ ...src, platform: src.platform || undefined });
     if (sourceRes.error) return { error: sourceRes.error };
@@ -190,7 +203,7 @@ export default function ChonCaptureSheet({ place = null, prefill = {}, places, o
           <div className="chon-cap-preview__main">
             <p className={`chon-card__kind chon-kind--${kindNow.id}`}>
               <AppIcon name={kindNow.icon} size={14} />{kindNow.label}
-              {f.area.trim() && <span className="chon-card__area" title={f.area}>· {f.area}</span>}
+              {area && <span className="chon-card__area" title={area}>· {area}</span>}
             </p>
             <input
               className="chon-input chon-input--preview"
@@ -221,21 +234,29 @@ export default function ChonCaptureSheet({ place = null, prefill = {}, places, o
         )}
 
         <div className="chon-field">
-          <span className="chon-field__label">Ở đâu</span>
-          <div className="chon-row2">
-            <label className="chon-field">
-              <span className="chon-field__sub">Khu vực <span className="chon-field__opt">· ngắn, để lọc</span></span>
-              <input className="chon-input" value={f.area} onChange={e => set('area', e.target.value)}
-                onBlur={() => { const next = tidyWhere(f, setAddrMsg); if (next !== f) setF(next); }}
-                placeholder="Quận 4, Đà Lạt…" maxLength={240} />
-            </label>
-            <label className="chon-field">
-              <span className="chon-field__sub">Địa chỉ <span className="chon-field__opt">· tuỳ chọn</span></span>
-              <input className="chon-input" value={f.address} onChange={e => set('address', e.target.value)}
-                placeholder="Số nhà, đường, phường…" maxLength={240} />
-            </label>
-          </div>
-          {addrMsg && <p className="chon-hint" role="status">{addrMsg}</p>}
+          <label className="chon-field__label" htmlFor="chon-where">Ở đâu</label>
+          <input id="chon-where" className="chon-input" value={f.where} onChange={e => set('where', e.target.value)}
+            placeholder="Địa chỉ, hoặc chỉ khu vực: Quận 4, Đà Lạt…" maxLength={240} />
+          {/* Khu vực ngắn (lọc + nhãn thẻ) tự tách từ địa chỉ; chỉ hiện khi khác chữ đã gõ, cho sửa nếu tách sai */}
+          {(areaOpen || f.areaTouched || (area && area !== f.where.trim())) && (
+            areaOpen ? (
+              <label className="chon-input-icon">
+                <AppIcon name="mapPin" size={15} />
+                <input className="chon-input chon-input--bare" value={area} autoFocus maxLength={60}
+                  onChange={e => setF(prev => ({ ...prev, area: e.target.value, areaTouched: true }))}
+                  onBlur={() => setAreaOpen(false)}
+                  onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); setAreaOpen(false); } }}
+                  placeholder="Khu vực để lọc: Đống Đa, Quận 4…" aria-label="Khu vực để lọc" />
+              </label>
+            ) : (
+              <p className="chon-hint">
+                Khu vực để lọc: <strong>{area || '—'}</strong>
+                {' · '}<button type="button" className="chon-link" onClick={() => setAreaOpen(true)}>Sửa</button>
+                {f.areaTouched && <>{' · '}<button type="button" className="chon-link"
+                  onClick={() => setF(prev => ({ ...prev, areaTouched: false }))}>Tự tách lại</button></>}
+              </p>
+            )
+          )}
           <label className="chon-input-icon">
             <AppIcon name="link" size={15} />
             <input
@@ -252,7 +273,7 @@ export default function ChonCaptureSheet({ place = null, prefill = {}, places, o
             mini
             places={[]}
             fallbackCenter={recentCenter}
-            caption={f.address.trim() || (looksLikeAddress(f.area) ? f.area : '')}
+            caption={f.where.trim()}
             pin={f.lat != null ? { lat: f.lat, lng: f.lng } : null}
             onPinChange={({ lat, lng }) => setF(prev => ({ ...prev, lat, lng }))}
           />
@@ -349,6 +370,23 @@ export default function ChonCaptureSheet({ place = null, prefill = {}, places, o
               </div>
             </fieldset>
 
+            <div className="chon-field">
+              <span className="chon-field__label" id="chon-hours-l">Giờ mở cửa</span>
+              <div className="chon-hours" role="group" aria-labelledby="chon-hours-l">
+                <input type="time" className="chon-input" value={f.hours.open} aria-label="Giờ mở"
+                  onChange={e => set('hours', { ...f.hours, open: e.target.value })} />
+                <span className="chon-hours__dash" aria-hidden="true">–</span>
+                <input type="time" className="chon-input" value={f.hours.close} aria-label="Giờ đóng"
+                  onChange={e => set('hours', { ...f.hours, close: e.target.value })} />
+                {(f.hours.open || f.hours.close) && (
+                  <button type="button" className="chon-icon-btn chon-icon-btn--sm" aria-label="Bỏ giờ mở cửa"
+                    onClick={() => set('hours', { ...f.hours, open: '', close: '' })}>
+                    <AppIcon name="x" size={13} />
+                  </button>
+                )}
+              </div>
+            </div>
+
             <div className="chon-row2">
               <label className="chon-field">
                 <span className="chon-field__label">Giá / người</span>
@@ -356,9 +394,9 @@ export default function ChonCaptureSheet({ place = null, prefill = {}, places, o
                   placeholder="120k" inputMode="decimal" />
               </label>
               <label className="chon-field">
-                <span className="chon-field__label">Giờ mở</span>
-                <input className="chon-input" value={f.hours_note} onChange={e => set('hours_note', e.target.value)}
-                  placeholder="17:00–02:00 · nghỉ thứ Hai" maxLength={80} />
+                <span className="chon-field__label">Ngày nghỉ <span className="chon-field__opt">· tuỳ chọn</span></span>
+                <input className="chon-input" value={f.hours.off} onChange={e => set('hours', { ...f.hours, off: e.target.value })}
+                  placeholder="nghỉ thứ Hai" maxLength={60} />
               </label>
             </div>
 

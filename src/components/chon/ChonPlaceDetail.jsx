@@ -6,7 +6,7 @@ import ChonKindArt from './ChonKindArt';
 import { kindOf, PLATFORM, OCCASION, REVISITS } from './chonData';
 import {
   placeState, sortedVisits, dishMentions, nearbyWant, directionsUrl, distanceM, formatDistance, hasCoords,
-  formatPriceShort, planBadge, ratingLabel, shortDay, cleanSource, photoSrc,
+  formatPriceShort, planBadge, ratingLabel, shortDay, cleanSource, photoSrc, parseHours, formatHours,
 } from '../../utils/placeLogic';
 import { formatVND } from '../../utils/currencyUtils';
 
@@ -29,6 +29,8 @@ export default function ChonPlaceDetail({
   const dishes = useMemo(() => dishMentions(place), [place]);
   const near = useMemo(() => nearbyWant(place, places), [place, places]);
   const badge = planBadge(place.plan_task, today);
+  const hoursParts = parseHours(place.hours_note);
+  const hours = { range: formatHours({ open: hoursParts.open, close: hoursParts.close }), off: hoursParts.off };
   const dist = origin && hasCoords(place) ? formatDistance(distanceM(origin, place)) : '';
   const sources = place.place_sources || [];
 
@@ -97,7 +99,9 @@ export default function ChonPlaceDetail({
                   <AppIcon name="calendar" size={13} />{badge.label}
                 </span>
               )}
-              {place.hours_note && <span className="chon-pill"><AppIcon name="clock" size={13} />{place.hours_note}</span>}
+              {/* Mockup 2C: giờ và ngày nghỉ là hai viên riêng */}
+              {hours.range && <span className="chon-pill"><AppIcon name="clock" size={13} />{hours.range}</span>}
+              {hours.off && <span className="chon-pill">{hours.off}</span>}
               {place.price_per_person > 0 && <span className="chon-pill"><AppIcon name="wallet" size={13} />~{formatPriceShort(place.price_per_person)}/người</span>}
               {(place.occasions || []).map(o => <span key={o} className="chon-pill">{OCCASION[o]?.label}</span>)}
             </div>

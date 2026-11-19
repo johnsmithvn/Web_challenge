@@ -7,7 +7,8 @@ import Navbar from './components/Navbar';
 import QuickCapture from './components/QuickCapture';
 import ErrorBoundary from './components/ErrorBoundary';
 import PageSkeleton  from './components/PageSkeleton';
-import GlobalAudioPlayer from './components/GlobalAudioPlayer';
+// Tạm ẩn trình phát Podcast ngẫu nhiên — bật lại: bỏ comment import này + dòng mount bên dưới.
+// import GlobalAudioPlayer from './components/GlobalAudioPlayer';
 import './styles/global.css';
 import './index.css';
 
@@ -78,7 +79,7 @@ function AppShell() {
       <QuickCapture />
       {/* Podcast lấy từ Knowledge (auth-only): khách không mount → không query; key theo user
           để đăng xuất / đổi tài khoản không giữ podcast của người trước. */}
-      {user && <GlobalAudioPlayer key={user.id} />}
+      {/* TẠM ẨN: {user && <GlobalAudioPlayer key={user.id} />} */}
 
       <div className="app-content">
         <ErrorBoundary>

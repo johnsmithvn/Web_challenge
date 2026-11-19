@@ -332,6 +332,43 @@ export function splitAddress(text) {
   return { address, area: area.slice(0, 60) };
 }
 
+/* ── Giờ mở cửa ─────────────────────────────────────────────── */
+
+const TIME = '(\\d{1,2}):(\\d{2})';
+const HOURS_RANGE = new RegExp(`^${TIME}\\s*[–—-]\\s*${TIME}$`);
+const HOURS_FROM = new RegExp(`^từ\\s+${TIME}$`, 'i');
+const HOURS_TO = new RegExp(`^đến\\s+${TIME}$`, 'i');
+const hhmm = (h, m) => (Number(h) <= 24 && Number(m) < 60 ? `${String(Number(h)).padStart(2, '0')}:${m}` : null);
+
+/**
+ * Giờ mở cửa nằm trong một cột chữ `hours_note`, dạng "17:00–02:00 · nghỉ thứ Hai" (mockup 2C: hai viên).
+ * Form chọn giờ mở / đóng bằng ô giờ + ô ngày nghỉ. Chữ cũ gõ tay không đúng mẫu → để nguyên ở phần `off`.
+ * @returns {{ open: string, close: string, off: string }}
+ */
+export function parseHours(text) {
+  const s = String(text ?? '').trim();
+  const i = s.indexOf(' · ');
+  const head = (i >= 0 ? s.slice(0, i) : s).trim();
+  const rest = i >= 0 ? s.slice(i + 3).trim() : '';
+  let m = head.match(HOURS_RANGE);
+  if (m) {
+    const open = hhmm(m[1], m[2]);
+    const close = hhmm(m[3], m[4]);
+    if (open && close) return { open, close, off: rest };
+  }
+  m = head.match(HOURS_FROM);
+  if (m && hhmm(m[1], m[2])) return { open: hhmm(m[1], m[2]), close: '', off: rest };
+  m = head.match(HOURS_TO);
+  if (m && hhmm(m[1], m[2])) return { open: '', close: hhmm(m[1], m[2]), off: rest };
+  return { open: '', close: '', off: s };
+}
+
+/** Ngược của parseHours: { open, close, off } → "17:00–02:00 · nghỉ thứ Hai" ('' khi trống hết). */
+export function formatHours({ open = '', close = '', off = '' } = {}) {
+  const range = open && close ? `${open}–${close}` : open ? `từ ${open}` : close ? `đến ${close}` : '';
+  return [range, String(off ?? '').trim()].filter(Boolean).join(' · ');
+}
+
 /**
  * Link Google Maps chỉ đường qua nhiều chốn (thẻ cụm "Mở lộ trình N điểm", mockup 2A). Bỏ chốn không toạ độ;
  * xếp tham lam gần nhất trước (bắt đầu từ chốn đầu); không đặt origin để Maps tự lấy vị trí hiện tại.

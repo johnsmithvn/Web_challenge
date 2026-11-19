@@ -776,6 +776,9 @@ export function useUserTasks() {
   // ── Sync pending tasks to Service Worker ──────────────
   useEffect(() => {
     if (!('serviceWorker' in navigator)) return;
+    // Chưa tải xong thì `tasks` là mảng rỗng tạm — gửi đi sẽ xoá sạch nhắc hôm nay trong SW nếu
+    // màn mount hook này (hộp Hẹn ngày, QuickCapture…) đóng trước khi fetch xong.
+    if (!hasLoaded) return;
 
     // Nhắc lúc bắt đầu khung giờ làm + lúc đến hạn — logic thuần, xem buildTodayReminders.
     const reminders = buildTodayReminders(tasks, todayStr());
@@ -785,7 +788,7 @@ export function useUserTasks() {
         reg.active.postMessage({ type: 'SYNC_REMINDERS', reminders });
       }
     }).catch(() => {});
-  }, [tasks]);
+  }, [tasks, hasLoaded]);
 
   // ── Link collection to task (v4.5.0 junction) ──────────────
   // `collection` = bài (ít nhất id + title): vào _collections ngay để thẻ bài hiện đủ, và để activity
