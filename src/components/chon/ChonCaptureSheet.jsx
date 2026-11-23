@@ -26,7 +26,8 @@ const toForm = (place, prefill = {}) => {
     where,
     area: place?.area ?? '',
     // Khu vực đã lưu khác bản tự tách (user đã sửa tay) → giữ nguyên, không tự đè
-    areaTouched: !!place && (place.area || '') !== autoArea(where),
+    // Chốn lưu từ bản hai ô cũ có thể mang cả địa chỉ trong cột khu vực → coi như chưa sửa tay, tự tách lại
+    areaTouched: !!place && (place.area || '') !== autoArea(where) && !looksLikeAddress(place.area || ''),
     ...restOf(place),
   };
 };
@@ -43,8 +44,8 @@ const restOf = (place) => ({
 });
 
 /**
- * Lưu chốn / Sửa chốn (mockup 2B). Thứ tự: Tên → Loại → Ở đâu → Ai giới thiệu, phần còn lại gập dưới
- * "Thêm chi tiết" để lưu nhanh. Dán link Google Maps đầy đủ → tự điền toạ độ (và tên nếu trống).
+ * Lưu chốn / Sửa chốn (mockup 2B). Thứ tự như mockup: khối nguồn (tên, lời giới thiệu, ai giới thiệu) → Ở đâu
+ * (bản đồ nhỏ + thanh địa chỉ) → Loại → Món nên thử → Hợp với; giờ / giá / ghi chú gập dưới "Thêm…". Dán link Google Maps đầy đủ → tự điền toạ độ (và tên nếu trống).
  * Trùng tên + khu vực với chốn có sẵn → gợi ý thêm lời giới thiệu vào chốn đó thay vì tạo mới.
  * Ctrl+Enter lưu, Esc đóng.
  *
@@ -60,6 +61,7 @@ export default function ChonCaptureSheet({ place = null, prefill = {}, places, o
   const [mapsInput, setMapsInput] = useState('');
   const [mapsMsg, setMapsMsg] = useState('');
   const [areaOpen, setAreaOpen] = useState(false);
+  const [mapsOpen, setMapsOpen] = useState(false);
   const area = f.areaTouched ? f.area : autoArea(f.where);
   const [dish, setDish] = useState('');
   const [more, setMore] = useState(editing);
@@ -194,7 +196,8 @@ export default function ChonCaptureSheet({ place = null, prefill = {}, places, o
       )}
     >
       <form className="chon-form" onKeyDown={onKeyDown} onSubmit={e => { e.preventDefault(); submit(); }}>
-        {/* Khối xem trước (mockup 2B): hình theo loại (đổi ngay khi chọn loại), nhãn nguồn, loại · khu vực, tên, lời trích */}
+        {/* Khối nguồn (mockup 2B): hình theo loại + nhãn nguồn | loại · khu vực, tên, lời giới thiệu, người giới thiệu.
+            Mockup tự điền từ caption; chưa có bước đó nên các dòng này gõ thẳng trong khối. */}
         <div className={`chon-cap-preview chon-kind--${kindNow.id}`}>
           <div className="chon-cap-preview__art">
             <ChonKindArt kind={kindNow.id} size={92} />
@@ -215,12 +218,38 @@ export default function ChonCaptureSheet({ place = null, prefill = {}, places, o
               data-autofocus
               required
             />
-            {src.quote.trim() || place?.note
-              ? <p className="chon-cap-preview__quote">“{src.quote.trim() || place.note}”</p>
-              : <p className="chon-hint">Ghi tên là lưu được — còn lại tuỳ.</p>}
-            {src.author.trim() && <p className="chon-cap-preview__by">— {src.author.trim()}</p>}
+            {editing ? (
+              place?.note && <p className="chon-cap-preview__quote">“{place.note}”</p>
+            ) : (
+              <>
+                <textarea className="chon-input chon-input--bare chon-cap-preview__say" rows={2} value={src.quote} maxLength={500}
+                  onChange={e => setSrc(s => ({ ...s, quote: e.target.value }))}
+                  placeholder="Lời giới thiệu: “Ốc hương rang muối ớt, đi nhóm 4 là vừa.”" aria-label="Lời giới thiệu" />
+                <div className="chon-cap-preview__by">
+                  <input className="chon-input chon-input--bare" value={src.author} maxLength={80}
+                    onChange={e => setSrc(s => ({ ...s, author: e.target.value }))}
+                    placeholder="Ai giới thiệu: @angi.dau, Minh…" aria-label="Người giới thiệu" />
+                  <button type="button" className={`chon-chip chon-chip--xs${src.platform === 'friend' ? ' is-on' : ''}`}
+                    aria-pressed={src.platform === 'friend'}
+                    onClick={() => setSrc(s => ({ ...s, platform: s.platform === 'friend' ? '' : 'friend' }))}>
+                    Bạn kể
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         </div>
+        {!editing && (
+          <label className="chon-input-icon">
+            <AppIcon name="link" size={15} />
+            <input className="chon-input chon-input--bare" value={src.url} onChange={e => setSrc(s => ({ ...s, url: e.target.value }))}
+              placeholder="Link TikTok, Facebook, YouTube… (tuỳ chọn)" aria-label="Link giới thiệu" inputMode="url" />
+            {/* Chỉ nhãn nền tảng đoán từ link — "Bạn kể" là nút riêng trong khối trên */}
+            {src.url.trim() && srcPlatform && srcPlatform !== 'other' && srcPlatform !== 'friend' && (
+              <span className="chon-pill">{PLATFORMS.find(p => p.id === srcPlatform)?.label}</span>
+            )}
+          </label>
+        )}
 
         {duplicate && (
           <div className="chon-merge" role="status">
@@ -233,60 +262,71 @@ export default function ChonCaptureSheet({ place = null, prefill = {}, places, o
           </div>
         )}
 
+        {/* Ở đâu (mockup 2B): nhãn + "Dán link Google Maps" một hàng, bản đồ nhỏ có thanh địa chỉ đè ở đáy */}
         <div className="chon-field">
-          <label className="chon-field__label" htmlFor="chon-where">Ở đâu</label>
-          <input id="chon-where" className="chon-input" value={f.where} onChange={e => set('where', e.target.value)}
-            placeholder="Địa chỉ, hoặc chỉ khu vực: Quận 4, Đà Lạt…" maxLength={240} />
-          {/* Khu vực ngắn (lọc + nhãn thẻ) tự tách từ địa chỉ; chỉ hiện khi khác chữ đã gõ, cho sửa nếu tách sai */}
-          {(areaOpen || f.areaTouched || (area && area !== f.where.trim())) && (
-            areaOpen ? (
-              <label className="chon-input-icon">
-                <AppIcon name="mapPin" size={15} />
-                <input className="chon-input chon-input--bare" value={area} autoFocus maxLength={60}
-                  onChange={e => setF(prev => ({ ...prev, area: e.target.value, areaTouched: true }))}
-                  onBlur={() => setAreaOpen(false)}
-                  onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); setAreaOpen(false); } }}
-                  placeholder="Khu vực để lọc: Đống Đa, Quận 4…" aria-label="Khu vực để lọc" />
-              </label>
-            ) : (
-              <p className="chon-hint">
-                Khu vực để lọc: <strong>{area || '—'}</strong>
-                {' · '}<button type="button" className="chon-link" onClick={() => setAreaOpen(true)}>Sửa</button>
-                {f.areaTouched && <>{' · '}<button type="button" className="chon-link"
-                  onClick={() => setF(prev => ({ ...prev, areaTouched: false }))}>Tự tách lại</button></>}
-              </p>
-            )
+          <div className="chon-field__head">
+            <span className="chon-field__label">Ở đâu</span>
+            <span className="chon-field__tools">
+              <button type="button" className="chon-btn chon-btn--text chon-btn--sm" onClick={useMyLocation} disabled={locating}>
+                <AppIcon name="crosshair" size={14} />{locating ? 'Đang lấy…' : 'Tôi đang ở đây'}
+              </button>
+              <button type="button" className="chon-btn chon-btn--text chon-btn--sm" aria-expanded={mapsOpen}
+                onClick={() => setMapsOpen(o => !o)}>
+                <AppIcon name="link" size={14} />{f.maps_url ? 'Đổi link Google Maps' : 'Dán link Google Maps'}
+              </button>
+            </span>
+          </div>
+          {mapsOpen && (
+            <label className="chon-input-icon">
+              <AppIcon name="link" size={15} />
+              <input
+                className="chon-input chon-input--bare"
+                value={mapsInput}
+                onChange={e => applyMaps(e.target.value)}
+                placeholder="Dán link Google Maps để lấy vị trí"
+                aria-label="Link Google Maps"
+                inputMode="url"
+                autoFocus
+              />
+            </label>
           )}
-          <label className="chon-input-icon">
-            <AppIcon name="link" size={15} />
-            <input
-              className="chon-input chon-input--bare"
-              value={mapsInput}
-              onChange={e => applyMaps(e.target.value)}
-              placeholder={f.maps_url ? 'Đã có link Google Maps — dán link khác để thay' : 'Dán link Google Maps để lấy vị trí'}
-              aria-label="Link Google Maps"
-              inputMode="url"
-            />
-          </label>
           {mapsMsg && <p className="chon-hint" role="status">{mapsMsg}</p>}
           <ChonMap
             mini
             places={[]}
             fallbackCenter={recentCenter}
-            caption={f.where.trim()}
+            caption={(
+              <input className="chon-map__addr" value={f.where} onChange={e => set('where', e.target.value)}
+                placeholder="Địa chỉ, hoặc chỉ khu vực: Quận 4, Đà Lạt…" aria-label="Địa chỉ" maxLength={240} />
+            )}
             pin={f.lat != null ? { lat: f.lat, lng: f.lng } : null}
             onPinChange={({ lat, lng }) => setF(prev => ({ ...prev, lat, lng }))}
           />
-          <p className="chon-hint chon-hint--row">
-            <span>
-              {f.lat != null
-                ? <>Kéo ghim cho đúng chỗ · <button type="button" className="chon-link" onClick={() => setF(prev => ({ ...prev, lat: null, lng: null }))}>Bỏ vị trí</button></>
-                : 'Chạm vào bản đồ để cắm ghim (tuỳ chọn).'}
-            </span>
-            <button type="button" className="chon-link" onClick={useMyLocation} disabled={locating}>
-              <AppIcon name="crosshair" size={13} />{locating ? 'Đang lấy vị trí…' : 'Tôi đang ở đây'}
-            </button>
-          </p>
+          {/* Khu vực ngắn (lọc + nhãn thẻ) tự tách từ địa chỉ; chỉ hiện khi khác chữ đã gõ, cho sửa nếu tách sai */}
+          {areaOpen ? (
+            <label className="chon-input-icon">
+              <AppIcon name="mapPin" size={15} />
+              <input className="chon-input chon-input--bare" value={area} autoFocus maxLength={60}
+                onChange={e => setF(prev => ({ ...prev, area: e.target.value, areaTouched: true }))}
+                onBlur={() => setAreaOpen(false)}
+                onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); setAreaOpen(false); } }}
+                placeholder="Khu vực để lọc: Đống Đa, Quận 4…" aria-label="Khu vực để lọc" />
+            </label>
+          ) : (f.areaTouched || (area && area !== f.where.trim()) || f.lat != null) && (
+            <p className="chon-hint chon-hint--row">
+              <span>
+                {(f.areaTouched || (area && area !== f.where.trim())) && <>
+                  Khu vực để lọc: <strong>{area || '—'}</strong>
+                  {' · '}<button type="button" className="chon-link" onClick={() => setAreaOpen(true)}>Sửa</button>
+                  {f.areaTouched && <>{' · '}<button type="button" className="chon-link"
+                    onClick={() => setF(prev => ({ ...prev, areaTouched: false }))}>Tự tách lại</button></>}
+                </>}
+              </span>
+              {f.lat != null && (
+                <button type="button" className="chon-link" onClick={() => setF(prev => ({ ...prev, lat: null, lng: null }))}>Bỏ ghim</button>
+              )}
+            </p>
+          )}
         </div>
 
         <fieldset className="chon-field">
@@ -307,69 +347,43 @@ export default function ChonCaptureSheet({ place = null, prefill = {}, places, o
           </div>
         </fieldset>
 
-        {!editing && (
-          <div className="chon-field">
-            <span className="chon-field__label">Ai giới thiệu <span className="chon-field__opt">tuỳ chọn</span></span>
-            <label className="chon-input-icon">
-              <AppIcon name="link" size={15} />
-              <input className="chon-input chon-input--bare" value={src.url} onChange={e => setSrc(s => ({ ...s, url: e.target.value }))}
-                placeholder="Link TikTok, Facebook, YouTube…" aria-label="Link giới thiệu" inputMode="url" />
-              {/* Chỉ nhãn nền tảng đoán từ link — "Bạn kể" đã có nút riêng bên dưới */}
-              {src.url.trim() && srcPlatform && srcPlatform !== 'other' && srcPlatform !== 'friend' && (
-                <span className="chon-pill">{PLATFORMS.find(p => p.id === srcPlatform)?.label}</span>
-              )}
-            </label>
-            <div className="chon-row2">
-              <input className="chon-input" value={src.author} onChange={e => setSrc(s => ({ ...s, author: e.target.value }))}
-                placeholder="Ai: @angi.dau, Minh…" maxLength={80} aria-label="Người giới thiệu" />
-              <button type="button" className={`chon-chip${src.platform === 'friend' ? ' is-on' : ''}`}
-                aria-pressed={src.platform === 'friend'}
-                onClick={() => setSrc(s => ({ ...s, platform: s.platform === 'friend' ? '' : 'friend' }))}>
-                <AppIcon name="users" size={14} />Bạn kể
+        <div className="chon-field">
+          <span className="chon-field__label">Món nên thử <span className="chon-field__opt">· chạm để bỏ</span></span>
+          <div className="chon-chips">
+            {f.must_try.map(d => (
+              <button key={d} type="button" className="chon-chip chon-chip--dish is-on"
+                onClick={() => set('must_try', f.must_try.filter(x => x !== d))} aria-label={`Bỏ món ${d}`}>
+                <AppIcon name="check" size={13} weight="bold" />{d}
               </button>
-            </div>
-            <textarea className="chon-input chon-textarea" rows={2} value={src.quote} maxLength={500}
-              onChange={e => setSrc(s => ({ ...s, quote: e.target.value }))}
-              placeholder="Lời giới thiệu: “Ốc hương rang muối ớt, đi nhóm 4 là vừa.”" aria-label="Lời giới thiệu" />
+            ))}
+            {f.must_try.length < MAX_MUST_TRY && (
+              <input className="chon-input chon-input--chip" value={dish} onChange={e => setDish(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter' && !e.ctrlKey && !e.metaKey) { e.preventDefault(); addDish(); } }}
+                onBlur={() => dish.trim() && addDish()}
+                placeholder="+ Thêm món" aria-label="Thêm món nên thử" maxLength={60} />
+            )}
           </div>
-        )}
+        </div>
 
+        <fieldset className="chon-field">
+          <legend className="chon-field__label">Hợp với</legend>
+          <div className="chon-chips" role="group" aria-label="Hợp với dịp nào">
+            {OCCASIONS.map(o => (
+              <button key={o.id} type="button" className={`chon-chip${f.occasions.includes(o.id) ? ' is-on' : ''}`}
+                aria-pressed={f.occasions.includes(o.id)} onClick={() => toggleIn('occasions', o.id)}>
+                {o.label}
+              </button>
+            ))}
+          </div>
+        </fieldset>
+
+        {/* Ngoài mockup: giờ / giá / ghi chú (trang chi tiết hiện chúng) — gập lại cho form gọn như 2B */}
         {!more ? (
           <button type="button" className="chon-more-btn" onClick={() => setMore(true)} aria-expanded="false">
-            <AppIcon name="plus" size={15} />Thêm chi tiết: món nên thử, hợp với ai, giá, giờ mở
+            <AppIcon name="plus" size={15} />Thêm giờ mở cửa, giá, ghi chú
           </button>
         ) : (
           <>
-            <div className="chon-field">
-              <span className="chon-field__label">Món nên thử</span>
-              <div className="chon-chips">
-                {f.must_try.map(d => (
-                  <button key={d} type="button" className="chon-chip chon-chip--dish is-on"
-                    onClick={() => set('must_try', f.must_try.filter(x => x !== d))} aria-label={`Bỏ món ${d}`}>
-                    <AppIcon name="check" size={13} weight="bold" />{d}
-                  </button>
-                ))}
-                {f.must_try.length < MAX_MUST_TRY && (
-                  <input className="chon-input chon-input--chip" value={dish} onChange={e => setDish(e.target.value)}
-                    onKeyDown={e => { if (e.key === 'Enter' && !e.ctrlKey && !e.metaKey) { e.preventDefault(); addDish(); } }}
-                    onBlur={() => dish.trim() && addDish()}
-                    placeholder="+ Thêm món, Enter" aria-label="Thêm món nên thử" maxLength={60} />
-                )}
-              </div>
-            </div>
-
-            <fieldset className="chon-field">
-              <legend className="chon-field__label">Hợp với</legend>
-              <div className="chon-chips" role="group" aria-label="Hợp với dịp nào">
-                {OCCASIONS.map(o => (
-                  <button key={o.id} type="button" className={`chon-chip${f.occasions.includes(o.id) ? ' is-on' : ''}`}
-                    aria-pressed={f.occasions.includes(o.id)} onClick={() => toggleIn('occasions', o.id)}>
-                    {o.label}
-                  </button>
-                ))}
-              </div>
-            </fieldset>
-
             <div className="chon-field">
               <span className="chon-field__label" id="chon-hours-l">Giờ mở cửa</span>
               <div className="chon-hours" role="group" aria-labelledby="chon-hours-l">
@@ -409,7 +423,6 @@ export default function ChonCaptureSheet({ place = null, prefill = {}, places, o
         )}
 
         {error && <p className="chon-error" role="alert">{error}</p>}
-        <p className="chon-hint chon-hint--keys"><kbd>Ctrl</kbd>+<kbd>Enter</kbd> để lưu · <kbd>Esc</kbd> để đóng</p>
       </form>
     </ChonSheet>
   );

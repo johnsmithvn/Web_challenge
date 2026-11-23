@@ -185,7 +185,6 @@
 .chon-filters__sep { width: 1px; height: 22px; margin: 0 4px; background: var(--chon-line-2); }
 /* Máy tính: hai nhóm hoà thành một hàng; điện thoại tách hai hàng (xem @media) */
 .chon-filters__kinds, .chon-filters__more { display: contents; }
-.chon-select { width: 156px; }
 /* SearchSelect dùng chung: map token nó đọc sang --chon-* (như Knowledge); menu nền đặc, không blur */
 :is(.chon-page, .chon-layer) .search-select {
   --color-bg: var(--chon-pop);
@@ -198,7 +197,6 @@
   --ring: 0 0 0 3px color-mix(in srgb, var(--chon-lamp) 18%, transparent);
   --r: 12px;
 }
-.chon-filters .search-select__control { border-radius: 999px; }
 :is(.chon-page, .chon-layer) .search-select__menu { box-shadow: var(--chon-shadow); backdrop-filter: none; -webkit-backdrop-filter: none; }
 
 /* Chip / viên */
@@ -213,6 +211,9 @@
 .chon-chip__n { color: var(--chon-faint); font-weight: 400; }
 .chon-chip--near.is-on { border-color: color-mix(in srgb, var(--chon-blue) 50%, transparent); background: var(--chon-blue-soft); color: var(--chon-blue-tx); }
 .chon-chip--dish { height: 36px; font-size: 13px; }
+.chon-chip--pick { padding: 0 11px 0 13px; max-width: 220px; }
+.chon-chip--pick > svg:first-child { flex: none; }
+.chon-chip__caret { flex: none; color: var(--chon-faint); }
 .chon-chip--dish.is-on {
   border-color: color-mix(in srgb, var(--chon-kind-food) 40%, transparent);
   background: color-mix(in srgb, var(--chon-kind-food) 10%, transparent);
@@ -293,6 +294,7 @@
   display: grid; grid-template-columns: minmax(0, 1fr) minmax(360px, 42%); gap: 20px;
 }
 .chon-main--single { grid-template-columns: minmax(0, 1fr); }
+.chon-main--map { grid-template-columns: minmax(0, 1fr); }   /* máy tính: tab Bản đồ — bản đồ chiếm cả bề ngang */
 .chon-list {
   min-width: 0; min-height: 0; overflow-y: auto; overflow-x: hidden;
   padding: 2px 4px var(--bottom-fab-pad, 40px) 0; scrollbar-gutter: stable;
@@ -503,19 +505,26 @@
   border-radius: 10px; box-shadow: var(--chon-shadow); font: 500 13px var(--chon-font); padding: 4px 9px;
 }
 :is(.chon-page, .chon-layer) .chon-map-tip::before { border-top-color: var(--chon-pop); }
-.chon-map--mini { height: 160px; min-height: 0; border-radius: 16px; }
+.chon-map--mini { height: 176px; min-height: 0; border-radius: 16px; }
 /* Chú thích đè trên bản đồ nhỏ (mockup 2B): chip góc trên phải, thanh địa chỉ dưới */
 .chon-map__chip {
   position: absolute; right: 8px; top: 8px; z-index: 500; height: 26px; padding: 0 9px; border-radius: 999px;
   display: flex; align-items: center; background: var(--chon-bar); font-size: 12px; color: var(--chon-dim); pointer-events: none;
 }
+/* Thanh địa chỉ là ô nhập (mockup 2B: địa chỉ nằm trên bản đồ) — bấm vào thanh không cắm ghim */
 .chon-map__caption {
-  position: absolute; left: 8px; right: 8px; bottom: 22px; z-index: 500; margin: 0; height: 34px; box-sizing: border-box;
-  padding: 0 10px; border-radius: 10px; display: flex; align-items: center; gap: 8px; pointer-events: none;
+  position: absolute; left: 8px; right: 8px; bottom: 22px; z-index: 500; margin: 0; height: 36px; box-sizing: border-box;
+  padding: 0 10px; border-radius: 10px; display: flex; align-items: center; gap: 8px; cursor: text;
   background: var(--chon-bar); border: 1px solid var(--chon-line); font-size: 13px; color: var(--chon-tx);
+  transition: border-color 0.15s, box-shadow 0.15s;
 }
+.chon-map__caption:focus-within { border-color: var(--chon-lamp-line); box-shadow: 0 0 0 3px color-mix(in srgb, var(--chon-lamp) 14%, transparent); }
 .chon-map__caption svg { flex: none; color: var(--chon-lamp); }
-.chon-map__caption span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.chon-map__addr {
+  flex: 1; min-width: 0; height: 100%; padding: 0; border: 0; outline: none; background: transparent;
+  font: inherit; color: inherit; text-overflow: ellipsis;
+}
+.chon-map__addr::placeholder { color: var(--chon-faint); }
 /* Ghi công © OpenStreetMap bắt buộc (giấy phép ODbL) — không ẩn; thanh địa chỉ nằm trên dòng ghi công */
 
 /* ── Sheet (Lưu chốn, Thắp đèn) ─────────────────────────────── */
@@ -547,6 +556,8 @@
 .chon-form__row-end { display: flex; justify-content: flex-end; gap: 8px; }
 .chon-field { display: flex; flex-direction: column; gap: 8px; min-width: 0; margin: 0; padding: 0; border: 0; }
 .chon-field__label { font-size: 13px; font-weight: 600; color: var(--chon-dim); padding: 0; margin: 0; }
+.chon-field__head { display: flex; align-items: center; justify-content: space-between; gap: 4px 12px; flex-wrap: wrap; }
+.chon-field__tools { display: flex; flex-wrap: wrap; gap: 2px 10px; margin-right: -6px; }
 .chon-field__opt { font-weight: 400; font-size: 12px; color: var(--chon-faint); }
 .chon-field__sub { font-size: 12.5px; font-weight: 500; color: var(--chon-tx-2); }
 .chon-row2 > .chon-field { gap: 6px; }
@@ -584,7 +595,6 @@
 .chon-row2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
 .chon-hint { margin: 0; font-size: 12.5px; color: var(--chon-faint); }
 .chon-hint--row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 4px 12px; }
-.chon-hint--keys kbd { font: 500 11px var(--chon-mono); padding: 1px 5px; border-radius: 5px; border: 1px solid var(--chon-line-2); }
 .chon-error {
   margin: 0; padding: 8px 12px; border-radius: 10px; font-size: 13px;
   color: var(--chon-red); background: color-mix(in srgb, var(--chon-red) 10%, transparent);
@@ -620,7 +630,14 @@
 .chon-input--preview:focus { box-shadow: none; background: transparent; border-bottom-style: solid; border-bottom-color: var(--chon-lamp); }
 .chon-cap-preview__quote { margin: 2px 0 0; font-size: 13px; line-height: 1.45; color: var(--chon-dim);
   display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
-.chon-cap-preview__by { margin: auto 0 0; font-size: 12px; color: var(--chon-lamp-tx); }
+/* Lời giới thiệu + người giới thiệu gõ thẳng trong khối (mockup: "Tự điền từ caption · @angi.dau") */
+.chon-cap-preview__say {
+  min-height: 0; margin-top: 2px; resize: none; font-size: 13px; line-height: 1.45; color: var(--chon-dim);
+}
+.chon-cap-preview__say::placeholder, .chon-cap-preview__by .chon-input--bare::placeholder { color: var(--chon-faint); }
+.chon-cap-preview__by { margin-top: auto; display: flex; align-items: center; gap: 6px; }
+.chon-cap-preview__by .chon-input--bare { flex: 1; min-width: 0; min-height: 30px; font-size: 12.5px; color: var(--chon-lamp-tx); }
+.chon-chip--xs { height: 26px; padding: 0 9px; font-size: 12px; flex: none; }
 .chon-merge {
   display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; padding: 10px 12px; border-radius: 14px;
   background: var(--chon-lamp-soft); border: 1px solid var(--chon-lamp-line); color: var(--chon-tx);
@@ -968,7 +985,6 @@
 }
 @media (min-width: 769px) and (max-width: 1100px) {
   .chon-main { grid-template-columns: minmax(0, 1fr) minmax(300px, 38%); }
-  .chon-select { width: 136px; }
 }
 
 /* ── Điện thoại (≤768px): giữ thanh Life Hub + tab đáy chung, trang cuộn tự nhiên ── */
@@ -1005,7 +1021,6 @@
   .chon-filters__kinds > * { flex: none; }
   .chon-filters__more { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
   .chon-filters__more .chon-filters__sep { display: none; }
-  .chon-select { width: auto; flex: 1 1 120px; }
 
   /* Nội dung giữa: cuộn bên trong */
   .chon-main { flex: 1; min-height: 0; display: block; overflow-y: auto; overscroll-behavior: contain; padding: 2px 14px 24px; }

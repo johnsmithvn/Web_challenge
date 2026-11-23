@@ -11,7 +11,6 @@ import SkyBackground from '../components/SkyBackground';
 import SkeletonList from '../components/SkeletonList';
 import AppIcon from '../components/AppIcon';
 import ActionMenu from '../components/ActionMenu';
-import SearchSelect from '../components/SearchSelect';
 import ChonPlaceCard from '../components/chon/ChonPlaceCard';
 import ChonCaptureSheet from '../components/chon/ChonCaptureSheet';
 import ChonLightSheet from '../components/chon/ChonLightSheet';
@@ -71,7 +70,7 @@ export default function ChonPage() {
   const { addItem: addArticle, fetchLinkOptions } = useCollections();
 
   // ── Lọc / xem ──
-  const [tab, setTab] = useState('want');            // want | visited | trips | trash; điện thoại thêm 'map'
+  const [tab, setTab] = useState('want');            // want | visited | trips | map (bản đồ to) | trash
   const [kind, setKind] = useState('');
   const [area, setArea] = useState('');
   const [occasion, setOccasion] = useState('');
@@ -102,6 +101,7 @@ export default function ChonPage() {
     return () => document.body.classList.remove('in-chon-workspace');
   }, [user]);
   const [searchOpen, setSearchOpen] = useState(false);   // điện thoại: ô tìm mở dưới thanh trên
+  const [filterMenu, setFilterMenu] = useState(null);    // menu chọn Khu vực / Dịp ({ type, at })
   const [topMenu, setTopMenu] = useState(null);          // điện thoại: menu ⋯ của thanh trên ({ at })
 
   // Danh mục Tài chính theo tuỳ chỉnh của user (tên, mức cần thiết) cho Thắp đèn / Chốt chuyến
@@ -188,6 +188,11 @@ export default function ChonPage() {
     if (near) { setNear(false); return; }
     setNear(true);
     if (!origin) locate();
+  };
+  const openFilterMenu = (type, e) => {
+    if (filterMenu?.type === type) { setFilterMenu(null); return; }
+    const r = e.currentTarget.getBoundingClientRect();
+    setFilterMenu({ type, at: { x: r.left, y: r.bottom + 6 } });
   };
 
   // ── Thao tác ──
@@ -617,9 +622,13 @@ export default function ChonPage() {
           <button type="button" role="tab" aria-selected={onTrips} className={`chon-tab${onTrips ? ' is-on' : ''}`} onClick={() => setTab('trips')}>
             <AppIcon name="flag" size={17} />Chuyến đi<span className="chon-tab__count">{trips.length}</span>
           </button>
-          <button type="button" role="tab" aria-selected={tab === 'trash'} aria-label="Thùng rác"
+          {/* Mockup 2A: tab Bản đồ — bản đồ chiếm cả vùng dưới thanh lọc */}
+          <button type="button" role="tab" aria-selected={tab === 'map'} className={`chon-tab${tab === 'map' ? ' is-on' : ''}`} onClick={() => setTab('map')}>
+            <AppIcon name="mapTrifold" size={17} />Bản đồ
+          </button>
+          <button type="button" role="tab" aria-selected={tab === 'trash'} aria-label="Thùng rác" title="Thùng rác"
             className={`chon-tab chon-tab--end${tab === 'trash' ? ' is-on' : ''}`} onClick={() => setTab('trash')}>
-            <AppIcon name="trash" size={16} />{!isMobile && 'Thùng rác'}
+            <AppIcon name="trash" size={16} />
             {trash.length + tripTrash.length > 0 && <span className="chon-tab__count">{trash.length + tripTrash.length}</span>}
           </button>
         </div>
@@ -628,11 +637,12 @@ export default function ChonPage() {
 
         {tab !== 'trash' && !onTrips && (
           <div className="chon-filters" role="group" aria-label="Lọc chốn">
-            {/* Điện thoại: hàng loại chốn cuộn ngang; hàng ô chọn bên dưới KHÔNG cuộn — menu thả xuống của ô chọn
-                là position: absolute, nằm trong khung cuộn sẽ bị cắt. Máy tính: hai nhóm display: contents = một hàng. */}
+            {/* Điện thoại: hàng loại chốn cuộn ngang, hàng Khu vực / Dịp / Gần tôi bên dưới.
+                Máy tính: hai nhóm display: contents = một hàng. */}
             <div className="chon-filters__kinds">
               <button type="button" className={`chon-chip${!kind ? ' is-on' : ''}`} aria-pressed={!kind} onClick={() => setKind('')}>Tất cả</button>
-              {KINDS.filter(k => k.id !== 'other' || kindCounts.other).map(k => (
+              {/* Như mockup: chỉ hiện loại đang có chốn (loại đang chọn thì giữ) */}
+              {KINDS.filter(k => kindCounts[k.id] || kind === k.id).map(k => (
                 <button key={k.id} type="button" className={`chon-chip chon-kind--${k.id}${kind === k.id ? ' is-on' : ''}`}
                   aria-pressed={kind === k.id} onClick={() => setKind(kind === k.id ? '' : k.id)}>
                   <AppIcon name={k.icon} size={15} className="chon-chip__icon" />{k.label}
@@ -642,28 +652,15 @@ export default function ChonPage() {
             </div>
             <div className="chon-filters__more">
             <span className="chon-filters__sep" aria-hidden="true" />
-            <SearchSelect
-              className="chon-select"
-              size="md"
-              options={[{ value: '', label: 'Mọi khu vực' }, ...areas.map(a => ({ value: a.name, label: a.name, badge: a.count }))]}
-              value={area}
-              onChange={v => setArea(v || '')}
-              placeholder="Khu vực"
-              searchPlaceholder="Tìm khu vực…"
-              ariaLabel="Lọc theo khu vực"
-              noResultsText="Chưa có khu vực này"
-            />
-            <SearchSelect
-              className="chon-select"
-              size="md"
-              options={[{ value: '', label: 'Mọi dịp' }, ...OCCASIONS.map(o => ({ value: o.id, label: o.label }))]}
-              value={occasion}
-              onChange={v => setOccasion(v || '')}
-              placeholder="Dịp"
-              searchPlaceholder="Chọn dịp"
-              ariaLabel="Lọc theo dịp"
-              inputProps={{ inputMode: 'none' }}
-            />
+            {/* Mockup 2A: Khu vực / Dịp là chip mở menu chọn (chọn rồi thì chip mang tên đã chọn) */}
+            <button type="button" className={`chon-chip chon-chip--pick${area ? ' is-on' : ''}`} aria-haspopup="menu"
+              aria-expanded={filterMenu?.type === 'area'} onClick={e => openFilterMenu('area', e)}>
+              <AppIcon name="mapPin" size={15} />{area || 'Khu vực'}<AppIcon name="caretDown" size={14} className="chon-chip__caret" />
+            </button>
+            <button type="button" className={`chon-chip chon-chip--pick${occasion ? ' is-on' : ''}`} aria-haspopup="menu"
+              aria-expanded={filterMenu?.type === 'occasion'} onClick={e => openFilterMenu('occasion', e)}>
+              <AppIcon name="users" size={15} />{OCCASIONS.find(o => o.id === occasion)?.label || 'Dịp'}<AppIcon name="caretDown" size={14} className="chon-chip__caret" />
+            </button>
             <button type="button" className={`chon-chip chon-chip--near${near ? ' is-on' : ''}`} aria-pressed={near} onClick={toggleNear} disabled={locating}>
               <AppIcon name="crosshair" size={15} />{locating ? 'Đang tìm…' : 'Gần tôi'}
             </button>
@@ -676,7 +673,7 @@ export default function ChonPage() {
           </div>
         )}
 
-        <div className={`chon-main${tab === 'trash' || onTrips ? ' chon-main--single' : ''}${tab === 'map' ? ' chon-main--map' : ''}`}>
+        <div className={`chon-main${tab === 'trash' || onTrips ? ' chon-main--single' : ''}${tab === 'map' && !inlineDetail ? ' chon-main--map' : ''}`}>
           {inlineDetail ? detailView : listTab && (
             <div className="chon-list">
               {listTab === 'trash' ? (
@@ -774,6 +771,24 @@ export default function ChonPage() {
 
       {isMobile && <ChonTabbar tab={tab} counts={counts} tripCount={trips.length} onTab={goTab} />}
       {overlays}
+      {filterMenu && (
+        <ChonLayer>
+          <ActionMenu
+            at={filterMenu.at}
+            label={filterMenu.type === 'area' ? 'Lọc theo khu vực' : 'Lọc theo dịp'}
+            onClose={() => setFilterMenu(null)}
+            items={filterMenu.type === 'area'
+              ? [
+                { key: '', label: 'Mọi khu vực', checked: !area, onSelect: () => setArea('') },
+                ...areas.map(a => ({ key: a.name, icon: 'mapPin', label: `${a.name} · ${a.count}`, checked: area === a.name, onSelect: () => setArea(a.name) })),
+              ]
+              : [
+                { key: '', label: 'Mọi dịp', checked: !occasion, onSelect: () => setOccasion('') },
+                ...OCCASIONS.map(o => ({ key: o.id, label: o.label, checked: occasion === o.id, onSelect: () => setOccasion(o.id) })),
+              ]}
+          />
+        </ChonLayer>
+      )}
       {topMenu && (
         <ChonLayer>
           <ActionMenu

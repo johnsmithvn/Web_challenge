@@ -291,8 +291,9 @@ export default function ChonMap({
       {mini && (
         <>
           <span className="chon-map__chip" aria-hidden="true">{hasCoords(pin) ? 'Kéo ghim cho đúng' : 'Chạm để cắm ghim'}</span>
+          {/* caption: một ô nhập (thanh địa chỉ của form Lưu chốn) — label để bấm cả thanh là vào ô */}
           {caption && (
-            <p className="chon-map__caption"><AppIcon name="mapPin" size={14} /><span>{caption}</span></p>
+            <label className="chon-map__caption"><AppIcon name="mapPin" size={14} />{caption}</label>
           )}
         </>
       )}

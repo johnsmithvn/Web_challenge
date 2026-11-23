@@ -1497,10 +1497,11 @@ Nocturne, Dashboard, Knowledge).
 - **Hình minh hoạ theo loại** (`ChonKindArt.jsx`) thay ảnh bìa: SVG nét sáng, màu `--kc`, quầng radial theo `--kc`
   trên `--chon-art-bg`; thẻ đã đến quầng màu đèn.
 - **Khung**: máy tính Workspace pattern (`100dvh`, header + tab + thanh lọc đứng yên, danh sách cuộn trong, bản đồ cột
-  phải `minmax(360px, 42%)`). **Điện thoại (≤768px) như Knowledge / Body**: đã đăng nhập thì ẩn thanh Life Hub + tab
+  phải `minmax(360px, 42%)`; tab Bản đồ = bản đồ cả bề ngang; Thùng rác là nút icon cuối hàng tab). Thanh lọc như mockup 2A:
+  chỉ hiện loại đang có chốn, Khu vực / Dịp là chip `.chon-chip--pick` mở ActionMenu. **Điện thoại (≤768px) như Knowledge / Body**: đã đăng nhập thì ẩn thanh Life Hub + tab
   đáy chung (`body.in-chon-workspace`, `navbar.css`) và ẩn nút ＋ QuickCapture; trang cao `100dvh`, xếp dọc: thanh trên
   `.chon-mbar` (đèn · tên màn Spectral 22px · tìm · ⋯ Thùng rác / Lên chuyến đi · ＋ tròn) · ô tìm mở khi bấm tìm · lọc
-  (hàng loại cuộn ngang, hàng ô chọn không cuộn) · **nội dung giữa cuộn** · tab đáy `.chon-tabbar` (Về Life Hub · Muốn
+  (hàng loại cuộn ngang, hàng Khu vực / Dịp / Gần tôi) · **nội dung giữa cuộn** · tab đáy `.chon-tabbar` (Về Life Hub · Muốn
   đến · Đã đến · Chuyến đi · Bản đồ, số đếm dạng huy hiệu). Thẻ thành hàng ngang (hình 96px), bản đồ lấp đầy phần giữa,
   sheet thành bottom sheet, chi tiết toàn màn; mọi thanh tính `env(safe-area-inset-*)`.
 - **Hộp thoại** `ChonSheet` (riêng, giống `body-modal-panel` của Body): máy tính giữa màn 560 / 440px, điện thoại bottom
@@ -1518,7 +1519,7 @@ Nocturne, Dashboard, Knowledge).
   đêm), sáng ngả giấy nhẹ; ghim `divIcon` HTML theo token; nút nổi `--chon-bar`; ghi công © OpenStreetMap luôn hiện.
   Bong bóng cụm `.chon-cluster` 46px tô đặc màu đèn, số đậm `--chon-on-lamp`, quầng sáng (mockup 2A); cả cụm đã đến
   thêm vòng viền. Thẻ cụm `.chon-cpop` (popup Leaflet, nền `--chon-pop`): dòng khu vực · bán kính, danh sách chấm đèn,
-  nút đặc "Mở lộ trình N điểm". Bản đồ nhỏ của form: chip góc trên + thanh địa chỉ `.chon-map__caption` (nằm trên
+  nút đặc "Mở lộ trình N điểm". Bản đồ nhỏ của form: chip góc trên + thanh địa chỉ `.chon-map__caption` là ô nhập địa chỉ (nằm trên
   dòng ghi công OSM — ghi công không được ẩn). Khung `.chon-map` có
   `isolation: isolate` để z-index 400+ của Leaflet không đè menu / popover bên ngoài.
 - **Ảnh lần ghé** `.chon-photo`: ô vuông 64px (trong form) / 72px (lịch sử ghé), bo 12px, `object-fit: cover`.

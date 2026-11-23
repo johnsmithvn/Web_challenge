@@ -27,6 +27,14 @@
   trí". Form Lưu chốn có "Tôi đang ở đây" (cắm ghim ở vị trí hiện tại).
 
 ### Fixed
+- **Chốn — bám lại mockup 2A / 2B (`ChonCaptureSheet.jsx`, `ChonPage.jsx`, `ChonMap.jsx`, `chon.css`):**
+  - Form Lưu chốn theo thứ tự mockup: khối nguồn (tên chữ lớn, lời giới thiệu và người giới thiệu gõ thẳng trong khối,
+    nút "Bạn kể") + ô link TikTok / FB → Ở đâu (nhãn + "Tôi đang ở đây" / "Dán link Google Maps" một hàng; ô địa chỉ là
+    thanh đè dưới bản đồ nhỏ) → Loại → Món nên thử → Hợp với. Món và Hợp với luôn hiện; chỉ giờ / giá / ghi chú gập
+    dưới "Thêm giờ mở cửa, giá, ghi chú". Bỏ dòng gợi ý phím tắt (Ctrl+Enter vẫn lưu).
+  - Thanh lọc: Khu vực / Dịp là chip mở menu chọn (thay ô chọn có ô gõ); chip loại chỉ hiện loại đang có chốn.
+  - Tab "Bản đồ" trên máy tính (bản đồ cả bề ngang, bấm ghim thì chi tiết mở bên trái); Thùng rác thu thành nút icon.
+  - Chốn lưu từ bản hai ô cũ (cả địa chỉ nằm trong khu vực): mở Sửa sẽ tự tách lại khu vực.
 - **Chốn — chi tiết chốn trên máy tính không còn là ngăn hẹp ở góc (`ChonPage.jsx`, `ChonPlaceDetail.jsx`, `chon.css`):**
   mở chốn thì chi tiết thay chỗ cột danh sách, bản đồ bên phải giữ nguyên và căn vào chốn đó; đủ rộng thì chia hai cột
   (thông tin + nút | ai giới thiệu, món nên thử, lần ghé). Điện thoại vẫn toàn màn. Mockup 2C chỉ có bản điện thoại.
