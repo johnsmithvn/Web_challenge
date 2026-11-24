@@ -813,3 +813,25 @@ export function groupByDate(txs) {
     .sort((a, b) => (a[0] < b[0] ? 1 : -1))
     .map(([date, items]) => ({ date, items }));
 }
+
+// Gợi ý ô "Tên món" từ chi tiết món của các giao dịch đã có: mỗi tên (không phân biệt hoa thường)
+// một dòng, mang đơn giá lần mua gần nhất; món mua nhiều lần lên trước, hòa thì món mua gần hơn lên trước.
+export function itemSuggestions(txs) {
+  const map = new Map();
+  for (const t of txs) {
+    for (const item of t.items || []) {
+      const name = item.name?.trim();
+      if (!name || name === 'Mục chưa đặt tên') continue;
+      const key = name.toLowerCase();
+      const hit = map.get(key);
+      if (!hit) map.set(key, { name, price: Number(item.price) || 0, count: 1, at: t.occurred_at });
+      else {
+        hit.count += 1;
+        if (t.occurred_at > hit.at) Object.assign(hit, { name, price: Number(item.price) || 0, at: t.occurred_at });
+      }
+    }
+  }
+  return [...map.values()]
+    .sort((a, b) => b.count - a.count || (a.at < b.at ? 1 : a.at > b.at ? -1 : 0))
+    .map(({ name, price }) => ({ name, price }));
+}

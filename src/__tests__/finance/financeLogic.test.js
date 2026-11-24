@@ -59,6 +59,7 @@ import {
   anGiaPlan,
   spendingRhythm,
   groupByDate,
+  itemSuggestions,
 } from '../../utils/financeLogic.js';
 
 // Stub cats tối giản (không import JSON để chạy được bằng node).
@@ -1247,6 +1248,21 @@ assert.equal(anGiaPlan(ag, '2026-10-30').due, null);
 assert.equal(anGiaPlan(ag, '2030-01-01').due, null);
 assert.equal(anGiaPlan(ag, '2030-01-01').expected, 40_000_000);
 console.log('anGiaPlan check: OK');
+
+/* ── Gợi ý tên món từ chi tiết món đã nhập ───────────────────── */
+const sugs = itemSuggestions([
+  { occurred_at: '2026-11-20', items: [{ name: 'snack akikoo', qty: 2, price: 16000 }, { name: 'Bánh trứng', qty: 1, price: 29000 }] },
+  { occurred_at: '2026-11-05', items: [{ name: 'Snack Akikoo ', qty: 1, price: 15000 }] },
+  { occurred_at: '2026-11-22', items: [{ name: 'Sữa chua', qty: 1, price: 8000 }, { name: 'Mục chưa đặt tên', price: 5000 }, { name: '  ' }] },
+  { occurred_at: '2026-11-01', amount: 50000 },   // giao dịch không có chi tiết món
+]);
+assert.deepEqual(sugs, [
+  { name: 'snack akikoo', price: 16000 },   // mua 2 lần → đứng đầu, giữ tên + giá của lần gần nhất
+  { name: 'Sữa chua', price: 8000 },        // cùng 1 lần: mua 22/11 gần hơn 20/11
+  { name: 'Bánh trứng', price: 29000 },
+], 'gộp không phân biệt hoa thường/khoảng trắng, bỏ món trống và tên mặc định');
+assert.deepEqual(itemSuggestions([]), []);
+console.log('itemSuggestions check: OK');
 
 console.log('\n✅ financeLogic — tất cả self-check PASS (100% functions & rules covered)');
 

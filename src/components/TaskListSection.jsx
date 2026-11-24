@@ -33,6 +33,7 @@ export default function TaskListSection({
   taskModel,
   onSelectTask,
   onOpenSubtask,
+  refreshKey = 0,
   selectedId,
   isMobile = false,
   timeFilter = 'all',
@@ -82,7 +83,7 @@ export default function TaskListSection({
       }));
     });
     return () => { stale = true; };
-  }, [getCompletedTasksRange, today]);
+  }, [getCompletedTasksRange, today, refreshKey]);
 
   const handleComplete = useCallback(async (task) => {
     const completedAt = new Date().toISOString();

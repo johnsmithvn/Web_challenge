@@ -3,7 +3,7 @@
  * màn Finance khỏi lặp: format tiền, tra danh mục, donut SVG, biểu đồ nhịp chi, chip
  * necessity, picker gắn Task.
  */
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { formatVND } from '../../utils/currencyUtils';
 import { formatDate, parseDmy } from '../../utils/dateUtils';
@@ -357,6 +357,33 @@ export function PeriodPicker({ options, period, value, onChange, dataFrom, compa
         <button type="button" disabled={nextDisabled} onClick={() => shiftPeriod(1)} aria-label="Kỳ sau"><AppIcon name="caretRight" size={14} /></button>
       </div>
     </div>
+  );
+}
+
+/**
+ * Ô "Tên món": gõ món mới tự do, hoặc chọn món cũ trong gợi ý (datalist native) → trả kèm đơn giá lần
+ * gần nhất. Chỉ điền giá khi CHỌN từ danh sách (insertReplacementText; trình duyệt cũ không có
+ * inputType) — đang gõ dở mà trùng tên món cũ thì không đè giá.
+ */
+export function ItemNameInput({ value, suggestions, onChange, ...rest }) {
+  const listId = useId();
+  return (
+    <>
+      <input
+        {...rest}
+        list={listId}
+        value={value}
+        onChange={event => {
+          const name = event.target.value;
+          const { inputType } = event.nativeEvent;
+          const hit = (!inputType || inputType === 'insertReplacementText') && suggestions.find(s => s.name === name);
+          onChange(hit?.price ? { name, price: String(hit.price) } : { name });
+        }}
+      />
+      <datalist id={listId}>
+        {suggestions.map(s => <option key={s.name} value={s.name} label={s.price ? money(s.price) : undefined} />)}
+      </datalist>
+    </>
   );
 }
 

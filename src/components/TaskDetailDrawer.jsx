@@ -4,6 +4,7 @@ import AppIcon from './AppIcon';
 import LinkPicker from './LinkPicker';
 import { StatusPopover, PriorityPopover, TaskDatePickerPopover, RecurrencePopover } from './TaskFloatingPopovers';
 import TaskSubtaskModal from './TaskSubtaskModal';
+import TaskActionMenu from './TaskActionMenu';
 import { SubtaskGrip, SubtaskPriorityBtn, SubtaskFocusBtn, SubtaskDueChip } from './TaskCard';
 import useSubtaskReorder from '../hooks/useSubtaskReorder';
 import { useActivityLog } from '../hooks/useActivityLog';
@@ -231,7 +232,7 @@ export default function TaskDetailDrawer({ task: savedTask, draft, onClose, task
         createRef.current?.();
         return;
       }
-      if (e.key !== 'Escape' || subIndex !== null || document.querySelector('.tk-popover')) return;
+      if (e.key !== 'Escape' || subIndex !== null || document.querySelector('.tk-popover, .action-menu')) return;
       handleClose();
     };
     window.addEventListener('keydown', onKey);
@@ -273,12 +274,13 @@ export default function TaskDetailDrawer({ task: savedTask, draft, onClose, task
   // Bản nháp sửa cục bộ; việc đã có thì ghi DB ngay
   const patchTask = (patch) => (isDraft ? setDraftTask((prev) => ({ ...prev, ...patch })) : updateTask?.(task.id, patch));
 
-  const changeStatus = (next) => {
-    if (isDraft) patchTask({ status: next });
-    else if (next === 'done') completeTask?.(task.id);
-    else if (isDone) uncompleteTask?.(task.id, next);
-    else updateTask?.(task.id, { status: next });
+  // Đổi trạng thái việc đã lưu (việc đang mở, hoặc việc con qua menu chuột phải)
+  const setStatus = (t, next) => {
+    if (next === 'done') completeTask?.(t.id);
+    else if (statusKeyOf(t) === 'done') uncompleteTask?.(t.id, next);
+    else updateTask?.(t.id, { status: next });
   };
+  const changeStatus = (next) => (isDraft ? patchTask({ status: next }) : setStatus(task, next));
 
   const commitTitle = () => {
     const v = titleDraft.replace(/\n/g, ' ').trim();
@@ -456,6 +458,25 @@ export default function TaskDetailDrawer({ task: savedTask, draft, onClose, task
             patchFetchedSubs(new Map([[popover.sub.id, { priority: p }]]));
             if (!(await updateTask?.(popover.sub.id, { priority: p }))) reloadSubs();
           }}
+          onClose={() => setPopover(null)}
+          style={popStyle}
+        />
+      )}
+      {/* Menu chuột phải của việc con */}
+      {!isDraft && (
+        <TaskActionMenu
+          menu={popover?.type === 'subMenu' ? popover : null}
+          onClose={() => setPopover(null)}
+          taskModel={taskModel}
+          onStatus={setStatus}
+          onPickDate={(s, x, y) => setPopover({ type: 'subDate', task: s, x, y })}
+          onDeleted={(id) => setFetchedSubs((prev) => prev.filter((s) => s.id !== id))}
+        />
+      )}
+      {popover?.type === 'subDate' && (
+        <TaskDatePickerPopover
+          task={popover.task}
+          onSave={(patch) => updateTask?.(popover.task.id, patch)}
           onClose={() => setPopover(null)}
           style={popStyle}
         />
@@ -748,7 +769,15 @@ export default function TaskDetailDrawer({ task: savedTask, draft, onClose, task
               const sKey = statusKeyOf(s);
               const sDone = sKey === 'done';
               return (
-                <div key={s.id} className={`tk-sub-row${sKey === 'doing' ? ' is-doing' : ''}`} {...subRowProps(i)}>
+                <div
+                  key={s.id}
+                  className={`tk-sub-row${sKey === 'doing' ? ' is-doing' : ''}${popover?.type === 'subMenu' && popover.task.id === s.id ? ' is-menu' : ''}`}
+                  onContextMenu={isDraft ? undefined : (e) => {
+                    e.preventDefault();
+                    setPopover({ type: 'subMenu', task: s, x: e.clientX, y: e.clientY });
+                  }}
+                  {...subRowProps(i)}
+                >
                   <SubtaskGrip title={s.title} {...subHandleProps(i)} />
                   <button
                     type="button"

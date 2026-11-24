@@ -14,12 +14,13 @@ import TaskQuickAdd from '../components/TaskQuickAdd';
 import SkyBackground from '../components/SkyBackground';
 import { ElfStreakTree } from '../components/TaskElfDecor';
 import { frameKey, celebrate } from '../utils/taskFlyersElf';
-import { TaskDayPopover } from '../components/TaskFloatingPopovers';
+import { TaskDayPopover, TaskDatePickerPopover } from '../components/TaskFloatingPopovers';
+import TaskActionMenu from '../components/TaskActionMenu';
 import CalendarNavHead, { TaskViewSwitcher, MobileViewMenu } from '../components/CalendarToolbar';
 import AppIcon from '../components/AppIcon';
 import { toDateStr } from '../utils/dateUtils';
 import { rescheduleTaskPatch, hasExplicitTime } from '../utils/calendarTimeUtils';
-import { calculateKanbanCounts, computeDoneStreak, getKanbanRange, matchTaskSearch } from '../utils/kanbanUtils';
+import { calculateKanbanCounts, computeDoneStreak, getKanbanRange, matchTaskSearch, statusKeyOf } from '../utils/kanbanUtils';
 import { parseTaskQuickText, shiftDateDays } from '../utils/taskNlpParser';
 import { sortSubtasks } from '../utils/subtaskUtils';
 import { solarToLunar, getCanChiYear, getCanChiDay, getNextGoodHour } from '../utils/lunarUtils';
@@ -58,6 +59,7 @@ export default function TasksPage() {
     skippedTasks,
     completedToday,
     getCompletedTasksRange,
+    doneRev,
     updateTask,
     addTask,
     linkTaskTag,
@@ -156,11 +158,13 @@ export default function TasksPage() {
   const [selectedTask, setSelectedTask] = useState(null);
   const [subView, setSubView] = useState(null); // { parentId, subId }
 
-  // Các view Lịch tự tải task đã xong theo khoảng ngày → tăng key sau mỗi thao tác để tải lại
-  const [calendarRefreshKey, setCalendarRefreshKey] = useState(0);
+  // Các view tự tải task đã xong theo khoảng ngày → key đổi sau mỗi thao tác (refreshCalendars) hoặc khi một việc đã
+  // xong bị sửa (doneRev, vd đổi ưu tiên) để tải lại
+  const [refreshTick, setRefreshTick] = useState(0);
+  const calendarRefreshKey = refreshTick + doneRev;
   // Số liệu Tuần/Tháng báo lên cho phụ đề hàng điều hướng: { view, text }
   const [calStats, setCalStats] = useState(null);
-  const refreshCalendars = useCallback(() => setCalendarRefreshKey((k) => k + 1), []);
+  const refreshCalendars = useCallback(() => setRefreshTick((k) => k + 1), []);
 
   const handleRescheduleTask = useCallback(async (taskId, dateStr, timeStr) => {
     const task = tasks.find((t) => String(t.id) === String(taskId));
@@ -183,6 +187,18 @@ export default function TasksPage() {
       });
     }
   }, [tasks, updateTask, refreshCalendars, showToast]);
+
+  // Menu chuột phải của việc trên Lịch (tab Ngày): { type: 'menu' | 'date', task, x, y }.
+  // Đổi trạng thái / đổi hạn xong thì tải lại view Lịch (việc đã xong tải riêng theo khoảng ngày); sửa / xoá việc đã
+  // xong thì doneRev lo.
+  const [calMenu, setCalMenu] = useState(null);
+  const closeCalMenu = useCallback(() => setCalMenu(null), []);
+  const setCalTaskStatus = async (t, next) => {
+    if (next === 'done') await taskModel.completeTask(t.id);
+    else if (statusKeyOf(t) === 'done') await taskModel.uncompleteTask(t.id, next);
+    else await updateTask(t.id, { status: next });
+    refreshCalendars();
+  };
 
   const handleCloseSelectedModal = useCallback(() => {
     setSelectedTask(null);
@@ -452,6 +468,7 @@ export default function TasksPage() {
           allTasks={tasks}
           onToggleSubtask={(s) => (s.completed ? taskModel.uncompleteTask(s.id) : taskModel.completeTask(s.id))}
           onOpenSubtask={handleOpenSubtask}
+          onTaskMenu={(task, x, y) => setCalMenu({ type: 'menu', task, x, y })}
           getCompletedTasksRange={getCompletedTasksRange}
           onSelectTask={handleSelectTaskFromCalendar}
           onOpenDay={openDayPop}
@@ -655,6 +672,7 @@ export default function TasksPage() {
               taskModel={taskModel}
               onSelectTask={handleSelectTaskFromCalendar}
               onOpenSubtask={handleOpenSubtask}
+              refreshKey={calendarRefreshKey}
               selectedId={selectedId}
               isMobile={isMobile}
               {...filterProps}
@@ -776,6 +794,25 @@ export default function TasksPage() {
           onCreate={(raw) => createFromQuickText(raw, 'todo', { date: dayPop.dateStr, time: dayPop.time })}
           onClose={() => setDayPop(null)}
           style={{ position: 'fixed', left: `${dayPop.x}px`, top: `${dayPop.y}px` }}
+        />
+      )}
+
+      <TaskActionMenu
+        menu={calMenu?.type === 'menu' ? calMenu : null}
+        onClose={closeCalMenu}
+        taskModel={taskModel}
+        onStatus={setCalTaskStatus}
+        onPickDate={(task, x, y) => setCalMenu({ type: 'date', task, x, y })}
+      />
+      {calMenu?.type === 'date' && (
+        <TaskDatePickerPopover
+          task={calMenu.task}
+          onSave={async (patch) => {
+            await updateTask(calMenu.task.id, patch);
+            refreshCalendars();
+          }}
+          onClose={closeCalMenu}
+          style={{ position: 'fixed', left: `${calMenu.x}px`, top: `${calMenu.y}px` }}
         />
       )}
 

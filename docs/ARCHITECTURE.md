@@ -225,6 +225,7 @@ instance; đây không phải quota phân tán toàn hệ thống.
 | `lh_fin_hidden_seed_shortcuts` | shortcut mẫu đã ẩn ở màn Nhập nhanh |
 | `lh_custom_anniversaries` | danh sách ngày kỷ niệm cá nhân người dùng tự thêm (Lịch / Tasks) |
 | `lh_cal_filters` | trạng thái bật/tắt các danh mục ngày lễ trên Lịch |
+| `vl_dv_side_closed` | `1` = đã thu gọn cột phải (Chưa xếp giờ + giờ hoàng đạo) ở tab Ngày, desktop |
 | `body_custom_exercise_videos` | link video bài tập Body legacy — chỉ đọc để chuyển lên bảng `body_exercise_videos` rồi xóa (`useExerciseVideo`), không ghi mới |
 
 ### `sessionStorage`

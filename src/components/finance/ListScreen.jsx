@@ -2,10 +2,11 @@ import { useMemo, useRef, useState, useEffect } from 'react';
 import { useUserTasks } from '../../hooks/useUserTasks';
 import { groupDigits, parseCurrencyInput, sanitizeDigits, sanitizeSignedDigits } from '../../utils/currencyUtils';
 import { formatDate, toDateStr } from '../../utils/dateUtils';
-import { groupByDate, billPeriods } from '../../utils/financeLogic';
+import { groupByDate, billPeriods, itemSuggestions } from '../../utils/financeLogic';
+import { normVi } from '../../utils/kanbanUtils';
 import {
   money, catInfo, subLabel, pickableSubs, NECESSITY_META, PeriodPicker, TaskPicker, FinanceIcon, DateField,
-  ItemQtyStepper,
+  ItemQtyStepper, ItemNameInput,
 } from './parts';
 import SkeletonList from '../SkeletonList';
 import AppIcon from '../AppIcon';
@@ -66,9 +67,10 @@ export default function ListScreen({ fin, nav }) {
     // Search query
     if (q) {
       const sourceName = tx.source_card_id ? (fin.cards.find(card => card.id === tx.source_card_id)?.name || 'Thẻ') : 'Tiền có sẵn';
-      const haystack = [tx.note, tx.description, tx.merchant, catInfo(tx.category_id, fin.cats).label,
-        subLabel(tx.subcategory_id, fin.cats), sourceName].filter(Boolean).join(' ').toLowerCase();
-      if (!haystack.includes(q.toLowerCase())) return false;
+      const haystack = normVi([tx.note, tx.description, tx.merchant, catInfo(tx.category_id, fin.cats).label,
+        subLabel(tx.subcategory_id, fin.cats), sourceName, ...(tx.items || []).map(item => item.name)]
+        .filter(Boolean).join(' '));
+      if (!haystack.includes(normVi(q.trim()))) return false;
     }
 
     // FilterPop conditions
@@ -799,10 +801,12 @@ function TxDetail({ tx, fin, nav, tasks, inPeriod = [], isMobileSheet = false, s
       .slice(0, 6);
   }, [inPeriod, fin.cats]);
 
-  const updateDraftItem = (index, key, value) => {
-    const normalized = key === 'qty' ? sanitizeDigits(value, 3)
-      : key === 'price' ? sanitizeSignedDigits(value) : value;
-    const next = draftItems.map((item, itemIndex) => itemIndex === index ? { ...item, [key]: normalized } : item);
+  const itemSugs = useMemo(() => itemSuggestions(fin.transactions), [fin.transactions]);
+  const updateDraftItem = (index, fields) => {
+    const clean = { ...fields };
+    if ('qty' in clean) clean.qty = sanitizeDigits(clean.qty, 3);
+    if ('price' in clean) clean.price = sanitizeSignedDigits(clean.price);
+    const next = draftItems.map((item, itemIndex) => itemIndex === index ? { ...item, ...clean } : item);
     setDraftItems(next);
     const total = next.reduce((sum, item) => sum
       + (Math.max(1, Number(item.qty) || 1) * (parseCurrencyInput(item.price) || 0)), 0);
@@ -1040,14 +1044,14 @@ function TxDetail({ tx, fin, nav, tasks, inPeriod = [], isMobileSheet = false, s
                 )}
                 {draftItems.map((item, index) => (
                   <div className="fin-item-row" key={index}>
-                    <input className="fin-input" aria-label={`Tên món thứ ${index + 1}`} value={item.name} onChange={event => updateDraftItem(index, 'name', event.target.value)} placeholder="Tên món (bảo dưỡng, dầu nhớt...)" />
+                    <ItemNameInput className="fin-input" aria-label={`Tên món thứ ${index + 1}`} value={item.name} suggestions={itemSugs} onChange={fields => updateDraftItem(index, fields)} placeholder="Tên món (bảo dưỡng, dầu nhớt...)" />
                     <ItemQtyStepper
                       value={item.qty}
-                      onChange={val => updateDraftItem(index, 'qty', val)}
+                      onChange={val => updateDraftItem(index, { qty: val })}
                       ariaLabel={`Số lượng món thứ ${index + 1}`}
                     />
                     <div className="fin-item-price-wrap">
-                      <input className="fin-input" inputMode="numeric" pattern="-?[0-9.]*" aria-label="Đơn giá" value={groupDigits(item.price)} onChange={event => updateDraftItem(index, 'price', event.target.value)} placeholder="0" />
+                      <input className="fin-input" inputMode="numeric" pattern="-?[0-9.]*" aria-label="Đơn giá" value={groupDigits(item.price)} onChange={event => updateDraftItem(index, { price: event.target.value })} placeholder="0" />
                       <span>₫</span>
                     </div>
                     <button type="button" className="fin-item-del-btn" aria-label="Xóa món" onClick={() => setDraftItems(current => current.filter((_, itemIndex) => itemIndex !== index))}><AppIcon name="x" size={14} /></button>

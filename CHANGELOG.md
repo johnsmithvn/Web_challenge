@@ -3,6 +3,22 @@
 ## v6.40.0 — 2026-11-19
 
 ### Added
+- **Tài chính — gợi ý tên món (`parts.jsx` `ItemNameInput`, `AddScreen.jsx`, `ListScreen.jsx`, `itemSuggestions` +
+  test):** ô Tên món ở form Thêm / Sửa giao dịch gợi ý món cũ từ chi tiết món đã nhập (datalist native, mua nhiều / gần
+  đây lên trước). Chọn món cũ điền luôn đơn giá lần gần nhất; gõ tên mới vẫn thêm món mới.
+- **Tài chính — ô tìm giao dịch tìm cả tên món và không dấu (`ListScreen.jsx`, dùng lại `normVi`).**
+- **Nhiệm vụ — chuột phải vào việc con trong ngăn chi tiết (`TaskDetailDrawer.jsx`, `TaskActionMenu.jsx`,
+  `tasks-aurora.css`):** mở cùng menu thao tác của việc (Trạng thái › · Ưu tiên › · Đổi hạn… · Dời hạn › · Nhân bản ·
+  Chép tên · Xoá). Việc con không có "Thêm việc con" (chỉ 1 cấp); Nhân bản ra việc con cùng task cha. Hàng đang mở menu
+  được tô sáng; Esc đóng menu mà không đóng ngăn.
+- **Nhiệm vụ — thu gọn cột phải ở tab Ngày (`CalendarDayView.jsx`, `tasks-aurora.css`):** nút ⇥ cạnh "Chưa xếp giờ"
+  thu cột 320px (Chưa xếp giờ + giờ hoàng đạo) thành dải 44px để lưới giờ rộng ra; dải có số việc chưa xếp giờ (đỏ khi
+  có quá hạn), bấm để mở lại. Nhớ lựa chọn (`vl_dv_side_closed`). Chỉ desktop.
+- **Nhiệm vụ — chuột phải ở tab Ngày (`CalendarDayView.jsx`, `TasksPage.jsx`, `TaskActionMenu.jsx`):** khối giờ, thẻ
+  Chưa xếp giờ, việc xong ở hàng Cả ngày và việc con trong khối mở menu thao tác của việc (Trạng thái › Đang làm… ·
+  Ưu tiên › Khẩn… · Đổi hạn… chọn ngày + giờ · Dời hạn › · Nhân bản · Chép tên · Xoá); đổi xong lịch tải lại. Menu do
+  `TasksPage` giữ (`onTaskMenu`), không có "Thêm việc con" khi view không truyền `onAddSub`. Mobile không đổi (giữ lâu
+  = kéo việc).
 - **Chốn — ảnh khi thắp đèn (`ChonLightSheet.jsx`):** "Thêm ảnh" dùng lại `UrlInputPopover` (dán link hoặc tải lên Drive
   qua `/api/upload`), tối đa 10 ảnh / lần ghé (`MAX_PHOTOS`, khớp CHECK DB). Ảnh hiện ở "Những lần ghé" của chi tiết chốn;
   file Drive đi qua `/api/stream` (`photoSrc`, có test).
@@ -27,6 +43,15 @@
   trí". Form Lưu chốn có "Tôi đang ở đây" (cắm ghim ở vị trí hiện tại).
 
 ### Fixed
+- **Nhiệm vụ — sửa / xoá việc đã xong hiện ngay (`useUserTasks.js`, `TasksPage.jsx`, `TaskListSection.jsx`):** việc
+  đã xong (trừ việc xong hôm nay) không nằm trong state nên đổi Ưu tiên ở tab Ngày / Danh sách / Kanban phải tải lại
+  trang mới thấy, xoá ở Danh sách / Kanban thì dòng vẫn còn. `updateTask` / `deleteTask` thành công với việc đã xong /
+  ngoài state thì tăng `doneRev`; `TasksPage` gộp nó vào key tải lại của các view (Danh sách giờ cũng nhận key này).
+- **Tài chính — bấm Lưu hai lần nhanh không còn ghi trùng (`AddScreen.jsx`):** lần ghi đầu chưa xong thì lần bấm /
+  Enter sau bị bỏ qua (`runOnce`); nút "Lưu khoản chi" khoá trong lúc lưu. Áp cho form khoản chi, Trả hoá đơn chờ, Ghi
+  phím tắt (nút, Enter, chip số tiền gần đây).
+- **Tài chính — Nhịp chi không tràn trên màn hẹp (`finance-list.css`):** lưới thẻ thống kê và ô chọn ngày của bộ lọc dùng
+  `minmax(0, 1fr)`; mobile giảm đệm + cỡ số tiền thẻ thống kê để "12.345.678 ₫" không tràn khỏi thẻ ở màn 375px.
 - **Chốn — bám lại mockup 2A / 2B (`ChonCaptureSheet.jsx`, `ChonPage.jsx`, `ChonMap.jsx`, `chon.css`):**
   - Form Lưu chốn theo thứ tự mockup: khối nguồn (tên chữ lớn, lời giới thiệu và người giới thiệu gõ thẳng trong khối,
     nút "Bạn kể") + ô link TikTok / FB → Ở đâu (nhãn + "Tôi đang ở đây" / "Dán link Google Maps" một hàng; ô địa chỉ là

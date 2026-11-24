@@ -374,7 +374,7 @@
 
 .fin-filterpop__dates {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
 }
 
@@ -516,7 +516,7 @@
 
 .fin-nhipchi__stat-cards {
   display: grid;
-  grid-template-columns: 1fr 1fr 1.25fr;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.25fr);
   gap: 14px;
   margin-top: 20px;
 }
@@ -1420,8 +1420,15 @@
     padding: 14px 16px 12px;
   }
   .fin-nhipchi__stat-cards {
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 10px;
+  }
+  /* Ô ~166px ở màn 375: "12.345.678 ₫" cỡ 24px tràn khỏi thẻ */
+  .fin-nhipchi__stat-card {
+    padding: 12px 14px;
+  }
+  .fin-nhipchi__stat-val {
+    font-size: 19px;
   }
   .fin-nhipchi__stat-card--forecast,
   .fin-nhipchi__stat-card--dark {

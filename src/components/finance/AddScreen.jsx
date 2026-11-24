@@ -2,10 +2,10 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useUserTasks } from '../../hooks/useUserTasks';
 import { groupDigits, parseCurrencyInput, sanitizeDigits, sanitizeSignedDigits, stripAmountWords } from '../../utils/currencyUtils';
-import { matchCategory, deriveNecessity, cardBalance, billAmountEstimate, billCycle, billSettled } from '../../utils/financeLogic';
+import { matchCategory, deriveNecessity, cardBalance, billAmountEstimate, billCycle, billSettled, itemSuggestions } from '../../utils/financeLogic';
 import {
   money, catInfo, subLabel, pickableSubs, NECESSITY_META, TaskPicker, FinanceIcon, DateField,
-  ItemQtyStepper,
+  ItemQtyStepper, ItemNameInput,
 } from './parts';
 import AppIcon from '../AppIcon';
 
@@ -66,6 +66,15 @@ export default function AddScreen({ fin, nav }) {
   const undoTimerRef = useRef(null);
 
   const shortcutInputRef = useRef(null);
+  // Chặn ghi trùng: Enter/bấm lần 2 khi insert lần 1 chưa về sẽ insert thêm bản y hệt (state chưa reset).
+  const savingRef = useRef(false);
+  const [saving, setSaving] = useState(false);
+  const runOnce = async (fn) => {
+    if (savingRef.current) return;
+    savingRef.current = true;
+    setSaving(true);
+    try { await fn(); } finally { savingRef.current = false; setSaving(false); }
+  };
 
   const setHidden = (next) => {
     setHiddenSeeds(next);
@@ -183,10 +192,12 @@ export default function AddScreen({ fin, nav }) {
     setter(String(next));
   };
 
-  const updateDraftItem = (index, key, value) => {
-    const normalized = key === 'qty' ? sanitizeDigits(value, 3)
-      : key === 'price' ? sanitizeSignedDigits(value) : value;
-    const next = draftItems.map((item, itemIndex) => itemIndex === index ? { ...item, [key]: normalized } : item);
+  const itemSugs = useMemo(() => itemSuggestions(fin.transactions), [fin.transactions]);
+  const updateDraftItem = (index, fields) => {
+    const clean = { ...fields };
+    if ('qty' in clean) clean.qty = sanitizeDigits(clean.qty, 3);
+    if ('price' in clean) clean.price = sanitizeSignedDigits(clean.price);
+    const next = draftItems.map((item, itemIndex) => itemIndex === index ? { ...item, ...clean } : item);
     setDraftItems(next);
     const total = next.reduce((sum, item) => sum
       + (Math.max(1, Number(item.qty) || 1) * (parseCurrencyInput(item.price) || 0)), 0);
@@ -417,7 +428,7 @@ export default function AddScreen({ fin, nav }) {
                   bill={bill}
                   estimate={estimateFor(bill.id)}
                   cats={cats}
-                  onPay={payPendingBill}
+                  onPay={(b, v) => runOnce(() => payPendingBill(b, v))}
                   onFill={fillBillIntoForm}
                   onSkip={async () => {
                     const skipped = await fin.skipBillPeriod(bill.id, bill.period);
@@ -450,7 +461,7 @@ export default function AddScreen({ fin, nav }) {
         <div className={`fin-add-main ${mobileView === 'quick' ? 'fin-hide-mobile' : ''}`}>
           <form
             className="fin-card fin-entry-card"
-            onSubmit={(event) => { event.preventDefault(); saveTransaction(); }}
+            onSubmit={(event) => { event.preventDefault(); runOnce(saveTransaction); }}
           >
             {/* Hàng 1: Grid 2 cột: Tiêu đề & Số tiền */}
             <div className="fin-entry-head-grid">
@@ -685,15 +696,16 @@ export default function AddScreen({ fin, nav }) {
                   </div>
                   {draftItems.map((item, index) => (
                     <div className="fin-item-row" key={index}>
-                      <input
+                      <ItemNameInput
                         aria-label={`Tên món thứ ${index + 1}`}
                         value={item.name}
-                        onChange={event => updateDraftItem(index, 'name', event.target.value)}
+                        suggestions={itemSugs}
+                        onChange={fields => updateDraftItem(index, fields)}
                         placeholder="Tên món"
                       />
                       <ItemQtyStepper
                         value={item.qty}
-                        onChange={val => updateDraftItem(index, 'qty', val)}
+                        onChange={val => updateDraftItem(index, { qty: val })}
                         ariaLabel={`Số lượng món thứ ${index + 1}`}
                       />
                       <input
@@ -701,7 +713,7 @@ export default function AddScreen({ fin, nav }) {
                         pattern="-?[0-9.]*"
                         aria-label="Đơn giá"
                         value={groupDigits(item.price)}
-                        onChange={event => updateDraftItem(index, 'price', event.target.value)}
+                        onChange={event => updateDraftItem(index, { price: event.target.value })}
                         placeholder="Đơn giá"
                       />
                       <button
@@ -793,7 +805,7 @@ export default function AddScreen({ fin, nav }) {
               <button
                 type="submit"
                 className="fin-entry-foot__btn"
-                disabled={!parsedAmount}
+                disabled={!parsedAmount || saving}
               >
                 <AppIcon name="check" size={16} weight="bold" />
                 <span>{pendingBillId ? 'Lưu & thanh toán' : 'Lưu khoản chi'}</span>
@@ -920,7 +932,7 @@ export default function AddScreen({ fin, nav }) {
                                 value={groupDigits(shortcutAmount)}
                                 onChange={e => setShortcutAmount(sanitizeDigits(e.target.value))}
                                 onKeyDown={e => {
-                                  if (e.key === 'Enter') recordShortcut(shortcut);
+                                  if (e.key === 'Enter') runOnce(() => recordShortcut(shortcut));
                                   if (e.key === 'Escape') setExpandedShortcutId(null);
                                 }}
                               />
@@ -929,7 +941,7 @@ export default function AddScreen({ fin, nav }) {
                             <button
                               type="button"
                               className="fin-sc-box-open__btn-rec"
-                              onClick={() => recordShortcut(shortcut)}
+                              onClick={() => runOnce(() => recordShortcut(shortcut))}
                             >
                               <AppIcon name="check" size={15} weight="bold" />
                               Ghi
@@ -943,7 +955,7 @@ export default function AddScreen({ fin, nav }) {
                                 key={val}
                                 className="fin-sc-recent-chip"
                                 title="Bấm để ghi luôn"
-                                onClick={() => recordShortcut(shortcut, String(val))}
+                                onClick={() => runOnce(() => recordShortcut(shortcut, String(val)))}
                               >
                                 {money(val)}
                                 <button
@@ -1032,7 +1044,7 @@ export default function AddScreen({ fin, nav }) {
                   bill={bill}
                   estimate={estimateFor(bill.id)}
                   cats={cats}
-                  onPay={payPendingBill}
+                  onPay={(b, v) => runOnce(() => payPendingBill(b, v))}
                   onFill={fillBillIntoForm}
                   onSkip={async () => {
                     const skipped = await fin.skipBillPeriod(bill.id, bill.period);

@@ -3605,7 +3605,8 @@
   gap: 10px;
 }
 
-.tk-sub-row:hover {
+.tk-sub-row:hover,
+.tk-sub-row.is-menu {
   background: var(--tk-hover);
 }
 
@@ -4775,6 +4776,45 @@
 
 .tk-dv-side > * {
   flex: none;
+}
+
+/* Thu gọn cột phải (desktop): còn dải 44px, bấm để mở lại; số = việc chưa xếp giờ (đỏ khi có quá hạn) */
+.tk-dv-body.is-side-closed {
+  grid-template-columns: minmax(0, 1fr) 44px;
+}
+
+.tk-dv-side.is-closed {
+  padding: 10px 0;
+  align-items: center;
+}
+
+.tk-dv-side__fold {
+  margin-left: auto;
+}
+
+.tk-dv-rail {
+  padding: 8px 6px;
+  border: none;
+  border-radius: 8px;
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  background: transparent;
+  color: var(--tk-text-sub);
+  cursor: pointer;
+}
+
+.tk-dv-rail:hover {
+  background: var(--tk-hover);
+  color: var(--tk-text-main);
+}
+
+.tk-dv-rail__n {
+  font: 500 11px/1 'JetBrains Mono', monospace;
+}
+
+.tk-dv-rail__n.is-late {
+  color: var(--tk-ks-late-fg);
 }
 
 .tk-dv-cap {

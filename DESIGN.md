@@ -1657,7 +1657,9 @@ Bật Giảm chuyển động (Cài đặt) thì tắt mọi chuyển động n�
 - Lịch biểu `.tk-ag-*`: banner quá hạn (mở ra để xem / "Dời hết sang hôm nay"), nhóm tuần, ngày trống
   gộp hàng nét đứt, ngày = cột 132px | danh sách (mobile: khối dọc), vạch "bây giờ"; 3 tuần + "Xem thêm 2 tuần".
 - Ngày `.tk-dv-*`: lưới 56px/giờ (CSS kẻ cùng bước với `PX_PER_HOUR`), khối 50px viền trái 3px,
-  dải giờ hoàng đạo `--tk-band`; desktop có cột phải 320px (Chưa xếp giờ + bảng 12 giờ hoàng đạo).
+  dải giờ hoàng đạo `--tk-band`; desktop có cột phải 320px (Chưa xếp giờ + bảng 12 giờ hoàng đạo), nút
+  `.tk-dv-side__fold` thu thành dải 44px `.tk-dv-rail` (mũi tên + số việc chưa xếp giờ, đỏ khi có quá hạn), nhớ ở
+  `localStorage vl_dv_side_closed`.
   Mobile: "Chưa xếp giờ" trên lưới (2 việc + Xem thêm), giữ 320ms để kéo (`.tk-touch-ghost`, `.tk-touch-slot`).
 - Tuần `.tk-wk-*` (chỉ desktop): lưới 48px/giờ, khối 44px; hàng đầu dùng `scrollbar-gutter: stable`
   để thẳng cột với lưới cuộn.

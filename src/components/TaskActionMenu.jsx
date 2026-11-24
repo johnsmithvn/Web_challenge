@@ -9,12 +9,15 @@ import { toDateStr } from '../utils/dateUtils';
 import UI_STRINGS from '../data/ui-strings.json';
 
 /**
- * TaskActionMenu — menu ⋯ / chuột phải của một việc (Kanban, Danh sách), vẽ bằng ActionMenu.
+ * TaskActionMenu — menu ⋯ / chuột phải của một việc (Kanban, Danh sách, tab Ngày) hoặc việc con (ngăn chi tiết, khối
+ * giờ tab Ngày), vẽ bằng ActionMenu.
  * Luôn mount trong view để hộp xác nhận Xoá còn sống sau khi menu đóng; `menu` = { task, x, y } khi đang mở.
  * View cấp phần nó giữ state: onStatus(task, key) (luật đổi trạng thái riêng mỗi view), onPickDate(task, x, y)
- * (mở lịch đổi hạn tại chỗ menu), onAddSub(task) (mở bảng việc con + focus ô thêm). Còn lại gọi thẳng taskModel.
+ * (mở lịch đổi hạn tại chỗ menu), onAddSub(task) (tuỳ chọn: mở bảng việc con + focus ô thêm; không truyền = ẩn mục),
+ * onDeleted(id) (tuỳ chọn: view giữ bản fetch riêng). Còn lại gọi thẳng taskModel. Việc con (có parent_task_id): không
+ * có "Thêm việc con" (chỉ 1 cấp), Nhân bản ra việc con cùng cha.
  */
-export default function TaskActionMenu({ menu, onClose, taskModel, onStatus, onPickDate, onAddSub }) {
+export default function TaskActionMenu({ menu, onClose, taskModel, onStatus, onPickDate, onAddSub, onDeleted }) {
   const { confirm, ConfirmModal } = useConfirm();
   const { showToast } = useToast();
   return (
@@ -28,6 +31,7 @@ export default function TaskActionMenu({ menu, onClose, taskModel, onStatus, onP
           onStatus={onStatus}
           onPickDate={onPickDate}
           onAddSub={onAddSub}
+          onDeleted={onDeleted}
           confirm={confirm}
           showToast={showToast}
         />
@@ -37,12 +41,13 @@ export default function TaskActionMenu({ menu, onClose, taskModel, onStatus, onP
   );
 }
 
-function MenuBody({ menu, onClose, taskModel, onStatus, onPickDate, onAddSub, confirm, showToast }) {
+function MenuBody({ menu, onClose, taskModel, onStatus, onPickDate, onAddSub, onDeleted, confirm, showToast }) {
   const [step, setStep] = useState('main'); // main | status | priority | move
   const { task } = menu;
   const { updateTask, addTask, deleteTask, linkTaskTag } = taskModel;
   const cur = statusKeyOf(task);
   const done = cur === 'done';
+  const canAddSub = !!onAddSub && !task.parent_task_id;
   const today = toDateStr();
   const back = (label) => ({ key: 'back', icon: 'caretLeft', label, keepOpen: true, onSelect: () => setStep('main') });
 
@@ -56,6 +61,7 @@ function MenuBody({ menu, onClose, taskModel, onStatus, onPickDate, onAddSub, co
       startTime: task.start_time,
       priority: task.priority,
       recurrenceRule: task.recurrence_rule,
+      parentTaskId: task.parent_task_id,
     });
     if (!copy?.id) {
       showToast('Không nhân bản được. Thử lại.');
@@ -78,6 +84,7 @@ function MenuBody({ menu, onClose, taskModel, onStatus, onPickDate, onAddSub, co
     const cfg = UI_STRINGS.confirm.deleteTask;
     if (!(await confirm({ ...cfg, message: cfg.message.replace('{name}', task.title) }))) return;
     await deleteTask(task.id);
+    onDeleted?.(task.id);
   };
 
   let items;
@@ -131,8 +138,10 @@ function MenuBody({ menu, onClose, taskModel, onStatus, onPickDate, onAddSub, co
         { key: 'date', icon: 'calendar', label: 'Đổi hạn…', onSelect: () => onPickDate(task, menu.x, menu.y) },
         { key: 'move', icon: 'arrowRight', label: 'Dời hạn', sub: true, onSelect: () => setStep('move') },
       ]),
-      { key: 'sub', icon: 'listChecks', label: 'Thêm việc con', divider: true, onSelect: () => onAddSub(task) },
-      { key: 'dup', icon: 'copy', label: 'Nhân bản', onSelect: duplicate },
+      ...(canAddSub ? [
+        { key: 'sub', icon: 'listChecks', label: 'Thêm việc con', divider: true, onSelect: () => onAddSub(task) },
+      ] : []),
+      { key: 'dup', icon: 'copy', label: 'Nhân bản', divider: !canAddSub, onSelect: duplicate },
       { key: 'title', icon: 'clipboard', label: 'Chép tên việc', onSelect: copyTitle },
       { key: 'delete', icon: 'trash', label: 'Xoá', danger: true, divider: true, onSelect: remove },
     ];

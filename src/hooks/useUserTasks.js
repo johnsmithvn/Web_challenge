@@ -57,6 +57,9 @@ export function useUserTasks() {
   // "chưa tải" với "không có việc nào". Cờ này chỉ bật khi lượt fetch đầu kết thúc —
   // trang chủ dựa vào nó để không báo "không có việc quá hạn" trước khi biết thật.
   const [hasLoaded, setHasLoaded] = useState(false);
+  // Tăng sau mỗi lần sửa / xoá thành công một việc đã xong / không nằm trong `tasks` (vd việc xong ngày cũ): bản đó chỉ có
+  // trong các bản view tự tải qua getCompletedTasksRange → view đưa số này vào key tải lại (TasksPage).
+  const [doneRev, setDoneRev] = useState(0);
   const fetchEpochRef = useRef(0);
   const sessionKey = isAuth ? userId : 'guest';
   const sessionKeyRef = useRef(sessionKey);
@@ -492,6 +495,8 @@ export function useUserTasks() {
           }
           return false;
         }
+        const own = backups.find(t => t.id === taskId);
+        if (!own || own.completed) setDoneRev((r) => r + 1);
       } catch (err) {
         logger.error('[useUserTasks] delete exception:', err);
         if (backups.length && sessionKeyRef.current === sessionAtStart) {
@@ -644,6 +649,7 @@ export function useUserTasks() {
         }
 
         logFieldChanges(taskId, diffs);
+        if (!backup || backup.completed) setDoneRev((r) => r + 1);
         // Bỏ qua 1 task lặp = bỏ qua KỲ NÀY (kiểu TickTick/Todoist "skip occurrence"):
         // vẫn sinh kỳ sau, không cộng XP. spawnRecurringTask tự chống sinh trùng.
         if (changes.status === 'skip' && backup && backup.status !== 'skip' && backup.recurrence_rule) {
@@ -967,6 +973,7 @@ export function useUserTasks() {
     noDateTasks,
     isLoading,
     hasLoaded,
+    doneRev,
     addTask,
     completeTask,
     uncompleteTask,
