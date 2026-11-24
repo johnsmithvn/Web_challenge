@@ -14,11 +14,12 @@
 - **Nhiệm vụ — thu gọn cột phải ở tab Ngày (`CalendarDayView.jsx`, `tasks-aurora.css`):** nút ⇥ cạnh "Chưa xếp giờ"
   thu cột 320px (Chưa xếp giờ + giờ hoàng đạo) thành dải 44px để lưới giờ rộng ra; dải có số việc chưa xếp giờ (đỏ khi
   có quá hạn), bấm để mở lại. Nhớ lựa chọn (`vl_dv_side_closed`). Chỉ desktop.
-- **Nhiệm vụ — chuột phải ở tab Ngày (`CalendarDayView.jsx`, `TasksPage.jsx`, `TaskActionMenu.jsx`):** khối giờ, thẻ
-  Chưa xếp giờ, việc xong ở hàng Cả ngày và việc con trong khối mở menu thao tác của việc (Trạng thái › Đang làm… ·
-  Ưu tiên › Khẩn… · Đổi hạn… chọn ngày + giờ · Dời hạn › · Nhân bản · Chép tên · Xoá); đổi xong lịch tải lại. Menu do
-  `TasksPage` giữ (`onTaskMenu`), không có "Thêm việc con" khi view không truyền `onAddSub`. Mobile không đổi (giữ lâu
-  = kéo việc).
+- **Nhiệm vụ — chuột phải trên mọi view Lịch (`CalendarDayView.jsx`, `WeekCalendar.jsx`, `MonthCalendar.jsx`,
+  `CalendarAgendaView.jsx`, `TasksPage.jsx`, `TaskActionMenu.jsx`):** mở menu thao tác của việc (Trạng thái › Đang làm… ·
+  Ưu tiên › Khẩn… · Đổi hạn… chọn ngày + giờ · Dời hạn › · Nhân bản · Chép tên · Xoá); đổi xong lịch tải lại. Ngày:
+  khối giờ, thẻ Chưa xếp giờ, việc xong ở hàng Cả ngày, việc con trong khối. Tuần: khối giờ + pill hàng Cả ngày. Tháng:
+  pill trong ô. Lịch biểu: hàng việc + hàng trong banner Quá hạn. Menu do `TasksPage` giữ, view chỉ rải
+  `taskMenuProps(task)`; không có "Thêm việc con" khi view không truyền `onAddSub`. Mobile không đổi (giữ lâu = kéo việc).
 - **Chốn — ảnh khi thắp đèn (`ChonLightSheet.jsx`):** "Thêm ảnh" dùng lại `UrlInputPopover` (dán link hoặc tải lên Drive
   qua `/api/upload`), tối đa 10 ảnh / lần ghé (`MAX_PHOTOS`, khớp CHECK DB). Ảnh hiện ở "Những lần ghé" của chi tiết chốn;
   file Drive đi qua `/api/stream` (`photoSrc`, có test).
@@ -29,6 +30,13 @@
   từng ghim.
 
 ### Changed
+- **Tài chính — ô Tên món dùng `SearchSelect` (`parts.jsx` `ItemNameInput`, `finance.css`):** bỏ `<datalist>` native
+  (popup trắng do trình duyệt vẽ, lệch giao diện) sang combobox dùng chung `allowCustom`: menu theo token `--n-*`, gõ lọc
+  không dấu, đơn giá hiện cạnh tên. Chọn món cũ vẫn điền đơn giá, gõ tay chỉ đổi tên. RULES §5: dropdown/gợi ý ở mọi
+  module dùng SearchSelect, không thêm `<select>`/`<datalist>` native mới.
+- **Nhiệm vụ — ô giờ 24h ở popover đổi ngày giờ (`TaskFloatingPopovers.jsx`, `date-popover.css`, `parseHHMM` + test):**
+  thay `<input type="time">` (máy locale tiếng Anh hiện AM/PM, 3 ô con, ô hẹp cắt mất "PM" nên 18:30 trông như 06:30)
+  bằng ô gõ 24h: "1830", "18:30", "18h30", "930" đều nhận, chốt khi rời ô / Enter; gõ sai thì ô về trống.
 - **Chốn ghi Tài chính theo danh mục của bạn:** thắp đèn / chốt chuyến đọc `finance_category_overrides` (chỉ đọc, một bảng)
   để dùng đúng tên + mức cần thiết bạn đã chỉnh; danh mục con mặc định bạn đã bỏ thì ghi theo nhóm. Phép ghép override
   tách thành hàm thuần `mergeCategoryOverrides` (`financeLogic.js`, có test) — `useFinance` dùng chung, không đổi hành vi.

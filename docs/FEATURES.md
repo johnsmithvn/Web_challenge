@@ -140,8 +140,9 @@ Tài liệu này chỉ mô tả tính năng đang chạy. Feature đã xóa và 
     phải vào việc mở cùng menu): Trạng thái › · Ưu tiên › · Đổi hạn… · Dời hạn › (Hôm nay / Ngày mai / Thứ Hai tuần
     sau) · Thêm việc con · Nhân bản (kèm thẻ) · Chép tên việc · Xoá (hỏi lại). Việc đã xong ẩn Đổi / Dời hạn.
     Chuột phải vào **việc con trong ngăn chi tiết** mở cùng menu (không có Thêm việc con; Nhân bản ra việc con cùng cha).
-    Tab **Ngày** (desktop): chuột phải vào khối giờ, thẻ Chưa xếp giờ, việc xong ở hàng Cả ngày hoặc việc con trong khối
-    cũng mở menu này (không có Thêm việc con — bấm khối để mở ngăn chi tiết).
+    View **Lịch** (desktop) cũng mở menu này khi chuột phải vào việc — Ngày: khối giờ, thẻ Chưa xếp giờ, việc xong ở hàng
+    Cả ngày, việc con trong khối · Tuần: khối giờ, pill Cả ngày · Tháng: pill trong ô · Lịch biểu: hàng việc, hàng Quá
+    hạn (không có Thêm việc con — bấm việc để mở ngăn chi tiết).
   - `agenda` (Lịch biểu): Dải ngày 45 ngày quanh ngày chọn, hiển thị cả ngày lễ và task theo timeline dọc.
   - `day` (Lịch Ngày): Lưới 24 giờ với trục thời gian thực (vạch đỏ), gom task cả ngày (All-day) và task có giờ.
     Khối dài (≥ ~1g45) dồn nội dung lên đầu và hiện **việc con** (tick được, bấm tên mở hộp việc con) vừa đủ chiều
@@ -315,8 +316,8 @@ Giao diện "Cực quang" trên nền trời đêm dùng chung với Nhiệm v�
 - **Mức độ thiết yếu 2 cấp (2-tier necessity):** Phân loại chi tiêu thành **Thiết yếu** (`need`) và **Linh hoạt / Mong muốn** (`want`).
 - **Ghi chú nhiều dòng (`description`):** Cột `description TEXT` cho phép ghi chú tự do nhiều dòng, tách rời tiêu đề ngắn `note`.
 - **Drawer Sửa giao dịch 560px:** Mở rộng mượt mà khi chỉnh sửa giao dịch, hỗ trợ nhập *Nơi / người nhận* (`merchant`) và bảng *Chi tiết từng món* (`items`: tên món, số lượng, đơn giá, tự động tính tổng). Phím tắt `Ctrl + Enter` lưu nhanh, `Escape` đóng.
-- **Gợi ý tên món** (form Thêm khoản chi + Sửa giao dịch): ô Tên món gợi ý món đã nhập ở các giao dịch đã tải (datalist
-  native, món mua nhiều/gần đây lên trước, kèm đơn giá lần gần nhất). Chọn món cũ thì điền luôn đơn giá; gõ tên mới
+- **Gợi ý tên món** (form Thêm khoản chi + Sửa giao dịch): ô Tên món gợi ý món đã nhập ở các giao dịch đã tải
+  (`SearchSelect` dùng chung, gõ để lọc không dấu, món mua nhiều/gần đây lên trước, kèm đơn giá lần gần nhất). Chọn món cũ thì điền luôn đơn giá; gõ tên mới
   vẫn là món mới.
 - Hóa đơn fixed/ask, skip period, kỳ trả; khoản vay và thẻ tín dụng.
 - **Nhịp chi trong kỳ** (Tổng quan) dùng chung `spendingRhythm` với mọi tổng chi khác; màu theo token

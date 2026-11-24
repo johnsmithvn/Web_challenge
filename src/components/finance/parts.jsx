@@ -3,7 +3,7 @@
  * màn Finance khỏi lặp: format tiền, tra danh mục, donut SVG, biểu đồ nhịp chi, chip
  * necessity, picker gắn Task.
  */
-import { useEffect, useId, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { formatVND } from '../../utils/currencyUtils';
 import { formatDate, parseDmy } from '../../utils/dateUtils';
@@ -11,6 +11,7 @@ import CATS from '../../data/finance-categories.json';
 import AppIcon from '../AppIcon';
 import { DatePopover } from '../TaskFloatingPopovers';
 import BankSelect, { BANKS } from '../BankSelect';
+import SearchSelect from '../SearchSelect';
 
 export { formatVND, BankSelect, BANKS };
 export const money = (n) => formatVND(Math.round(n || 0));
@@ -361,29 +362,24 @@ export function PeriodPicker({ options, period, value, onChange, dataFrom, compa
 }
 
 /**
- * Ô "Tên món": gõ món mới tự do, hoặc chọn món cũ trong gợi ý (datalist native) → trả kèm đơn giá lần
- * gần nhất. Chỉ điền giá khi CHỌN từ danh sách (insertReplacementText; trình duyệt cũ không có
- * inputType) — đang gõ dở mà trùng tên món cũ thì không đè giá.
+ * Ô "Tên món" = SearchSelect allowCustom: gõ món mới tự do, hoặc chọn món cũ trong gợi ý → trả kèm
+ * đơn giá lần gần nhất. Gõ chỉ đổi tên (option null), chọn mới điền giá — gõ trùng tên món cũ không đè giá.
  */
-export function ItemNameInput({ value, suggestions, onChange, ...rest }) {
-  const listId = useId();
+export function ItemNameInput({ value, suggestions, onChange, placeholder, 'aria-label': ariaLabel }) {
+  const options = useMemo(
+    () => suggestions.map(s => ({ value: s.name, label: s.name, sub: s.price ? money(s.price) : undefined, price: s.price })),
+    [suggestions],
+  );
   return (
-    <>
-      <input
-        {...rest}
-        list={listId}
-        value={value}
-        onChange={event => {
-          const name = event.target.value;
-          const { inputType } = event.nativeEvent;
-          const hit = (!inputType || inputType === 'insertReplacementText') && suggestions.find(s => s.name === name);
-          onChange(hit?.price ? { name, price: String(hit.price) } : { name });
-        }}
-      />
-      <datalist id={listId}>
-        {suggestions.map(s => <option key={s.name} value={s.name} label={s.price ? money(s.price) : undefined} />)}
-      </datalist>
-    </>
+    <SearchSelect
+      allowCustom
+      value={value}
+      options={options}
+      onChange={(name, option) => onChange(option?.price ? { name, price: String(option.price) } : { name })}
+      placeholder={placeholder}
+      ariaLabel={ariaLabel}
+      noResultsText="Món mới — giữ như đã gõ"
+    />
   );
 }
 

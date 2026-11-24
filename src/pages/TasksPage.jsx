@@ -188,7 +188,7 @@ export default function TasksPage() {
     }
   }, [tasks, updateTask, refreshCalendars, showToast]);
 
-  // Menu chuột phải của việc trên Lịch (tab Ngày): { type: 'menu' | 'date', task, x, y }.
+  // Menu chuột phải của việc trên Lịch (Ngày / Tuần / Tháng / Lịch biểu): { type: 'menu' | 'date', task, x, y }.
   // Đổi trạng thái / đổi hạn xong thì tải lại view Lịch (việc đã xong tải riêng theo khoảng ngày); sửa / xoá việc đã
   // xong thì doneRev lo.
   const [calMenu, setCalMenu] = useState(null);
@@ -199,6 +199,15 @@ export default function TasksPage() {
     else await updateTask(t.id, { status: next });
     refreshCalendars();
   };
+  // View Lịch rải vào phần tử của việc. Mobile không có: giữ lâu đã dùng để kéo việc.
+  // stopPropagation: việc con trong khối tab Ngày mở menu của chính nó, không phải của khối.
+  const taskMenuProps = isMobile ? undefined : (task) => ({
+    onContextMenu: (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      setCalMenu({ type: 'menu', task, x: e.clientX, y: e.clientY });
+    },
+  });
 
   const handleCloseSelectedModal = useCallback(() => {
     setSelectedTask(null);
@@ -442,6 +451,7 @@ export default function TasksPage() {
       {activeView === 'agenda' && (
         <CalendarAgendaView
           onRescheduleTask={handleRescheduleTask}
+          taskMenuProps={taskMenuProps}
           updateTask={async (id, patch) => { await updateTask(id, patch); refreshCalendars(); }}
           pendingTasks={calendarPending}
           allTasks={tasks}
@@ -468,7 +478,7 @@ export default function TasksPage() {
           allTasks={tasks}
           onToggleSubtask={(s) => (s.completed ? taskModel.uncompleteTask(s.id) : taskModel.completeTask(s.id))}
           onOpenSubtask={handleOpenSubtask}
-          onTaskMenu={(task, x, y) => setCalMenu({ type: 'menu', task, x, y })}
+          taskMenuProps={taskMenuProps}
           getCompletedTasksRange={getCompletedTasksRange}
           onSelectTask={handleSelectTaskFromCalendar}
           onOpenDay={openDayPop}
@@ -481,6 +491,7 @@ export default function TasksPage() {
       {activeView === 'week' && (
         <WeekCalendar
           onRescheduleTask={handleRescheduleTask}
+          taskMenuProps={taskMenuProps}
           pendingTasks={calendarPending}
           getCompletedTasksRange={getCompletedTasksRange}
           onSelectTask={handleSelectTaskFromCalendar}
@@ -496,6 +507,7 @@ export default function TasksPage() {
       {activeView === 'month' && (
         <MonthCalendar
           onRescheduleTask={handleRescheduleTask}
+          taskMenuProps={taskMenuProps}
           getCompletedTasksRange={getCompletedTasksRange}
           pendingTasks={calendarPending}
           onSelectTask={handleSelectTaskFromCalendar}

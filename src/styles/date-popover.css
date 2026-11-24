@@ -258,13 +258,11 @@
   background: transparent;
   color: var(--tk-text-main);
   font: 500 12.5px/1 'JetBrains Mono', monospace;
-  color-scheme: only light;
   outline: none;
-  cursor: pointer;
 }
 
-[data-theme="dark"] .tk-dp-timerow input {
-  color-scheme: dark;
+.tk-dp-timerow input::placeholder {
+  color: var(--tk-text-mute);
 }
 
 .tk-dp-timerow input:hover,

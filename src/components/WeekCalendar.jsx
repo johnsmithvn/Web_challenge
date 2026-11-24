@@ -24,6 +24,7 @@ const pad = (n) => String(n).padStart(2, '0');
  * WeekCalendar — view Tuần theo mockup "Kanban tối & sáng" (chỉ desktop):
  * đầu cột (thứ · số · âm lịch) → hàng Cả ngày (1 sự kiện + việc không giờ) → lưới giờ 48px.
  * Bấm ô giờ / "+N nữa" mở popover Ngày (onOpenDay); kéo việc vào ô giờ / hàng Cả ngày để dời.
+ * Chuột phải vào việc: `taskMenuProps(task)` của TasksPage (mở TaskActionMenu).
  */
 export default function WeekCalendar({
   pendingTasks = [],
@@ -36,6 +37,7 @@ export default function WeekCalendar({
   customAnniversaries = [],
   refreshKey = 0,
   onRescheduleTask,
+  taskMenuProps,
   onStats,
 }) {
   const todayStr = toDateStr();
@@ -193,6 +195,7 @@ export default function WeekCalendar({
                     draggable={!m.done && !!onRescheduleTask}
                     onDragStart={(e) => taskDragStart(e, t)}
                     onClick={() => onSelectTask?.(t)}
+                    {...taskMenuProps?.(t)}
                   >
                     <span className={`tk-mo-pill__t${m.done ? ' is-done' : ''}`}>{t.title}</span>
                   </span>
@@ -244,6 +247,7 @@ export default function WeekCalendar({
                     draggable={!m.done && !!onRescheduleTask}
                     onDragStart={(e) => taskDragStart(e, t)}
                     onClick={() => onSelectTask?.(t)}
+                    {...taskMenuProps?.(t)}
                     title={`${t.title} (${L.timeRangeLabel})`}
                   >
                     <span className="tk-wk-block__tm">

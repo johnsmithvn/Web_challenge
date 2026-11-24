@@ -204,7 +204,7 @@ function useTouchTaskDrag({ enabled, scrollRef, canvasRef, unsRef, onDrop }) {
  *            | cột phải 320px: Chưa xếp giờ (kéo vào lưới) + bảng 12 giờ hoàng đạo.
  *   Mobile : dòng sự kiện → Chưa xếp giờ (2 việc, giữ-rồi-kéo) → lưới giờ toàn chiều rộng.
  *   Khối dài hiện việc con (tick được, bấm tên mở hộp việc con; không vừa thì "+N việc con").
- *   Desktop: chuột phải vào việc / việc con → onTaskMenu(task, x, y) (TasksPage vẽ TaskActionMenu).
+ *   Chuột phải vào việc / việc con: `taskMenuProps(task)` của TasksPage (mở TaskActionMenu; mobile không truyền).
  */
 export default function CalendarDayView({
   pendingTasks = [],
@@ -219,7 +219,7 @@ export default function CalendarDayView({
   customAnniversaries = [],
   refreshKey = 0,
   onRescheduleTask,
-  onTaskMenu,
+  taskMenuProps,
   isMobile = false,
 }) {
   const [completedTasks, setCompletedTasks] = useState([]);
@@ -422,14 +422,6 @@ export default function CalendarDayView({
     unsRef,
     onDrop: (id, timeStr) => (timeStr === null ? dropUnscheduled(id) : onRescheduleTask(id, dateStr, timeStr)),
   });
-  // Chuột phải → menu thao tác. Mobile thì không: giữ lâu đã dùng cho kéo việc. Chặn nổi bọt để việc con không mở menu của khối.
-  const menuProps = (t) => (onTaskMenu && !isMobile ? {
-    onContextMenu: (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      onTaskMenu(t, e.clientX, e.clientY);
-    },
-  } : {});
   const shownUnscheduled = isMobile && !unsOpen ? unscheduledTasks.slice(0, 2) : unscheduledTasks;
   const ghostOpacity = (t) => (touchDrag?.id === t.id ? 0.35 : 1);
 
@@ -483,7 +475,7 @@ export default function CalendarDayView({
             draggable={htmlDrag}
             onDragStart={(e) => taskDragStart(e, t)}
             {...pressProps(t)}
-            {...menuProps(t)}
+            {...taskMenuProps?.(t)}
             onClick={() => onSelectTask?.(t)}
           >
             {isMobile ? (
@@ -557,7 +549,7 @@ export default function CalendarDayView({
                   const m = taskCardModel(t, todayStr);
                   const st = STATUS_META[m.st];
                   return (
-                    <span key={t.id} className="tk-dv-done" style={ksStyle(m.k)} onClick={() => onSelectTask?.(t)} {...menuProps(t)} title={t.title}>
+                    <span key={t.id} className="tk-dv-done" style={ksStyle(m.k)} onClick={() => onSelectTask?.(t)} {...taskMenuProps?.(t)} title={t.title}>
                       <AppIcon name={st.icon} size={12} weight={st.weight} />
                       <span className="tk-dv-done__t">{t.title}</span>
                     </span>
@@ -626,7 +618,7 @@ export default function CalendarDayView({
                       draggable={!m.done && htmlDrag}
                       onDragStart={(e) => taskDragStart(e, t)}
                       {...(!m.done ? pressProps(t) : {})}
-                      {...menuProps(t)}
+                      {...taskMenuProps?.(t)}
                       style={{
                         ...ksStyle(m.k),
                         top: `${L.top}px`,
@@ -670,7 +662,7 @@ export default function CalendarDayView({
                             const sp = PRIORITY_LABELS[Number(s.priority) || 0];
                             const due = subtaskDueInfo(s, t.due_date);
                             return (
-                              <div key={s.id} className={`tk-dv-sub${sKey === 'doing' ? ' is-doing' : ''}`} {...menuProps(s)}>
+                              <div key={s.id} className={`tk-dv-sub${sKey === 'doing' ? ' is-doing' : ''}`} {...taskMenuProps?.(s)}>
                                 <button
                                   type="button"
                                   className="tk-dv-sub__check"

@@ -81,9 +81,12 @@ Guest data dùng React memory và được phép mất khi reload; không lén �
   `:root[data-reduce-motion] …`, JS đọc `reduceMotion` của `useTheme()` (ngoài React: thuộc tính `data-reduce-motion`
   trên `<html>`). Không dùng `prefers-reduced-motion` — trình duyệt báo bật là app mất hết hiệu ứng mà user không biết vì sao.
 - Vault Keyplate và Finance Nocturne có scoped design contract riêng. Dialog tự dựng trong Vault (không
-  GenericModal) là ngoại lệ được ghi trong DESIGN; không copy ngoại lệ sang module khác. Ô chọn trong Vault
-  dùng `SearchSelect`.
-- Không bắt buộc custom component khi native control đơn giản hơn và không phá contract/accessibility.
+  GenericModal) là ngoại lệ được ghi trong DESIGN; không copy ngoại lệ sang module khác.
+- **Mọi ô chọn / gợi ý (dropdown, combobox, autocomplete) dùng `SearchSelect`** (`allowCustom` khi được gõ tự do),
+  ở mọi module. Không thêm `<select>` / `<datalist>` native mới — menu do trình duyệt vẽ, lệch hẳn giao diện. Module có
+  token riêng thì map token SearchSelect trong CSS module (`chon.css`, `collect.css`, `finance.css`). Ô native cũ đổi
+  sang khi chạm tới.
+- Ngoài dropdown, không bắt buộc custom component khi native control đơn giản hơn và không phá contract/accessibility.
 
 ## 6. Static content
 

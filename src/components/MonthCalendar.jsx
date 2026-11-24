@@ -20,7 +20,7 @@ const HOLIDAY_ICON = { fun: 'lightning', custom: 'heart' }; // còn lại: ngôi
  * MonthCalendar — view Tháng theo mockup "Kanban tối & sáng".
  *   Desktop: lưới kín khung, ô có số + âm lịch + nút +, 1 sự kiện, việc dạng pill màu theo hạn, "+N nữa".
  *   Mobile : lưới gọn (số, âm lịch, chấm màu), chạm chọn ngày → danh sách việc của ngày bên dưới.
- * Nút + / "+N nữa" mở popover Ngày (onOpenDay) do TasksPage vẽ.
+ * Nút + / "+N nữa" mở popover Ngày (onOpenDay) do TasksPage vẽ. Chuột phải vào pill: `taskMenuProps(task)` (desktop).
  */
 export default function MonthCalendar({
   getCompletedTasksRange,
@@ -34,6 +34,7 @@ export default function MonthCalendar({
   customAnniversaries = [],
   refreshKey = 0,
   onRescheduleTask,
+  taskMenuProps,
   isMobile = false,
   onStats,
 }) {
@@ -256,6 +257,7 @@ export default function MonthCalendar({
                     draggable={!m.done && !!onRescheduleTask}
                     onDragStart={(e) => taskDragStart(e, t)}
                     onClick={() => onSelectTask?.(t)}
+                    {...taskMenuProps?.(t)}
                   >
                     {tm && <span className="tk-mo-pill__tm">{tm}</span>}
                     <span className={`tk-mo-pill__t${m.done ? ' is-done' : ''}`}>{t.title}</span>

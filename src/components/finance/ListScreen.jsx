@@ -1044,7 +1044,7 @@ function TxDetail({ tx, fin, nav, tasks, inPeriod = [], isMobileSheet = false, s
                 )}
                 {draftItems.map((item, index) => (
                   <div className="fin-item-row" key={index}>
-                    <ItemNameInput className="fin-input" aria-label={`Tên món thứ ${index + 1}`} value={item.name} suggestions={itemSugs} onChange={fields => updateDraftItem(index, fields)} placeholder="Tên món (bảo dưỡng, dầu nhớt...)" />
+                    <ItemNameInput aria-label={`Tên món thứ ${index + 1}`} value={item.name} suggestions={itemSugs} onChange={fields => updateDraftItem(index, fields)} placeholder="Tên món (bảo dưỡng, dầu nhớt...)" />
                     <ItemQtyStepper
                       value={item.qty}
                       onChange={val => updateDraftItem(index, { qty: val })}

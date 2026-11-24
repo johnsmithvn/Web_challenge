@@ -480,6 +480,18 @@ export function datePickPatch({ a, b, ta, tb }) {
 }
 
 /**
+ * Ô giờ 24h gõ tay của popover đổi ngày giờ (thay `<input type="time">`: trình duyệt máy tiếng Anh hiện AM/PM,
+ * 3 ô con, ô hẹp bị cắt mất "PM"). Nhận "1830", "18:30", "18h30", "930", "9" → "HH:MM"; sai / trống → null.
+ */
+export function parseHHMM(s) {
+  const m = String(s ?? '').trim().match(/^(\d{1,2})(?:[:h.]?(\d{2}))?$/i);
+  if (!m) return null;
+  const h = Number(m[1]);
+  const min = Number(m[2] || 0);
+  return h < 24 && min < 60 ? `${pad2(h)}:${pad2(min)}` : null;
+}
+
+/**
  * Bấm 1 ngày trên popover đổi ngày giờ (kiểu ClickUp / Airbnb): ô Bắt đầu nhận ngày rồi tự nhảy sang Kết thúc
  * (giữ Kết thúc cũ nếu không trước nó); ô Kết thúc nhận ngày cuối rồi quay về Bắt đầu. Ở Kết thúc mà bấm trước
  * Bắt đầu → thành Bắt đầu mới, vẫn chờ ngày cuối; bấm trùng Bắt đầu → Kết thúc cùng ngày (lưu như 1 ngày).

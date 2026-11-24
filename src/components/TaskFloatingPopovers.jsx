@@ -5,7 +5,7 @@ import { PRIORITY_LABELS } from '../utils/taskNlpParser';
 import { STATUS_META, ksStyle, taskCardModel } from '../utils/kanbanUtils';
 import { toDateStr } from '../utils/dateUtils';
 import { solarToLunar, lunarLabel } from '../utils/lunarUtils';
-import { datePickDraft, datePickPatch, datePickClick } from '../utils/calendarTimeUtils';
+import { datePickDraft, datePickPatch, datePickClick, parseHHMM } from '../utils/calendarTimeUtils';
 import '../styles/date-popover.css';
 
 /**
@@ -260,6 +260,26 @@ export function TaskDatePickerPopover({ task, onSave, onClose, style }) {
     onClose();
   };
 
+  // Ô giờ 24h gõ tay ("1830", "18h30"…), chốt khi rời ô / Enter. Không dùng type="time": máy locale tiếng Anh
+  // hiện AM/PM + 3 ô con, ô hẹp cắt mất "PM". key theo giá trị → giá trị đổi từ ngoài thì ô nạp lại.
+  const timeBox = (k, label, set) => (
+    <input
+      key={`${k}${dr[k] || ''}`}
+      type="text"
+      inputMode="numeric"
+      maxLength={5}
+      placeholder="--:--"
+      aria-label={label}
+      defaultValue={dr[k] || ''}
+      onBlur={(e) => {
+        const v = parseHHMM(e.target.value);
+        e.target.value = v || '';
+        set(v);
+      }}
+      onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
+    />
+  );
+
   const fields = [
     { k: 'a', label: 'Bắt đầu', val: dr.a, empty: 'Không hạn', clear: clearA, clearTip: 'Bỏ hạn' },
     { k: 'b', label: 'Kết thúc', val: B, empty: 'Tuỳ chọn', clear: clearB, clearTip: 'Bỏ ngày kết thúc' },
@@ -306,9 +326,9 @@ export function TaskDatePickerPopover({ task, onSave, onClose, style }) {
       {timeOn && (
         <div className="tk-dp-timerow">
           <AppIcon name="clock" size={13} className="tk-dp-timerow__ic" />
-          <input type="time" aria-label="Giờ bắt đầu" value={dr.ta || ''} onChange={(e) => setDr((d) => ({ ...d, a: d.a || toDateStr(), ta: e.target.value || null }))} />
+          {timeBox('ta', 'Giờ bắt đầu', (v) => setDr((d) => ({ ...d, a: d.a || toDateStr(), ta: v })))}
           <AppIcon name="arrowRight" size={11} className="tk-dp-timerow__arrow" />
-          <input type="time" aria-label="Giờ kết thúc" value={dr.tb || ''} onChange={(e) => setDr((d) => ({ ...d, tb: e.target.value || null }))} />
+          {timeBox('tb', 'Giờ kết thúc', (v) => setDr((d) => ({ ...d, tb: v })))}
           <button type="button" className="tk-dp-x" title="Bỏ giờ" aria-label="Bỏ giờ" onClick={noTime}>
             <AppIcon name="x" size={11} />
           </button>

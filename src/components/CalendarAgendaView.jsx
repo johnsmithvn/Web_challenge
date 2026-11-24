@@ -29,6 +29,7 @@ function timeOf(t, dateStr) {
  * CalendarAgendaView — "Lịch biểu" theo mockup Kanban tối & sáng: từ ngày đang xem tới 3 tuần sau,
  * gom theo tuần; ngày trống liền nhau gộp 1 hàng; banner việc quá hạn ở đầu (mở ra để xem / dời hết).
  * Desktop: cột ngày 132px | danh sách; mobile: khối ngày dọc, việc quá hạn hiện bằng thẻ mobile.
+ * Chuột phải vào việc: `taskMenuProps(task)` của TasksPage (mở TaskActionMenu; mobile không truyền).
  */
 export default function CalendarAgendaView({
   pendingTasks = [],
@@ -44,6 +45,7 @@ export default function CalendarAgendaView({
   refreshKey = 0,
   onRescheduleTask,
   updateTask,
+  taskMenuProps,
   isMobile = false,
 }) {
   const today = toDateStr();
@@ -189,7 +191,7 @@ export default function CalendarAgendaView({
     const tm = timeOf(t, dateStr);
     const subs = subsOf.get(t.id);
     return (
-      <div key={`t-${t.id}`} className="tk-ag-task" role="button" tabIndex={0} onClick={open(t)} onKeyDown={onKeyOpen(t)} {...dragOf(t)}>
+      <div key={`t-${t.id}`} className="tk-ag-task" role="button" tabIndex={0} onClick={open(t)} onKeyDown={onKeyOpen(t)} {...dragOf(t)} {...taskMenuProps?.(t)}>
         {updateTask && !m.done ? (
           <button
             type="button"
@@ -329,6 +331,7 @@ export default function CalendarAgendaView({
                       onKeyDown={onKeyOpen(t)}
                       style={{ '--k-fg': 'var(--tk-ks-late-fg)', '--k-bg': 'var(--tk-ks-late-bg)', '--k-bd': 'var(--tk-ks-late-bd)' }}
                       {...dragOf(t)}
+                      {...taskMenuProps?.(t)}
                     >
                       <span className="tk-ag-late__st" style={{ color: st.color }}>
                         <AppIcon name={st.icon} size={15} weight={st.weight} />

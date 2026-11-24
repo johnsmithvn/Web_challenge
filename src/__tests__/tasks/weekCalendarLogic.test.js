@@ -26,6 +26,7 @@ import {
   datePickDraft,
   datePickPatch,
   datePickClick,
+  parseHHMM,
 } from '../../utils/calendarTimeUtils.js';
 
 // v6.21.0: khối thời gian = Bắt đầu → Hạn CÙNG ngày (không còn end_time).
@@ -376,6 +377,23 @@ console.log('agenda rows (week/gap): OK');
   assert.deepEqual(datePickDraft(startOnly), { a: '2026-10-12', b: null, ta: '09:00', tb: null });
 }
 console.log('date picker draft/patch: OK');
+
+// ── Ô giờ 24h gõ tay ──
+{
+  assert.equal(parseHHMM('18:30'), '18:30');
+  assert.equal(parseHHMM('1830'), '18:30');
+  assert.equal(parseHHMM('18h30'), '18:30');
+  assert.equal(parseHHMM('930'), '09:30');
+  assert.equal(parseHHMM('9'), '09:00');
+  assert.equal(parseHHMM(' 0:05 '), '00:05');
+  assert.equal(parseHHMM('23:59'), '23:59');
+  assert.equal(parseHHMM('24:00'), null);
+  assert.equal(parseHHMM('12:60'), null);
+  assert.equal(parseHHMM('183'), null, '1:83 → sai');
+  assert.equal(parseHHMM('abc'), null);
+  assert.equal(parseHHMM(''), null);
+}
+console.log('parseHHMM: OK');
 
 // ── Popover đổi ngày giờ: bấm ngày kiểu ClickUp (Bắt đầu → tự nhảy Kết thúc) ──
 {
