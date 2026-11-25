@@ -51,8 +51,10 @@ const byDueThenPriority = (a, b) => {
  * @param {Array<Object>} openTasks - task chưa xong (pending + skipped của useUserTasks)
  * @param {Array<Object>} completedTasks - task đã xong (fetch theo khoảng + optimistic)
  * @param {{from: string, to: string} | null} range - từ getKanbanRange
+ * @param {string | null} freshSince - ISO lúc tải trang: việc tạo SAU mốc này (không tính việc lặp tự sinh)
+ *   ghim đầu cột To Do / Doing / Skip, mới nhất trên cùng — tải lại trang mới về đúng thứ tự hạn/ưu tiên.
  */
-export function groupKanbanColumns(openTasks = [], completedTasks = [], range = null) {
+export function groupKanbanColumns(openTasks = [], completedTasks = [], range = null, freshSince = null) {
   const inRange = (d) => !range || (d >= range.from && d <= range.to);
   const todo = [];
   const doing = [];
@@ -72,9 +74,22 @@ export function groupKanbanColumns(openTasks = [], completedTasks = [], range = 
     else todo.push(t);
   }
 
-  todo.sort(byDueThenPriority);
-  doing.sort(byDueThenPriority);
-  skip.sort(byDueThenPriority);
+  // So theo số ms: server trả "…+00:00", client "….000Z" → so chuỗi sẽ lệch
+  const since = freshSince ? Date.parse(freshSince) : NaN;
+  const freshAt = (t) => {
+    if (Number.isNaN(since) || t.recurrence_parent_id) return 0;
+    const at = Date.parse(t.created_at || '');
+    return at > since ? at : 0;
+  };
+  const order = (a, b) => {
+    const fa = freshAt(a);
+    const fb = freshAt(b);
+    if (fa || fb) return fb - fa;
+    return byDueThenPriority(a, b);
+  };
+  todo.sort(order);
+  doing.sort(order);
+  skip.sort(order);
   const done = Array.from(doneMap.values())
     .sort((a, b) => (b.completed_at || '').localeCompare(a.completed_at || ''));
 

@@ -220,7 +220,10 @@ export function useUserTasks() {
 
     if (isAuth) {
       try {
+        // Gửi luôn id UUID tạo ở client → bản server cùng id với bản optimistic, thẻ không bị mount lại.
+        // id dự phòng `local_…` (máy không có randomUUID) không phải UUID → để DB tự sinh.
         const { id, user_id, ...rest } = newTask;
+        if (!id.startsWith('local_')) rest.id = id;
         let { data, error } = await supabase
           .from('user_tasks')
           .insert({ ...rest, user_id: userId })

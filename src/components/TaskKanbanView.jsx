@@ -25,6 +25,8 @@ import '../styles/tasks-aurora.css';
  * Bộ lọc thời gian / tìm kiếm do TasksPage giữ (dùng chung với Danh sách).
  */
 const COLUMNS = ['todo', 'doing', 'done', 'skip'];
+// Lúc tải trang: việc tạo sau mốc này ghim đầu cột (groupKanbanColumns), tải lại trang mới xếp lại
+const PAGE_LOADED_AT = new Date(performance.timeOrigin || Date.now()).toISOString();
 
 export default function TaskKanbanView({
   taskModel,
@@ -135,7 +137,7 @@ export default function TaskKanbanView({
     return searchQuery.trim() ? doneSource.filter(matches) : doneSource;
   }, [doneSource, timeFilter, searchQuery, matches]);
 
-  const grouped = useMemo(() => groupKanbanColumns(openTasks, completedList, range), [openTasks, completedList, range]);
+  const grouped = useMemo(() => groupKanbanColumns(openTasks, completedList, range, PAGE_LOADED_AT), [openTasks, completedList, range]);
   const allVisible = useMemo(() => [...openTasks, ...completedList], [openTasks, completedList]);
 
   const handleMoveTo = useCallback(async (task, target) => {

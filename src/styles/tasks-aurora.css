@@ -488,6 +488,11 @@
   filter: brightness(1.08);
 }
 
+/* Popover / menu nổi nằm trong .tk-main (z-index 1) → khi đang mở thì hạ nút xuống dưới để không đè lên chúng */
+.tasks-workspace:has(.tk-popover, .action-menu) .tk-scene-btn {
+  z-index: 0;
+}
+
 [data-theme="light"] .tk-scene-btn {
   border-color: rgba(124, 58, 237, 0.22);
   background: rgba(255, 255, 255, 0.8);

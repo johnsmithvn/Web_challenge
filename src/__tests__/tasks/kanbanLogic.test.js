@@ -252,4 +252,22 @@ console.log('calculateKanbanCounts 4 pills realtime count: OK');
   console.log('nextMondayStr: OK');
 }
 
+/* ── Việc mới tạo sau lúc tải trang: ghim đầu cột, mới nhất trên cùng ─── */
+{
+  const loaded = '2026-09-13T08:00:00.000Z';
+  const list = [
+    { id: 'old', status: 'todo', due_date: '2026-09-10', created_at: '2026-09-01T00:00:00+00:00' },
+    { id: 'new1', status: 'todo', due_date: '2026-09-30', created_at: '2026-09-13T08:05:00+00:00' }, // dạng server
+    { id: 'new2', status: 'todo', due_date: null, created_at: '2026-09-13T08:06:00.000Z' }, // dạng client
+    { id: 'spawn', status: 'todo', due_date: '2026-09-09', created_at: '2026-09-13T08:07:00Z', recurrence_parent_id: 'x' },
+    { id: 'doingNew', status: 'doing', due_date: '2026-09-20', created_at: '2026-09-13T08:01:00Z' },
+    { id: 'doingOld', status: 'doing', due_date: '2026-09-11' },
+  ];
+  const cols = groupKanbanColumns(list, [], null, loaded);
+  assert.deepEqual(ids(cols.todo), ['new2', 'new1', 'spawn', 'old'], 'việc mới lên đầu (mới nhất trước), việc lặp tự sinh thì không ghim');
+  assert.deepEqual(ids(cols.doing), ['doingNew', 'doingOld']);
+  assert.deepEqual(ids(groupKanbanColumns(list, [], null).todo), ['spawn', 'old', 'new1', 'new2'], 'không có mốc = xếp như cũ');
+  console.log('groupKanbanColumns fresh-on-top: OK');
+}
+
 console.log('\n✅ kanbanLogic — logic thật của Kanban PASS');
