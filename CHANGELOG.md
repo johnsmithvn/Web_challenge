@@ -51,6 +51,11 @@
   trí". Form Lưu chốn có "Tôi đang ở đây" (cắm ghim ở vị trí hiện tại).
 
 ### Fixed
+- **Tài chính — "Trả sớm dư nợ" thẻ tín dụng ghi được (`20261125000000_finance_card_prepay_v6_40_0.sql`,
+  `RecurringScreen.jsx`, `useFinance.js`):** nút gửi kỳ vừa chốt (đã trả hết → DB báo "already paid"), còn RPC v6.0.0
+  chặn mọi kỳ chưa chốt. Giờ `finance_pay_card_statement` nhận trả trước cho đúng kỳ đang mở (không vượt số đã quẹt
+  trong kỳ), UI gửi kỳ của ngày chốt kế tiếp. Lỗi ghi qua RPC không còn bật banner "Không tải được dữ liệu Finance"
+  (toast đã báo). Cần chạy migration mới trên Supabase.
 - **Nhiệm vụ — sửa / xoá việc đã xong hiện ngay (`useUserTasks.js`, `TasksPage.jsx`, `TaskListSection.jsx`):** việc
   đã xong (trừ việc xong hôm nay) không nằm trong state nên đổi Ưu tiên ở tab Ngày / Danh sách / Kanban phải tải lại
   trang mới thấy, xoá ở Danh sách / Kanban thì dòng vẫn còn. `updateTask` / `deleteTask` thành công với việc đã xong /

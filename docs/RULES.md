@@ -1,6 +1,6 @@
 # RULES.md — Life Hub
 
-**Version:** v6.16.0 · **Updated:** 2026-09-02
+**Version:** v6.40.0 · **Updated:** 2026-11-24
 
 Quy tắc hiện hành cho human developer và coding agent. `CLAUDE.md` là entrypoint ngắn; file này là
 policy chi tiết. Lịch sử rule cũ nằm trong git/CHANGELOG, không lặp ở đây.

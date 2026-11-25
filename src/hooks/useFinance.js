@@ -301,9 +301,10 @@ export function useFinance({ autoFetch = true } = {}) {
     }
   }, [enabled, userId, categoryOverrides]);
 
+  // Lỗi RPC KHÔNG đẩy vào `error`: `error` là lỗi TẢI (banner "Không tải được dữ liệu" ở
+  // Finance + Dashboard). Mọi nơi gọi RPC đã tự báo toast khi nhận null.
   const callFinanceRpc = useCallback(async (name, params) => {
     if (!enabled) return null;
-    setError(null);
     try {
       const { data, error: rpcError } = await supabase.rpc(name, params);
       if (rpcError) throw rpcError;
@@ -311,7 +312,6 @@ export function useFinance({ autoFetch = true } = {}) {
       return data;
     } catch (err) {
       logger.warn(`[useFinance] ${name}:`, err.message);
-      setError(err.message);
       return null;
     }
   }, [enabled, fetchAll]);

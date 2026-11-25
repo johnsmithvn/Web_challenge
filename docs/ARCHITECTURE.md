@@ -1,10 +1,10 @@
 # ARCHITECTURE.md — Life Hub
 
-**Version:** v6.16.0 · **Updated:** 2026-09-02
+**Version:** v6.40.0 · **Updated:** 2026-11-25
 
 ## Tổng quan
 
-Life Hub là một React SPA. `LandingPage` nằm trong entry chunk; bảy page còn lại được lazy-load.
+Life Hub là một React SPA. `LandingPage` nằm trong entry chunk; các page còn lại được lazy-load.
 Supabase cung cấp Auth, PostgreSQL và RLS. Frontend hiện dùng fetch + optimistic state, không đăng ký
 `postgres_changes`; publication Realtime của schema không đồng nghĩa app đang subscribe realtime.
 
@@ -24,8 +24,8 @@ ThemeProvider
 ```text
 src/
 ├─ App.jsx             route, shell, provider wiring
-├─ pages/              một page theo route (Tasks, Finance, Accounts, Inbox, Collect, Focus, Settings)
-├─ components/         UI dùng lại; components/finance (màn Finance), components/kb (màn Knowledge), components/chon (Chốn)
+├─ pages/              một page theo route (Landing, Tasks, Focus, Collect, Finance, Body, Chon, Accounts, Settings, FxLab)
+├─ components/         UI dùng lại; components/finance (màn Finance), components/kb (màn Knowledge), components/body (Body), components/chon (Chốn), components/dashboard (Trang chủ)
 ├─ hooks/              state + Supabase/domain actions
 ├─ contexts/           Auth, Theme, Toast
 ├─ utils/              logic thuần: kbDeriveUtils, calendarTimeUtils, lunarUtils, financeLogic, vaultCrypto
@@ -33,7 +33,7 @@ src/
 ├─ styles/             CSS theo domain (kb-tokens, sky — nền trời dùng chung, tasks-aurora, tasks-elf...); global.css giữ token chung
 ├─ extensions/         Tiptap MediaNode
 ├─ lib/supabase.js     Supabase singleton + graceful disabled mode
-└─ __tests__/          self-check node:assert phân theo 4 domain: tasks/, vault/, finance/, core/
+└─ __tests__/          self-check node:assert phân theo 5 domain: tasks/, vault/, finance/, body/, core/
 
 api/                   Vercel Functions cho upload/stream Google Drive
 data/                  SQL dùng cho fresh install/production handoff
@@ -55,14 +55,14 @@ không bị stale khi thêm/xóa component.
 | `/` | `LandingPage` | Eager | Public |
 | `/tasks` | `TasksPage` | Lazy | List guest in-memory; sync/lịch sử hoàn thành cần login |
 | `/focus` | `FocusPage` | Lazy | Guest in-memory hoặc Supabase khi login |
-| `/inbox` | `InboxPage` | Lazy | Auth-only |
 | `/collect` | `CollectPage` | Lazy | Auth-only |
 | `/finance`, `/finance/:screen` | `FinancePage` | Lazy | Auth-only |
+| `/body`, `/body/:screen` | `BodyPage` | Lazy | Guest in-memory hoặc Supabase khi login |
 | `/chon`, `/chon/:placeId`, `/chon/trip/:tripId` | `ChonPage` | Lazy | Auth-only; `/chon?share=1&title=&text=&url=` = đích Chia sẻ Android (`manifest.json` `share_target`) |
 | `/accounts` | `AccountsPage` | Lazy | Auth-only + Vault unlock |
 | `/settings` | `SettingsPage` | Lazy | Auth-only |
 | `/fx-lab` | `FxLabPage` | Lazy | Sidebar → Khác → FX Lab (mobile: menu Thêm): xem trước hiệu ứng nền trang Nhiệm vụ, không đụng dữ liệu; đổi Kiểu/Ngày-Đêm thật, rời trang trả lại (RULES #15) |
-| `/incubator`, `/tracker`, `/habits`, `/dashboard`, `/journey` | redirect `/tasks` | — | Bookmark/route cũ đã gỡ |
+| `/inbox`, `/incubator`, `/tracker`, `/habits`, `/dashboard`, `/journey` | redirect `/tasks` | — | Bookmark/route cũ đã gỡ (Inbox gộp vào Nhiệm vụ) |
 | `*` | `LandingPage` | — | Catch-all |
 
 Finance screen hợp lệ: `overview`, `add`, `list`, `cats`, `recurring`. Ngân sách và Thống kê là view
@@ -76,8 +76,10 @@ Không có một “dual-mode” áp dụng cho mọi hook.
 |---|---|---|
 | Task list | State in-memory, mất khi reload | `user_tasks` + quan hệ/log/XP trên Supabase |
 | Focus + XP | State in-memory | `focus_sessions`, `xp_logs` |
-| Inbox / Knowledge / Tags / Quotes | Không cho thao tác dữ liệu | Supabase |
+| Knowledge / Tags | Không cho thao tác dữ liệu | Supabase |
 | Finance | Không cho thao tác dữ liệu | Supabase |
+| Body | State in-memory, mất khi reload | `body_*` trên Supabase |
+| Chốn | Không cho thao tác dữ liệu | `places`, `place_visits`, `trips`… trên Supabase |
 | Vault | Không khả dụng | Supabase ciphertext; phải unlock client-side |
 
 Các hook CRUD thường làm optimistic update rồi rollback khi write lỗi. Không áp dụng giả định này cho
@@ -128,8 +130,6 @@ useCollections / useCollectionTopics / useCollectionNotes / useTags
 - Loại bài (Repo, Video, Bài FB…) suy ra từ URL ở client, không lưu.
 - Wiki-links cú pháp `[[Tên trang]]` được phân tích tự động bằng `parseWikiLinks` và `slugifyVi` để dựng mạng lưới liên kết 2 chiều và Backlinks client-side mà không cần cột dữ liệu phụ trợ trên server.
 - Chi tiết: [`MODULE_KNOWLEDGE.md`](MODULE_KNOWLEDGE.md).
-- Inbox có hai handoff sang Finance qua `sessionStorage`: giao dịch (`kind=tx`) và hóa đơn/quy tắc
-(`kind=out`). Handoff chỉ là dữ liệu tạm của thao tác điều hướng, không phải nguồn dữ liệu bền.
 - Trang chủ (`HomeDashboard`) mở thẳng tab con của màn Định kỳ bằng navigation state
   `navigate('/finance/recurring', { state: { recurringSeg } })`; `FinancePage` chỉ nhận segment nằm trong
   `RECURRING_SEGS`, lạ thì về `out`.
@@ -233,7 +233,6 @@ instance; đây không phải quota phân tán toàn hệ thống.
 | Key | Nội dung |
 |---|---|
 | `lh_finance_period` | kỳ Finance đang xem |
-| `lh_inbox_to_finance` | payload handoff một lần từ Inbox |
 | `lh_chunk_reload` | mốc lần tự tải lại gần nhất khi chunk cũ chết sau deploy (chống loop) |
 
 Các prefix cũ được giữ để không làm mất preference. Key mới nên dùng `vl_`, nhưng không rename key

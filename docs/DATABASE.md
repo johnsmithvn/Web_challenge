@@ -188,7 +188,7 @@ own-row và không public-select.
 - `finance_pay_bill`
 - `finance_skip_bill_period`
 - `finance_record_loan_payment`
-- `finance_pay_card_statement`
+- `finance_pay_card_statement` — từ v6.40.0 nhận trả trước cho kỳ đang mở (kỳ trước đã chốt); xa hơn bị chặn
 - `finance_request_saving_withdrawal`
 - `finance_move_saving`
 
@@ -289,6 +289,8 @@ Snapshot đã tồn tại là bất biến. Schema change mới phải dùng mig
 27. `supabase/migrations/20261119005000_places_check_refs_fix_v6_38_1.sql` — vá trigger `places_check_refs` (v6.38.0 lỗi
     42703 khi lưu nguồn / thắp đèn). Bắt buộc nếu đã chạy bước 26.
 28. `supabase/migrations/20261119010000_trips_v6_39_0.sql` — Chuyến đi (Chốn giai đoạn 2)
+29. `supabase/migrations/20261125000000_finance_card_prepay_v6_40_0.sql` — cho `finance_pay_card_statement` trả trước
+    kỳ thẻ đang mở (nút "Trả sớm dư nợ"). Chỉ thay thân hàm, idempotent.
 
 Dọn dẹp bảng cũ (tùy chọn):
 - `data/drop_incubator_tables.sql` (gỡ bỏ các bảng `intention_*` của phân hệ Ươm mầm đã ngưng phát triển).

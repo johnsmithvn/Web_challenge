@@ -1783,7 +1783,8 @@ function CardDetail({ fin, nav, tasks, act, card: c, payId, setPayId, onEdit, on
       {payId === c.id && <PayBlock kind="card" title={billed ? `Trả sao kê kỳ ${periodLabel}` : 'Trả sớm dư nợ'} fin={fin} tasks={tasks} dueDay={c.due_day} defaultAmount={billed ? owed : balance}
         confirmLabel={billed ? 'Xác nhận trả sao kê' : 'Xác nhận trả sớm'} onCancel={() => setPayId(null)}
         onPay={async (payload) => {
-          const tx = await fin.payCardStatement(c, { ...payload, period: cyc.period });
+          // Trả sớm = trả trước cho kỳ đang mở (chốt ở nextStatement), không phải kỳ vừa chốt đã trả xong.
+          const tx = await fin.payCardStatement(c, { ...payload, period: billed ? cyc.period : cyc.nextStatement.slice(0, 7) });
           nav.showToast(tx ? 'Đã ghi trả sao kê — không phải chi mới, chỉ để lịch sử' : 'Không thể ghi trả sao kê. Kiểm tra dữ liệu Finance rồi thử lại.', { icon: tx ? 'creditCard' : 'warning' });
           return !!tx;
         }} />}

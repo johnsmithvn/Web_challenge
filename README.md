@@ -1,9 +1,9 @@
-# Life Hub — Personal Life OS v6.22.0
+# Life Hub — Personal Life OS v6.40.0
 
 > **Kỷ Luật = Hệ Thống, Không Phải Ý Chí**
 
-Life Hub là ứng dụng web cá nhân tích hợp: Inbox, Nhiệm Vụ (kèm Không gian Lịch 5 chế độ), Sổ Tay Tri Thức (Knowledge Base PKM / Athenaeum), Tài Chính, Thể Hình & Sức Khỏe (Body),
-Account Vault và Focus. Frontend React/Vite, dữ liệu chính trên Supabase với RLS.
+Life Hub là ứng dụng web cá nhân tích hợp: Trang chủ, Nhiệm Vụ (kèm Không gian Lịch 5 chế độ), Sổ Tay Tri Thức (Knowledge Base PKM / Athenaeum), Tài Chính, Thể Hình & Sức Khỏe (Body),
+Chốn (nơi muốn đến & chuyến đi), Account Vault và Focus. Frontend React/Vite, dữ liệu chính trên Supabase với RLS.
 
 - **Frontend:** React 19, Vite, React Router v7, vanilla CSS
 - **Backend:** Supabase PostgreSQL + Auth, Vercel Serverless Functions
@@ -11,7 +11,7 @@ Account Vault và Focus. Frontend React/Vite, dữ liệu chính trên Supabase 
 - **Kiểm thử:** Node.js test runner thuần (`node:assert/strict`), không phụ thuộc Jest/Vitest
 
 > **Lưu ý xác thực:** Landing Page, Nhiệm Vụ (ở chế độ khách), Focus và Body (in-memory) có thể dùng thử không cần tài khoản.
-> Inbox, Knowledge, Finance, Settings và Account Vault yêu cầu đăng nhập.
+> Knowledge, Finance, Chốn, Settings và Account Vault yêu cầu đăng nhập.
 
 ---
 
@@ -33,12 +33,12 @@ cp .env.local.example .env.local
 npm run dev
 # → http://localhost:5173
 
-# (tuỳ chọn) Self-check nhanh — node:assert (29 test suites), không cần cài gì thêm
+# (tuỳ chọn) Self-check nhanh — node:assert (danh sách trong script `test` của package.json), không cần cài gì thêm
 npm test
 ```
 
 > **Không có Supabase?** Task list, Focus và Body vẫn chạy guest bằng state in-memory và mất khi reload.
-> Inbox, Knowledge, Finance, Settings và Account Vault yêu cầu đăng nhập.
+> Knowledge, Finance, Chốn, Settings và Account Vault yêu cầu đăng nhập.
 
 ---
 
@@ -113,7 +113,7 @@ npm run db:local:stop
 > `db:local:reset` xóa toàn bộ dữ liệu database local trước khi replay migration. Đây là lệnh user
 > chủ động chạy cho môi trường test trắng; agent không tự chạy và không được dùng với hosted project.
 
-31 migration local được chạy tự động theo timestamp:
+Các migration local được chạy tự động theo timestamp (danh sách thật: thư mục `supabase/migrations/`):
 
 1. [`20260802000000_base_v5_0_0.sql`](./supabase/migrations/20260802000000_base_v5_0_0.sql)
 2. [`20260805000000_vault_v5_2_0.sql`](./supabase/migrations/20260805000000_vault_v5_2_0.sql)
@@ -146,6 +146,13 @@ npm run db:local:stop
 29. [`20261008000002_body_nutrition_checkin_v6_22_0.sql`](./supabase/migrations/20261008000002_body_nutrition_checkin_v6_22_0.sql)
 30. [`20261009000000_body_exercise_videos_v6_22_0.sql`](./supabase/migrations/20261009000000_body_exercise_videos_v6_22_0.sql)
 31. [`20261009100000_finance_drop_income_budgets_v6_22_0.sql`](./supabase/migrations/20261009100000_finance_drop_income_budgets_v6_22_0.sql)
+32. [`20261024000000_finance_angia_default_fund_v6_31_0.sql`](./supabase/migrations/20261024000000_finance_angia_default_fund_v6_31_0.sql)
+33. [`20261025000000_knowledge_topics_v6_32_0.sql`](./supabase/migrations/20261025000000_knowledge_topics_v6_32_0.sql)
+34. [`20261105000000_finance_lending_due_history_v6_35_0.sql`](./supabase/migrations/20261105000000_finance_lending_due_history_v6_35_0.sql)
+35. [`20261108000000_knowledge_snippets_v6_36_0.sql`](./supabase/migrations/20261108000000_knowledge_snippets_v6_36_0.sql)
+36. [`20261119000000_places_v6_38_0.sql`](./supabase/migrations/20261119000000_places_v6_38_0.sql)
+37. [`20261119005000_places_check_refs_fix_v6_38_1.sql`](./supabase/migrations/20261119005000_places_check_refs_fix_v6_38_1.sql)
+38. [`20261119010000_trips_v6_39_0.sql`](./supabase/migrations/20261119010000_trips_v6_39_0.sql)
 
 Sau `npm run db:local:start`, tạo file `.env.development.local` (Git bỏ qua) bằng Project URL và
 Publishable key hiện trong kết quả:
@@ -198,6 +205,15 @@ Mở **Supabase → SQL Editor** và chạy đúng thứ tự:
 | 27 | [`data/migration_v6.22.0_body_exercise_videos.sql`](./data/migration_v6.22.0_body_exercise_videos.sql) | Bảng `body_exercise_videos` (link video thị phạm user tự gắn, 1 link/bài) thay cho localStorage; frontend tự chuyển link cũ lên rồi xoá key cũ. Additive, idempotent — chạy trước khi deploy frontend, nếu không gắn link sẽ báo lỗi. |
 | 28 | [`data/migration_v6.22.0_finance_drop_income_budgets.sql`](./data/migration_v6.22.0_finance_drop_income_budgets.sql) | **Xóa dữ liệu:** drop `finance_income_rules` (Thu định kỳ), `finance_budgets` (Hạn mức) và RPC `finance_receive_income` — app đã ngừng dùng. Giao dịch thu cũ giữ nguyên, chỉ gỡ liên kết quy tắc. **Deploy frontend mới TRƯỚC rồi mới chạy** (frontend cũ vẫn tải hai bảng). Export CSV hai bảng nếu muốn giữ. Một transaction, tự verify, idempotent. |
 | 29 | [`data/migration_v6.31.0_finance_angia_default_fund.sql`](./data/migration_v6.31.0_finance_angia_default_fund.sql) | Quỹ Tích lũy chung (`finance_saving_goals.is_default`, tối đa 1 quỹ mặc định đang mở mỗi user) + gói Tích lũy An Gia (`finance_deposits.monthly_amount`, `initial_amount`, CHECK đi cặp + có kỳ hạn). Additive, idempotent. **Chạy TRƯỚC khi deploy frontend** (frontend mới ghi hai cột này mỗi lần lưu nơi gửi). |
+| 30 | [`supabase/migrations/20261025000000_knowledge_topics_v6_32_0.sql`](./supabase/migrations/20261025000000_knowledge_topics_v6_32_0.sql) | Chủ đề Knowledge: bảng `collection_topics` (tối đa 8 / user) + cột `collections.topic_id`, RPC seed / gộp chủ đề. **Cần Postgres 15+**. |
+| 31 | [`supabase/migrations/20261105000000_finance_lending_due_history_v6_35_0.sql`](./supabase/migrations/20261105000000_finance_lending_due_history_v6_35_0.sql) | Cột JSONB lịch sử "Lùi hẹn" trên khoản cho vay. Additive, idempotent. |
+| 32 | [`supabase/migrations/20261108000000_knowledge_snippets_v6_36_0.sql`](./supabase/migrations/20261108000000_knowledge_snippets_v6_36_0.sql) | Sổ lệnh: bảng `snippets`. Additive, idempotent. |
+| 33 | [`supabase/migrations/20261119000000_places_v6_38_0.sql`](./supabase/migrations/20261119000000_places_v6_38_0.sql) | Chốn: `places`, `place_sources`, `place_visits`, trigger `places_check_refs`, RPC `light_place`. |
+| 34 | [`supabase/migrations/20261119005000_places_check_refs_fix_v6_38_1.sql`](./supabase/migrations/20261119005000_places_check_refs_fix_v6_38_1.sql) | Vá trigger `places_check_refs` (lỗi 400 khi lưu lời giới thiệu / thắp đèn). Chỉ thay thân hàm, idempotent. |
+| 35 | [`supabase/migrations/20261119010000_trips_v6_39_0.sql`](./supabase/migrations/20261119010000_trips_v6_39_0.sql) | Chuyến đi: `trips`, `trip_options`, `trip_places`, RPC `choose_trip_option`. Cần #33 trước. |
+
+Từ v6.32.0 không còn bản sao trong `data/`: chạy thẳng file trong `supabase/migrations/` (SQL Editor hoặc
+`psql "$DATABASE_URL" -f <file>`).
 
 Dọn dẹp bảng cũ (tùy chọn):
 - [`data/drop_incubator_tables.sql`](./data/drop_incubator_tables.sql) (gỡ bỏ các bảng `intention_*` của phân hệ Ươm mầm đã ngưng phát triển).
@@ -283,15 +299,17 @@ Sau khi thêm env vars → vào **Deployments** → **Redeploy** (hoặc push co
 
 ```
 src/
-  pages/                    ← 7 route pages (Landing + 6 lazy modules)
+  pages/                    ← Landing + các page lazy theo route
     TasksPage.jsx           ← /tasks — Danh sách + Lịch 5 chế độ
     FinancePage.jsx         ← /finance/:screen — module Finance Nocturne
     AccountsPage.jsx        ← /accounts — Account Vault Keyplate
-    InboxPage.jsx           ← /inbox — quick capture
     CollectPage.jsx         ← /collect — Sổ tay Kiến thức PKM / Athenaeum
     FocusPage.jsx           ← /focus — Pomodoro
     SettingsPage.jsx        ← /settings — Tags + Profile
-  components/               ← UI dùng lại; finance/ (Finance), kb/ (Knowledge PKM)
+    BodyPage.jsx            ← /body/:screen — Thể hình & Sức khoẻ (giao diện Ngân hà)
+    ChonPage.jsx            ← /chon, /chon/:placeId, /chon/trip/:tripId — Chốn + Chuyến đi
+    FxLabPage.jsx           ← /fx-lab — xem trước hiệu ứng trang Nhiệm vụ
+  components/               ← UI dùng lại; finance/, kb/ (Knowledge), body/, chon/, dashboard/ (Trang chủ)
     CalendarToolbar.jsx     ← Toolbar ghim đỉnh đa chế độ Lịch
     CalendarWidgetPanel.jsx ← Bảng Lịch & sự kiện: lịch vạn niên, tiết khí, giờ hoàng đạo, ngày lễ & kỷ niệm
     WeekCalendar.jsx        ← Lịch Tuần 7 cột thông minh
@@ -302,11 +320,13 @@ src/
     useUserTasks.js         ← Task CRUD, recurrence, optimistic state
     useFinance.js           ← 10 bảng Finance
     useAccounts.js          ← Account Vault
-    useCollections.js       ← Inbox & Knowledge Base
+    useCollections.js       ← Knowledge Base
+    usePlaces.js / useTrips.js ← Chốn + Chuyến đi
+    useWorkouts.js          ← Body: lộ trình, buổi tập
   contexts/                 ← Auth, Theme, Toast
   data/                     ← JSON tĩnh: UI strings, holidays, taxonomy, templates
   styles/                   ← CSS per domain (global.css = tokens, kb-tokens.css, tasks-aurora.css...)
-  __tests__/                ← Self-check 24 bài test phân theo 4 domain (tasks/, vault/, finance/, core/)
+  __tests__/                ← Self-check node:assert phân theo 5 domain (tasks/, vault/, finance/, body/, core/)
   utils/                    ← Pure logic: kbDeriveUtils, calendarTimeUtils, lunarUtils, financeLogic, vaultCrypto
   lib/supabase.js           ← Singleton Supabase client
 api/
@@ -383,14 +403,16 @@ CHANGELOG.md                ← Lịch sử phiên bản
 | URL | Mô tả |
 |-----|-------|
 | `/` | Landing / đăng nhập |
-| `/inbox` | Quick-capture inbox |
 | `/tasks` | Nhiệm vụ & Không gian Lịch 5 chế độ |
 | `/collect` | Sổ tay Tri thức PKM (Athenaeum / Wiki-links / Graph View) |
-| `/finance`, `/finance/:screen` | Tổng quan, Nhập nhanh, Giao dịch, Danh mục, Hóa đơn; Thống kê nằm trong Tổng quan |
+| `/finance`, `/finance/:screen` | Tổng quan, Nhập nhanh, Giao dịch, Định kỳ & Quỹ, Danh mục; Ngân sách / Thống kê nằm trong Tổng quan |
+| `/body`, `/body/:screen` | Thể hình & Sức khoẻ: lộ trình, buổi tập, tiến bộ, cơ thể, dinh dưỡng |
+| `/chon`, `/chon/:placeId`, `/chon/trip/:tripId` | Chốn: nơi muốn đến / đã đến, bản đồ, Chuyến đi |
 | `/accounts` | Account Vault mã hóa hai pane + Emergency Recovery Key |
 | `/focus` | Pomodoro timer + XP |
 | `/settings` | Tags + Profile |
-| `/incubator`, `/tracker`, `/habits`, `/dashboard`, `/journey` | Redirect về `/tasks` (module cũ đã gỡ) |
+| `/fx-lab` | FX Lab — xem trước hiệu ứng nền trang Nhiệm vụ |
+| `/inbox`, `/incubator`, `/tracker`, `/habits`, `/dashboard`, `/journey` | Redirect về `/tasks` (module cũ đã gỡ) |
 
 ---
 
@@ -401,7 +423,9 @@ CHANGELOG.md                ← Lịch sử phiên bản
 - **Finance:** giao dịch, phân loại thiết yếu 2 cấp, ghi chú nhiều dòng, drawer 560px, danh mục, hóa đơn, khoản vay, thẻ và quỹ tiết kiệm
 - **Account Vault:** full-content AES-GCM phía client, đổi Master Passphrase, Khóa khôi phục khẩn cấp 24 từ, xuất JSON rõ nghĩa và backup/restore mã hóa
 - **Knowledge Base (PKM):** Liên kết 2 chiều `[[Wiki-links]]`, Graph Network View canvas, Backlinks ngữ cảnh, Reader TOC & Read Time, Dual-mode editor (Markdown + Tiptap Visual)
-- **Inbox:** Quick capture → phân loại
+- **Body:** lộ trình theo thứ, buổi tập live, tiến bộ, chỉ số cơ thể, dinh dưỡng
+- **Chốn:** lưu nơi muốn đến, thắp đèn khi đã đến + cảm nhận, bản đồ Leaflet, Chuyến đi so sánh lựa chọn
+- **Quick Capture:** nút ＋ nổi tạo nhanh Task
 - **Focus:** Pomodoro + XP event log
 
 ---

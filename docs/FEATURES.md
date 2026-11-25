@@ -1,6 +1,6 @@
 # FEATURES.md — Life Hub
 
-**Version:** v6.32.0 · **Updated:** 2026-10-25
+**Version:** v6.40.0 · **Updated:** 2026-11-25
 
 Tài liệu này chỉ mô tả tính năng đang chạy. Feature đã xóa và chi tiết release nằm trong
 [`CHANGELOG.md`](../CHANGELOG.md).
@@ -12,15 +12,15 @@ Tài liệu này chỉ mô tả tính năng đang chạy. Feature đã xóa và 
 | Landing | `/` | ✅ | ✅ |
 | Nhiệm vụ | `/tasks` | List in-memory | Full sync + Lịch 5 chế độ |
 | Focus | `/focus` | In-memory | Sync session + XP |
-| Inbox | `/inbox` | — | ✅ |
 | Knowledge | `/collect` | — | ✅ |
 | Finance | `/finance/:screen?` | — | ✅ |
-| Body | `/body` | — | ✅ |
+| Body | `/body/:screen?` | In-memory | Sync Supabase |
 | Chốn | `/chon`, `/chon/:placeId`, `/chon/trip/:tripId` | — | ✅ |
 | Vault | `/accounts` | — | Login + Vault unlock |
 | Cài đặt | `/settings` | — | ✅ |
+| FX Lab | `/fx-lab` | ✅ | ✅ |
 
-## 1. App shell, Auth và Onboarding
+## 1. App shell và Auth
 
 **Files:** `src/App.jsx`, `src/contexts/AuthContext.jsx`, `src/components/AuthModal.jsx`,
 `src/components/Navbar.jsx`
@@ -30,8 +30,8 @@ Tài liệu này chỉ mô tả tính năng đang chạy. Feature đã xóa và 
 - Đăng nhập bằng username dùng RPC lookup email; kiểm tra username/email tồn tại cũng đi qua RPC.
 - Navbar có sidebar desktop, topbar + bottom tabs mobile, user menu, XP bar và cảnh báo Finance.
 - Landing là entry public; page khác lazy-load với `Suspense` và `ErrorBoundary`.
-- Onboarding ba bước giải thích Inbox → phân loại → xử lý trong module phù hợp. Cờ đã xem nằm ở
-  `vl_onboarded`; onboarding không phải route guard.
+- Quick Capture (nút ＋ nổi, `QuickCapture.jsx`): gõ nhanh một dòng → tạo Task `todo` trong `user_tasks`.
+  Ẩn ở các module có nút thêm riêng (Nhiệm vụ, Finance, Body, Knowledge, Vault, Chốn); khách được mời đăng nhập.
 - Thiếu Supabase env sẽ tắt Auth thật. Task list và Focus vẫn dùng được in-memory; các module auth-only
   hiện cổng đăng nhập thay vì giả lập dữ liệu.
 
@@ -207,8 +207,6 @@ Desktop nổi bên phải, mobile là sheet; mở bằng nút "Lịch & sự ki�
   mới cho việc này" mở trình soạn với tên việc và tự gắn khi lưu. Thẻ việc có chip số bài. Gắn / bỏ ghi activity log.
 - `activity_logs` gắn `task_id`; xóa Task cascade lịch sử. Note sửa được, field-diff không sửa.
 - Hoàn thành qua `completeTask` cộng `+10 XP` có dedup (trừ subtask); bỏ hoàn thành xóa event tương ứng.
-- “Quick Done” từ Inbox tạo thẳng một Task `completed=true`, rồi xóa Inbox item. Luồng này ghi
-  `task_created`; nó không đi qua `completeTask`, nên không phát `task_completed` hoặc cộng `+10 XP`.
 
 **Data:** `user_tasks`, `task_collections`, `task_tags`, `activity_logs`, `xp_logs`.
 
@@ -223,24 +221,7 @@ Desktop nổi bên phải, mobile là sheet; mở bằng nút "Lịch & sự ki�
 - Session Focus hoàn thành cộng `+15 XP`, dedup theo session id.
 - Setting timer nằm ở `vl_focus_settings`; không còn liên kết Habit/Journey.
 
-## 4. Inbox (`/inbox`)
-
-**Files:** `src/pages/InboxPage.jsx`, `src/hooks/useCollections.js`, `src/components/QuickCapture.jsx`
-
-- Quick capture toàn app và form nhập nhanh trong Inbox.
-- Search, chọn nhiều, snooze, archive/delete và mở detail để sửa nội dung.
-- Phân loại item sang bảy loại Knowledge hiện hành.
-- Số tiền dò từ ghi chú Inbox lấy đúng số đã viết: "đổ xăng 5000" ra 5.000đ. Chữ chỉ độ lớn vẫn
-  hiểu (`50k`, `2 triệu`).
-- Chuyển thành Task pending hoặc completed; chuyển sang Finance transaction/hóa đơn bằng handoff một
-  lần trong `sessionStorage`.
-- Khi Finance ghi thành công, item Inbox nguồn được xóa. `inbox_item_id` vì vậy là provenance tạm;
-  FK `ON DELETE SET NULL` không giữ link bền sau conversion.
-- Trang yêu cầu đăng nhập; không có guest fallback cho `collections`.
-
-**Data:** `collections`; handoff tạm: `lh_inbox_to_finance`.
-
-## 5. Knowledge (`/collect`)
+## 4. Knowledge (`/collect`)
 
 **Files:** `src/pages/CollectPage.jsx`, `src/components/kb/*`, `src/utils/kbDeriveUtils.js`,
 `src/styles/kb-tokens.css`, `src/hooks/useCollections.js`, `src/hooks/useCollectionTopics.js`,
@@ -273,7 +254,7 @@ Giao diện "Cực quang" trên nền trời đêm dùng chung với Nhiệm v�
 **Data:** `collections` (+ `topic_id`), `collection_topics`, `collection_notes`, `collection_tags`, `task_collections`, `snippets`.
 **Local:** `vl_kb_recent` (Gần đây), `vl_kb_snippet_closed` (nhóm Sổ lệnh đang thu gọn), `kb_editor_mode`, `kb_canvas_nodes`, `kb_canvas_edges`.
 
-## 6. Tags và Cài đặt (`/settings`)
+## 5. Tags và Cài đặt (`/settings`)
 
 **Files:** `src/pages/SettingsPage.jsx`, `src/hooks/useTags.js`
 
@@ -289,7 +270,7 @@ Giao diện "Cực quang" trên nền trời đêm dùng chung với Nhiệm v�
 
 **Data:** `tags`, `collection_tags`, `task_tags`, `finance_transaction_tags`, `profiles`.
 
-## 7. Finance (`/finance`)
+## 6. Finance (`/finance`)
 
 **Files:** `src/pages/FinancePage.jsx`, `src/components/finance/*`, `src/hooks/useFinance.js`,
 `src/utils/financeLogic.js`, `src/data/finance-categories.json`
@@ -334,7 +315,7 @@ Giao diện "Cực quang" trên nền trời đêm dùng chung với Nhiệm v�
 **Data:** 10 bảng `finance_*` chính + `finance_transaction_tags`. Schema chi tiết ở
 [`DATABASE.md`](DATABASE.md), hợp đồng sản phẩm ở [`DESIGN_FINANCE.md`](DESIGN_FINANCE.md).
 
-## 8. Account Vault (`/accounts`)
+## 7. Account Vault (`/accounts`)
 
 **Files:** `src/pages/AccountsPage.jsx`, `src/components/AccountDetail.jsx`,
 `src/components/AccountAvatar.jsx`, `src/hooks/useAccounts.js`, `src/utils/vaultCrypto.js`,
@@ -407,7 +388,7 @@ Giao diện "Cực quang" trên nền trời đêm dùng chung với Nhiệm v�
 
 **Data:** `accounts` ciphertext + `vault_config`. Không có guest mode.
 
-## 9. Body — Thể Hình & Sức Khỏe (`/body`)
+## 8. Body — Thể Hình & Sức Khỏe (`/body`)
 
 **Files:** `src/pages/BodyPage.jsx`, `src/components/body/*`, `src/hooks/useWorkouts.js`, `src/hooks/useBiometrics.js`, `src/hooks/useNutrition.js`, `src/hooks/useExerciseVideo.js`, `src/utils/workoutLogic.js`, `src/utils/bodyMetrics.js`
 
@@ -456,7 +437,7 @@ Module quản lý toàn diện thể trạng và rèn luyện thể chất, tuâ
 - **Dinh dưỡng tối giản:** Ghi nhận 4 bữa ăn với calo & macro (đạm, carb, béo) tự động cân đối theo TDEE, chọn nhanh từ danh sách món mẫu đã lưu, ngày theo múi giờ địa phương (`toDateStr`). Biểu đồ **7 ngày qua** (kcal từng ngày tới hôm nay, đường mục tiêu; ngày chưa ghi tính 0, trung bình chỉ tính ngày có ghi — `sumKcalByDay`). Theo dõi nước uống chưa làm.
 - **Check-in tuần:** Đánh giá thể trạng 4 tiêu chí (1-5 sao, khởi tạo 0 để tránh gửi điểm giả), cân nặng trung bình tuần và số đo vòng eo; tính số tuần theo chuẩn ISO-8601.
 
-## 9b. Chốn — nơi muốn đến & nơi đã qua (`/chon`)
+## 8b. Chốn — nơi muốn đến & nơi đã qua (`/chon`)
 
 Plan: [`PLAN_CHON.md`](PLAN_CHON.md). Auth-only. Sidebar → Chốn (điện thoại: menu Thêm).
 
@@ -509,7 +490,7 @@ Plan: [`PLAN_CHON.md`](PLAN_CHON.md). Auth-only. Sidebar → Chốn (điện tho
 **Data:** `places`, `place_sources`, `place_visits`, `trips`, `trip_options`, `trip_places`, RPC `light_place`,
 `choose_trip_option` (xem `DATABASE.md`).
 
-## 10. Media, widget và PWA
+## 9. Media, widget và PWA
 
 - `api/upload.js`: authenticated multipart upload vào Google Drive folder đã cấu hình.
 - `api/stream.js`: folder-scoped readonly proxy, hỗ trợ HTTP Range/seek cho media; `?meta=1` trả
@@ -520,15 +501,25 @@ Plan: [`PLAN_CHON.md`](PLAN_CHON.md). Auth-only. Sidebar → Chốn (điện tho
 - `GlobalAudioPlayer`: tiếp tục phát khi đổi page.
 - Manifest + service worker cung cấp install metadata/cache cơ bản và Task notification best-effort.
 
+## 10. FX Lab (`/fx-lab`)
+
+**Files:** `src/pages/FxLabPage.jsx`, `src/styles/fx-lab.css`, `public/fx-experiments/`
+
+- Trang xem trước mọi vật bay, kịch bản, hiệu ứng thiên nhiên và nền động của trang Nhiệm vụ; ép chạy từng
+  kịch bản trong bể (`AURORA_POOL`, `ELF_POOL`). Kịch bản trọng số 0 hiện nhãn "Nháp", app không tự bốc.
+- Tab Thí nghiệm mở các trang tĩnh trong `public/fx-experiments/`. Quy trình duyệt: RULES #15.
+- Vào từ sidebar → Khác → FX Lab (mobile: menu Thêm). Không ghi dữ liệu.
+
 ## Routes cũ
 
 | Route | Hành vi hiện tại |
 |---|---|
+| `/inbox` | Redirect `/tasks` (Inbox đã gộp vào Nhiệm vụ; Quick Capture tạo Task) |
 | `/incubator` | Redirect `/tasks` (module Ươm mầm đã gỡ bỏ hoàn toàn) |
 | `/tracker` | Redirect `/tasks` |
 | `/habits` | Redirect `/tasks` |
 | `/dashboard` | Redirect `/tasks` |
 | `/journey` | Redirect `/tasks` |
 
-Habit, Journey, Dashboard, Quiz, Leaderboard, Life Log, Team/Friends, Incubator và Finance legacy không còn là
+Inbox, Habit, Journey, Dashboard, Quiz, Leaderboard, Life Log, Team/Friends, Incubator và Finance legacy không còn là
 feature hiện hành. Muốn xem lý do/thời điểm xóa, đọc `CHANGELOG.md`.

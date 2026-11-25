@@ -1,5 +1,5 @@
 ---
-version: 6.16.0
+version: 6.40.0
 name: Life Hub
 description: >-
   Dark-first glassmorphic design system for Life Hub (Personal Life OS).

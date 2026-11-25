@@ -1,13 +1,13 @@
 # PROJECT.md — Life Hub
 
-**Version:** v6.16.0 · **Updated:** 2026-09-02
+**Version:** v6.40.0 · **Updated:** 2026-11-25
 
 Bản đồ cấp cao của repo. File này chỉ trả lời “cái gì ở đâu”; chi tiết nằm trong tài liệu được trỏ tới.
 
 ## Sản phẩm
 
-Life Hub là SPA quản lý cá nhân gồm Inbox, Nhiệm vụ (kèm Không gian Lịch 5 chế độ), Knowledge Base (PKM / Athenaeum), Tài chính (Finance), Focus và
-Account Vault mã hóa. Frontend dùng React/Vite; dữ liệu đồng bộ dùng Supabase Auth + PostgreSQL + RLS.
+Life Hub là SPA quản lý cá nhân gồm Trang chủ, Nhiệm vụ (kèm Không gian Lịch 5 chế độ), Knowledge Base (PKM / Athenaeum),
+Tài chính (Finance), Body (thể hình & sức khoẻ), Chốn (nơi muốn đến & chuyến đi), Focus và Account Vault mã hóa. Frontend dùng React/Vite; dữ liệu đồng bộ dùng Supabase Auth + PostgreSQL + RLS.
 
 | Layer | Công nghệ / quy ước |
 |---|---|
@@ -27,6 +27,8 @@ Account Vault mã hóa. Frontend dùng React/Vite; dữ liệu đồng bộ dùn
 | Bảng, quan hệ, RLS, RPC, migration | [`docs/DATABASE.md`](DATABASE.md) |
 | Hành vi đang chạy của từng tính năng | [`docs/FEATURES.md`](FEATURES.md) |
 | Hướng dẫn chuyên sâu Không gian Tri thức PKM | [`docs/MODULE_KNOWLEDGE.md`](MODULE_KNOWLEDGE.md) |
+| Plan + quyết định module Chốn / giao diện Body | [`docs/PLAN_CHON.md`](PLAN_CHON.md) · [`docs/PLAN_BODY_NGAN_HA.md`](PLAN_BODY_NGAN_HA.md) |
+| Hiệu ứng, vật bay, kịch bản trang Nhiệm vụ | [`docs/TASK_EFFECTS_SCENARIOS.md`](TASK_EFFECTS_SCENARIOS.md) |
 | Việc còn mở | [`docs/TASKS.md`](TASKS.md) |
 | Thứ tự roadmap | [`docs/PLAN.md`](PLAN.md) |
 | Quy tắc làm việc trong repo | [`docs/RULES.md`](RULES.md) |
@@ -44,22 +46,28 @@ release block cũ.
 | `/` | `LandingPage` | — | Public |
 | `/tasks` | `TasksPage` | `useUserTasks`, `useActivityLog` | Guest in-memory; đăng nhập để sync và xem lịch sử hoàn thành |
 | `/focus` | `FocusPage` | `useFocusTimer`, `useXpStore` | Guest in-memory; đăng nhập để sync |
-| `/inbox` | `InboxPage` | `useCollections` | Yêu cầu đăng nhập |
-| `/collect` | `CollectPage` | `useCollections`, `useCollectionNotes`, `useTags` | Yêu cầu đăng nhập |
+| `/collect` | `CollectPage` | `useCollections`, `useCollectionTopics`, `useCollectionNotes`, `useTags` | Yêu cầu đăng nhập |
 | `/finance`, `/finance/:screen` | `FinancePage` | `useFinance` | Yêu cầu đăng nhập; 11 bảng chính + junction tag |
+| `/body`, `/body/:screen` | `BodyPage` | `useWorkouts`, `useBiometrics`, `useNutrition`, `useExerciseVideo` | Guest in-memory; đăng nhập để sync |
+| `/chon`, `/chon/:placeId`, `/chon/trip/:tripId` | `ChonPage` | `usePlaces`, `useTrips` | Yêu cầu đăng nhập |
 | `/accounts` | `AccountsPage` | `useAccounts` | Yêu cầu đăng nhập + Vault passphrase |
-| `/settings` | `SettingsPage` | `useTags`, `useQuotes`, profile | Yêu cầu đăng nhập |
+| `/settings` | `SettingsPage` | `useTags`, profile | Yêu cầu đăng nhập |
+| `/fx-lab` | `FxLabPage` | — | Public; chỉ xem trước hiệu ứng, không ghi dữ liệu |
 
-Các bookmark `/tracker`, `/habits`, `/dashboard`, `/journey` được chuyển về `/tasks`. URL khác không
-khớp route sẽ mở Landing Page.
+Khi đã đăng nhập, `/` hiện Trang chủ (`components/dashboard/HomeDashboard.jsx`). Các bookmark `/inbox`,
+`/incubator`, `/tracker`, `/habits`, `/dashboard`, `/journey` được chuyển về `/tasks`. URL khác không khớp
+route sẽ mở Landing Page.
 
 ## Luồng dữ liệu quan trọng
 
 - **Task:** thao tác → `useUserTasks` → optimistic state → Supabase khi đã đăng nhập; lỗi ghi sẽ
   rollback. Mọi thay đổi Task đi qua `activity_logs`; hoàn thành/bỏ hoàn thành cộng/trừ XP có dedup.
-- **Inbox / Knowledge:** cùng dùng `collections`; Task liên kết Knowledge qua `task_collections`.
+- **Quick Capture:** nút ＋ nổi tạo Task `todo` trong `user_tasks` (thay Inbox cũ).
+- **Knowledge:** bài nằm trong `collections`; Task liên kết Knowledge qua `task_collections`.
 - **Finance:** `useFinance` giữ state cho toàn module; báo cáo luôn tính lại từ giao dịch theo kỳ.
-  Inbox có thể handoff sang giao dịch/hóa đơn qua `sessionStorage`; giao dịch có thể gắn Task.
+  Giao dịch có thể gắn Task.
+- **Chốn:** `usePlaces` / `useTrips`; hẹn ngày đi tạo Task qua `useUserTasks`; chốt lựa chọn của chuyến đi
+  (RPC `choose_trip_option`) có thể ghi luôn giao dịch Finance. Chi tiết: [`PLAN_CHON.md`](PLAN_CHON.md).
 - **Vault:** chỉ đọc `vault_config` trước unlock. Passphrase mở DEK trong memory; sau đó mới query và
   giải mã `accounts`. Lock, sign-out, đổi user hoặc reload xóa key/plaintext khỏi state. Ghi cả item
   dùng `updated_at` làm revision chống ghi đè giữa tab/device.
@@ -85,8 +93,8 @@ npm test
 npm run lint
 ```
 
-`npm test` hiện chạy **24 self-check** thuần bằng `node:assert`, phân bổ cấu trúc chặt chẽ theo 4 domain
-(`tasks/`, `vault/`, `finance/`, `core/`); không dùng Jest/Vitest. Theo workflow repo, user chạy
+`npm test` chạy các self-check thuần bằng `node:assert` (danh sách thật nằm trong script `test` của
+`package.json`), phân theo 5 domain (`tasks/`, `vault/`, `finance/`, `body/`, `core/`); không dùng Jest/Vitest. Theo workflow repo, user chạy
 production build thủ công trừ khi họ yêu cầu agent điều tra lỗi build.
 
 Production Finance v6.0 và Vault v6.2 vẫn là bước **user-run**. Trạng thái và thứ tự thực hiện hiện tại

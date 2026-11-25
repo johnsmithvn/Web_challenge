@@ -10,6 +10,7 @@ const billNote = readFileSync(new URL('../../../data/migration_v6.3.0_finance_bi
 const lending = readFileSync(new URL('../../../data/migration_v6.4.0_finance_lending.sql', import.meta.url), 'utf8');
 const detach = readFileSync(new URL('../../../data/migration_v6.9.0_finance_rule_detach.sql', import.meta.url), 'utf8');
 const forfeited = readFileSync(new URL('../../../data/migration_v6.9.1_finance_lending_forfeited.sql', import.meta.url), 'utf8');
+const cardPrepay = readFileSync(new URL('../../../supabase/migrations/20261125000000_finance_card_prepay_v6_40_0.sql', import.meta.url), 'utf8');
 const destructiveScreens = [
   list,
   recurring,
@@ -167,6 +168,23 @@ for (const fn of ['deleteBill', 'deleteLoan', 'deleteCard', 'deleteLending']) {
   assert.match(recurring, new RegExp(`if \\(!await fin\\.${fn}\\(`),
     `nút xóa phải xử lý khi ${fn} thất bại, không im lặng`);
 }
+
+// ── v6.40.0: trả trước dư nợ thẻ cho kỳ đang mở ─────────────────────────────
+// Nút "Trả sớm dư nợ" chỉ hiện khi sao kê vừa chốt đã trả hết. Gắn kỳ vừa chốt thì DB báo
+// "already paid"; v6.0.0 lại chặn mọi kỳ chưa chốt → nút không bao giờ ghi được.
+assert.match(cardPrepay, /BEGIN;[\s\S]*COMMIT;/, 'migration phải chạy trong một transaction DDL');
+assert.match(cardPrepay, /CREATE OR REPLACE FUNCTION finance_pay_card_statement\(/,
+  'chỉ thay thân hàm, giữ chữ ký để GRANT cũ còn hiệu lực');
+assert.doesNotMatch(cardPrepay, /Cannot pay a statement before it closes'/,
+  'kỳ đang mở phải trả trước được');
+assert.match(cardPrepay, /IF v_previous_statement > p_occurred_at THEN/,
+  'chỉ cho trả trước đúng một kỳ — kỳ trước nó phải chốt rồi');
+assert.match(cardPrepay, /v_amount > v_outstanding/, 'trả trước vẫn không được vượt số đã quẹt trong kỳ');
+assert.match(recurring, /period: billed \? cyc\.period : cyc\.nextStatement\.slice\(0, 7\)/,
+  'trả sớm phải gắn kỳ sắp chốt, không phải kỳ vừa chốt đã trả xong');
+// `error` là lỗi TẢI — banner "Không tải được dữ liệu" đọc nó. Lỗi ghi qua RPC đã có toast.
+assert.doesNotMatch(hook.slice(hook.indexOf('const callFinanceRpc'), hook.indexOf('const payBill')), /setError\(/,
+  'RPC thất bại không được bật banner "Không tải được dữ liệu Finance"');
 
 assert.match(sql, /security_invoker = TRUE/, 'tagged_items phải chạy bằng quyền người gọi');
 assert.match(sql, /REVOKE ALL ON TABLE[\s\S]*FROM anon;/, 'anon không được truy cập bảng Finance');
